@@ -3,18 +3,18 @@
    Verde-escuro (principal) · Dourado (destaque) · Preto e neutros
    ============================================================ */
 :root {
-  --green-950: #06170f;
-  --green-900: #0b2a20;
-  --green-800: #103a2c;
-  --green-700: #154a39;
-  --green-600: #1d5e49;
-  --green-100: #e3ece7;
+  --green-950: #0c241e;
+  --green-900: #16392f;
+  --green-800: #1d4a3e;
+  --green-700: #276153; /* verde do logotipo */
+  --green-600: #357566;
+  --green-100: #e2ede9;
 
-  --gold-300: #ecd394;
-  --gold-400: #ddb965;
-  --gold-500: #c9a24a;
-  --gold-600: #a8842f;
-  --gold-100: #f6eed9;
+  --gold-300: #ebcb94;
+  --gold-400: #d9b47f;
+  --gold-500: #c9a376; /* dourado do logotipo */
+  --gold-600: #a9743f;
+  --gold-100: #f5ecdd;
 
   --ink: #141714;
   --ink-2: #3f4540;
@@ -33,7 +33,7 @@
   --radius-s: 10px;
   --radius: 16px;
   --radius-l: 22px;
-  --shadow: 0 1px 2px rgb(6 23 15 / 6%), 0 4px 16px rgb(6 23 15 / 6%);
+  --shadow: 0 1px 2px rgb(12 36 30 / 6%), 0 4px 16px rgb(12 36 30 / 6%);
 
   --tap: 56px; /* altura mínima de botão — uso com luva/sol/campo */
   --header-h: 64px;
@@ -109,12 +109,12 @@ p {
   top: 0;
   z-index: 20;
   padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 18px) 12px calc(var(--safe-left) + 18px);
-  background: linear-gradient(180deg, var(--green-900), var(--green-800));
+  background: linear-gradient(180deg, var(--green-800), var(--green-700));
   color: #fff;
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid rgb(201 162 74 / 35%);
+  border-bottom: 1px solid rgb(201 163 118 / 35%);
 }
 
 .brand {
@@ -126,9 +126,8 @@ p {
 }
 
 .brand img {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  width: 52px;
+  height: 52px;
   flex: none;
 }
 
@@ -209,10 +208,10 @@ p {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   padding: 6px calc(var(--safe-right) + 6px) calc(var(--safe-bottom) + 6px) calc(var(--safe-left) + 6px);
-  background: rgb(11 42 32 / 97%);
+  background: rgb(22 57 47 / 97%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgb(201 162 74 / 30%);
+  border-top: 1px solid rgb(201 163 118 / 30%);
 }
 
 .tab {
@@ -231,7 +230,7 @@ p {
 
 .tab.active {
   color: var(--gold-300);
-  background: rgb(201 162 74 / 12%);
+  background: rgb(201 163 118 / 12%);
 }
 
 /* ---------------- Componentes ---------------- */
@@ -274,8 +273,30 @@ p {
   color: #fff;
   border-radius: var(--radius-l);
   padding: 22px;
-  border: 1px solid rgb(201 162 74 / 35%);
+  border: 1px solid rgb(201 163 118 / 35%);
   box-shadow: var(--shadow);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  right: -18px;
+  bottom: -26px;
+  width: 132px;
+  height: 132px;
+  background: url('/logo-mark.svg') center / contain no-repeat;
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+.hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .hero h1 {
@@ -369,7 +390,7 @@ p {
 .input:focus {
   outline: none;
   border-color: var(--gold-500);
-  box-shadow: 0 0 0 3px rgb(201 162 74 / 20%);
+  box-shadow: 0 0 0 3px rgb(201 163 118 / 20%);
 }
 
 .label {

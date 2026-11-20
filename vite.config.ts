@@ -19,7 +19,7 @@ export default defineConfig({
       // evitando recarregar a tela no meio de um lançamento.
       registerType: 'prompt',
       injectRegister: false,
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'logo-mark.svg', 'apple-touch-icon.png'],
       manifest: {
         id: base,
         name: 'ARGO — Gestão Pecuária',
@@ -31,8 +31,8 @@ export default defineConfig({
         scope: base,
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#0B2A20',
-        theme_color: '#0B2A20',
+        background_color: '#276153',
+        theme_color: '#276153',
         categories: ['business', 'productivity'],
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },

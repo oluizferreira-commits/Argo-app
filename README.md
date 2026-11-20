@@ -46,4 +46,4 @@ Faça backup com frequência. A restauração **mescla** os dados: não apaga ne
 | `npm run build` | build de produção (`BASE_PATH=/Argo-app/` para o GitHub Pages) |
 | `npm run lint` | análise estática |
 
-Documentação técnica: [docs/ARQUITETURA.md](docs/ARQUITETURA.md) · Etapas: [docs/ROADMAP.md](docs/ROADMAP.md)
+Documentação técnica: [docs/ARQUITETURA.md](docs/ARQUITETURA.md) · Marca: [docs/marca/README.md](docs/marca/README.md) · Etapas: [docs/ROADMAP.md](docs/ROADMAP.md)

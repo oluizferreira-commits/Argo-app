@@ -20,7 +20,7 @@ export function Layout() {
       <header className="header">
         {isHome ? (
           <div className="brand">
-            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+            <img src={`${import.meta.env.BASE_URL}logo-mark.svg`} alt="" />
             <div style={{ minWidth: 0 }}>
               <div className="brand-name">ARGO</div>
               <div className="brand-sub">Gestão Pecuária</div>
