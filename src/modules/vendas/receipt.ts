@@ -221,7 +221,7 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
     text('PAGUE COM PIX', tx, y + 50, 24, 800, C.green)
     text(formatMoney(open), tx, y + 112, 44, 800, C.ink)
     if (sale.installments.length > 1) text(`Parcela ${d.installmentIndex + 1} · vence ${formatDay(inst.due)}`, tx, y + 152, 22, 400, C.ink2)
-    text(fit(`Recebedor: ${farm.pixName}`, W - M - tx, 22), tx, y + 206, 22, 400, C.ink2)
+    text(fit(`Recebedor: ${farm.pixFullName || farm.pixName}`, W - M - tx, 22), tx, y + 206, 22, 400, C.ink2)
     text(`Chave (${PIX_KEY_LABELS[farm.pixKeyType]}): ${maskPixKey(farm.pixKeyType, farm.pixKey)}`, tx, y + 244, 22, 400, C.ink2)
     text('Abra o app do seu banco e', tx, y + 300, 22, 400, C.ink3)
     text('escaneie o QR Code.', tx, y + 330, 22, 400, C.ink3)

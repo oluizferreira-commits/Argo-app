@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPixPayload, crc16, isValidCnpj, isValidCpf, maskCpf, maskDocument, maskPhone, maskPixKey, normalizePixKey, PixError, pixText } from './pix'
+import { buildPixPayload, crc16, isValidCnpj, isValidCpf, maskCpf, maskDocument, maskPhone, maskPixKey, normalizePixKey, PixError, pixText, pixFitName, pixFitCity } from './pix'
 
 describe('pix', () => {
   it('CRC16-CCITT confere com o valor de referência', () => {
@@ -46,5 +46,21 @@ describe('pix', () => {
     expect(maskPhone('+55 34 3333-1234')).toBe('(34) *****-**34')
     expect(maskPhone('')).toBe('')
     expect(pixText('José da Silva Ção', 25)).toBe('JOSE DA SILVA CAO')
+  })
+})
+
+describe('nome e cidade no QR Code (limites do Pix)', () => {
+  it('nome que cabe fica igual (só sem acento e em maiúsculas)', () => {
+    expect(pixFitName('João da Silva')).toBe('JOAO DA SILVA')
+  })
+  it('nome longo: abrevia os nomes do meio, mantém primeiro e último', () => {
+    expect(pixFitName('Luiz Eduardo Nunes Garcia Ferreira')).toBe('LUIZ EDUARDO N G FERREIRA')
+    expect(pixFitName('Luiz Eduardo Nunes Garcia Ferreira').length).toBeLessThanOrEqual(25)
+    expect(pixFitName('Maria Aparecida dos Santos Albuquerque Cavalcanti')).toBe('MARIA A S A CAVALCANTI')
+  })
+  it('cidade: tira "do/da" e só corta se ainda não couber', () => {
+    expect(pixFitCity('Redenção')).toBe('REDENCAO')
+    expect(pixFitCity('Floresta do Araguaia')).toBe('FLORESTA ARAGUA')
+    expect(pixFitCity('Floresta do Araguaia').length).toBeLessThanOrEqual(15)
   })
 })

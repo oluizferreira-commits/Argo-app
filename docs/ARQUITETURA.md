@@ -89,6 +89,8 @@ Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendência
 
 ## Vendas e Pix
 
+- Nome e cidade do recebedor: o usuário digita completos (`pixFullName`, `pixFullCity`, usados na tela e no comprovante). O QR Code usa `pixName`/`pixCity` dentro dos limites do Pix (25 e 15 caracteres): `pixFitName` abrevia os nomes do meio ("LUIZ EDUARDO N G FERREIRA") e `pixFitCity` tira "do/da" antes de cortar. A tela mostra como vai ficar antes de salvar.
+
 - `src/modules/vendas/sales.ts`: venda e saída do rebanho gravadas na MESMA transação (nada fica pela metade).
   A saída gerada por venda só é desfeita cancelando a venda.
 - Arroba: peso vivo → kg ÷ 30 (rendimento de 50% sobre @ de 15 kg); abate → arrobas lançadas direto. Peso por animal.

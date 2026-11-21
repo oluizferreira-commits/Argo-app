@@ -139,6 +139,34 @@ export function pixText(s: string, max: number): string {
     .toUpperCase()
 }
 
+const CONNECTORS = new Set(['DA', 'DE', 'DO', 'DAS', 'DOS', 'E'])
+
+/**
+ * Nome do recebedor para o QR Code (limite do Pix: 25 caracteres). Se não couber, abrevia os nomes do
+ * meio (do último para o primeiro) e tira "da/de/do": "Luiz Eduardo Nunes Garcia Ferreira" →
+ * "LUIZ EDUARDO N G FERREIRA". Só corta se nem assim couber.
+ */
+export function pixFitName(full: string, max = 25): string {
+  const clean = pixText(full, 200)
+  if (clean.length <= max) return clean
+  let words = clean.split(' ')
+  if (words.length > 2) words = [words[0], ...words.slice(1, -1).filter((w) => !CONNECTORS.has(w)), words.at(-1)!]
+  for (let i = words.length - 2; i >= 1 && words.join(' ').length > max; i--) words[i] = words[i][0]
+  return words.join(' ').slice(0, max).trim()
+}
+
+/** Cidade para o QR Code (limite do Pix: 15 caracteres): tira "do/da/de" se precisar e só então corta. */
+export function pixFitCity(full: string, max = 15): string {
+  const clean = pixText(full, 200)
+  if (clean.length <= max) return clean
+  return clean
+    .split(' ')
+    .filter((w, i, a) => i === 0 || i === a.length - 1 || !CONNECTORS.has(w))
+    .join(' ')
+    .slice(0, max)
+    .trim()
+}
+
 /** CRC16-CCITT (polinômio 0x1021, valor inicial 0xFFFF), exigido pelo BR Code. */
 export function crc16(payload: string): string {
   let crc = 0xffff

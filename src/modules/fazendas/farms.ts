@@ -2,7 +2,7 @@ import type { ArgoDatabase } from '../../db/database'
 import { getMeta, setMeta } from '../../db/device'
 import { Repository } from '../../db/repository'
 import type { Farm } from '../../db/types'
-import { isValidCpf, normalizePixKey, PixError, pixText, type PixKeyType } from '../../domain/pix'
+import { isValidCpf, normalizePixKey, PixError, pixFitCity, pixFitName, type PixKeyType } from '../../domain/pix'
 
 export class FarmError extends Error {
   constructor(message: string) {
@@ -121,15 +121,18 @@ export async function updateFarmPix(db: ArgoDatabase, id: string, input: FarmPix
   } catch (e) {
     throw new FarmError(e instanceof PixError ? e.message : 'Chave Pix inválida.')
   }
-  const name = pixText(input.name, 25)
-  const city = pixText(input.city, 15)
+  // QR Code: versão abreviada (limites do Pix: nome 25, cidade 15); comprovante: nome completo
+  const name = pixFitName(input.name)
+  const city = pixFitCity(input.city)
   if (!name) throw new FarmError('Informe o nome do recebedor (como aparece no banco).')
   if (!city) throw new FarmError('Informe a cidade do recebedor.')
-  return new Repository(db, 'farms').update(id, { pixKeyType: input.type, pixKey: key, pixName: name, pixCity: city })
+  const fullName = input.name.trim().replace(/\s+/g, ' ').slice(0, 80)
+  const fullCity = input.city.trim().replace(/\s+/g, ' ').slice(0, 60)
+  return new Repository(db, 'farms').update(id, { pixKeyType: input.type, pixKey: key, pixName: name, pixCity: city, pixFullName: fullName, pixFullCity: fullCity })
 }
 
 export async function removeFarmPix(db: ArgoDatabase, id: string): Promise<Farm> {
-  return new Repository(db, 'farms').update(id, { pixKeyType: null, pixKey: null, pixName: '', pixCity: '' })
+  return new Repository(db, 'farms').update(id, { pixKeyType: null, pixKey: null, pixName: '', pixCity: '', pixFullName: '', pixFullCity: '' })
 }
 
 // ------------------------------------------------------------------ fazenda atual

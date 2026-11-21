@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
-import { maskPixKey, PIX_KEY_LABELS, type PixKeyType } from '../../domain/pix'
+import { maskPixKey, PIX_KEY_LABELS, pixFitCity, pixFitName, pixText, type PixKeyType } from '../../domain/pix'
 import { useFarm } from './FarmContext'
 import { FarmError, removeFarmPix, updateFarmPix } from './farms'
 
@@ -23,8 +23,11 @@ export function PixSection() {
   const [type, setType] = useState<PixKeyType>(farm.pixKeyType ?? 'cpf')
   // sem chave ainda: sugere o CPF do responsável
   const [key, setKey] = useState(!farm.pixKey && farm.responsibleCpf && (farm.pixKeyType ?? 'cpf') === 'cpf' ? farm.responsibleCpf : '')
-  const [name, setName] = useState(farm.pixName || farm.responsible || farm.name)
-  const [city, setCity] = useState(farm.pixCity || farm.city)
+  const [name, setName] = useState(farm.pixFullName || farm.pixName || farm.responsible || farm.name)
+  const [city, setCity] = useState(farm.pixFullCity || farm.pixCity || farm.city)
+  // como vai aparecer dentro do QR Code (limites do Pix: nome 25, cidade 15)
+  const qrName = pixFitName(name)
+  const qrCity = pixFitCity(city)
   const [msg, setMsg] = useState<Msg>(null)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(!farm.pixKey)
@@ -60,12 +63,26 @@ export function PixSection() {
               <dt>Chave ({PIX_KEY_LABELS[farm.pixKeyType]})</dt>
               <dd>{maskPixKey(farm.pixKeyType, farm.pixKey)}</dd>
               <dt>Recebedor</dt>
-              <dd>{farm.pixName}</dd>
+              <dd data-testid="pix-full-name">{farm.pixFullName || farm.pixName}</dd>
               <dt>Cidade</dt>
-              <dd>{farm.pixCity}</dd>
+              <dd>{farm.pixFullCity || farm.pixCity}</dd>
+              {(farm.pixName !== pixText(farm.pixFullName || farm.pixName || '', 200) || farm.pixCity !== pixText(farm.pixFullCity || farm.pixCity || '', 200)) && (
+                <>
+                  <dt>No QR Code</dt>
+                  <dd data-testid="pix-qr-name">
+                    {farm.pixName} · {farm.pixCity}
+                  </dd>
+                </>
+              )}
             </dl>
-            <button className="btn btn-outline btn-block" onClick={() => setEditing(true)}>
-              <Icon name="edit" /> Trocar chave Pix
+            <button
+              className="btn btn-outline btn-block"
+              onClick={() => {
+                setKey(farm.pixKey ?? '')
+                setEditing(true)
+              }}
+            >
+              <Icon name="edit" /> Alterar chave, nome ou cidade
             </button>
             <button className="btn btn-danger btn-block" onClick={remove}>
               Remover chave Pix
@@ -103,13 +120,23 @@ export function PixSection() {
               <label className="label" htmlFor="pix-name">
                 Nome do recebedor (como no banco)
               </label>
-              <input id="pix-name" className="input" value={name} maxLength={25} onChange={(e) => setName(e.target.value)} />
+              <input id="pix-name" className="input" value={name} maxLength={80} autoComplete="name" onChange={(e) => setName(e.target.value)} />
+              {qrName && qrName !== pixText(name, 200) && (
+                <p className="muted" style={{ margin: '6px 0 0', fontSize: 14 }} data-testid="pix-name-preview">
+                  No QR Code: <strong>{qrName}</strong> (o Pix aceita até 25 letras). Ao pagar, o banco do cliente mostra o nome completo cadastrado na sua chave.
+                </p>
+              )}
             </div>
             <div className="field">
               <label className="label" htmlFor="pix-city">
                 Cidade do recebedor
               </label>
-              <input id="pix-city" className="input" value={city} maxLength={15} onChange={(e) => setCity(e.target.value)} />
+              <input id="pix-city" className="input" value={city} maxLength={60} onChange={(e) => setCity(e.target.value)} />
+              {qrCity && qrCity !== pixText(city, 200) && (
+                <p className="muted" style={{ margin: '6px 0 0', fontSize: 14 }} data-testid="pix-city-preview">
+                  No QR Code: <strong>{qrCity}</strong> (o Pix aceita até 15 letras).
+                </p>
+              )}
             </div>
             <button className="btn btn-primary btn-block" disabled={busy || !key.trim()} onClick={save}>
               <Icon name="check" /> Salvar chave Pix

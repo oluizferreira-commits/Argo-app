@@ -94,6 +94,9 @@ export interface Farm extends BaseRecord {
   /** Nome e cidade do recebedor, como aparecem no QR Code (sem acento). */
   pixName?: string
   pixCity?: string
+  /** Nome e cidade completos, como digitados (aparecem no comprovante; o QR usa a versão abreviada). */
+  pixFullName?: string
+  pixFullCity?: string
   /** Coordenada OFICIAL da entrada principal (porteira). Nunca é alterada pelo roteamento. */
   entrance?: GeoPoint | null
   /** Cidades de origem para as rotas de acesso. */
