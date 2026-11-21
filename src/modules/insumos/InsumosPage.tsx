@@ -4,7 +4,7 @@ import { newId } from '../../core/ids'
 import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
-import { createSupply, formatKg, formatSacks, parseKgPerSack, sacksToKg, SupplyError } from './supplies'
+import { createSupply, isMixture, mixtureUsing, recipeText, formatKg, formatSacks, parseKgPerSack, sacksToKg, SupplyError } from './supplies'
 import { useSupplies } from './useSupplies'
 
 export function InsumosPage() {
@@ -14,10 +14,13 @@ export function InsumosPage() {
   return (
     <>
       <p className="muted" style={{ margin: '0 4px' }}>
-        Estoque em sacos (aceita meio saco). O consumo no cocho é lançado por pasto e sai do estoque automaticamente.
+        Estoque em sacos (aceita meio saco). Sal branco e mineral saem do estoque quando você lança “Mistura feita”; o consumo no cocho é lançado em sacos de mistura, por pasto.
       </p>
       <div className="card module-list" style={{ paddingTop: 6, paddingBottom: 6 }} data-testid="supplies">
-        {data.rows.map(({ supply: s, halves }) => (
+        {data.rows.map(({ supply: s, halves }) => {
+          const names = new Map(data.rows.map((r) => [r.supply.id, r.supply.name]))
+          const mix = mixtureUsing(data.rows.map((r) => r.supply), s.id)
+          return (
           <Link key={s.id} to={`/insumos/${s.id}`}>
             <div className="status-icon">
               <Icon name="sack" />
@@ -28,7 +31,13 @@ export function InsumosPage() {
                 {!s.active && <span className="badge badge-neutral" style={{ marginLeft: 8 }}>Inativo</span>}
               </div>
               <div className="status-detail">
-                {s.gramsPerSack ? `${formatKg(sacksToKg(halves, s.gramsPerSack))} · saco de ${formatKg(s.gramsPerSack / 1000)}` : 'Peso do saco não informado'}
+                {isMixture(s)
+                  ? `Vai para o cocho · ${recipeText(s, names)}`
+                  : mix
+                    ? `Entra na ${mix.name.toLocaleLowerCase('pt-BR')}${s.gramsPerSack ? ` · ${formatKg(sacksToKg(halves, s.gramsPerSack))}` : ''}`
+                    : s.gramsPerSack
+                      ? `${formatKg(sacksToKg(halves, s.gramsPerSack))} · saco de ${formatKg(s.gramsPerSack / 1000)}`
+                      : 'Peso do saco não informado'}
               </div>
             </div>
             <span className={`badge ${halves < 0 ? 'badge-warn' : halves === 0 ? 'badge-neutral' : 'badge-ok'}`} data-testid={`stock-${s.name}`}>
@@ -36,7 +45,8 @@ export function InsumosPage() {
             </span>
             <Icon name="chevronRight" size={20} className="muted" />
           </Link>
-        ))}
+          )
+        })}
       </div>
       {adding ? (
         <NewSupplyForm onClose={() => setAdding(false)} />

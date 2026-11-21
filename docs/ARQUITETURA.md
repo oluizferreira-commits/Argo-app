@@ -137,6 +137,7 @@ src/
 - **Movimentos** (`supplyMovements`): quantidade em **meios sacos** (inteiro, com sinal: + entrada, − saída). Compra (valor pago em centavos + fornecedor), consumo no cocho (sempre com pasto) e ajuste (entrada/saída com motivo). Só sacos inteiros ou meio saco, inclusive em correções.
 - Estoque = soma dos movimentos ativos. Saída que deixaria o estoque negativo é recusada (`NegativeStockError`) até haver autorização explícita: motivo + confirmação + PIN da fazenda (se houver). O lançamento fica marcado `authorizedNegative`.
 - Correção = estorno (fica no histórico). Estornar uma entrada não pode deixar o estoque negativo.
+- **Mistura de sal**: produto com `recipe` (ingredientes de UMA mistura, em meios sacos) e `yieldHalves` (quanto rende). Criada uma vez por fazenda com 3 sacos de sal branco + 1 de mineral → 6 sacos; a receita é definida pelo responsável e vale para as próximas misturas. "Mistura feita" grava, com o mesmo `batchId`, uma saída de cada ingrediente e a entrada da mistura (tipo `mistura`); o estorno desfaz o grupo todo e é recusado se a mistura já foi para o cocho. Ingrediente de mistura ativa não tem consumo direto no cocho; mistura não tem compra. Campos novos sem índice: não exigiram nova versão do banco.
 
 ## Esquema do banco
 

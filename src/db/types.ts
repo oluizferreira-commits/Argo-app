@@ -179,9 +179,19 @@ export interface Responsible extends BaseRecord {
 }
 
 /** Insumo controlado em SACOS (ex.: sal branco, sal mineral). */
+/** Ingrediente da receita de uma mistura (quantidade em meios sacos). */
+export interface RecipeItem {
+  supplyId: string
+  halves: number
+}
+
 export interface Supply extends BaseRecord {
   farmId: string
   name: string
+  /** Mistura (ex.: sal branco + mineral): ingredientes de UMA mistura. Ausente/null = produto comum. */
+  recipe?: RecipeItem[] | null
+  /** Mistura: quantos meios sacos de mistura UMA mistura rende. */
+  yieldHalves?: number | null
   /** Peso de um saco, em gramas (null = ainda não informado). */
   gramsPerSack: number | null
   active: boolean
@@ -194,9 +204,12 @@ export interface Supply extends BaseRecord {
 export interface SupplyMovement extends BaseRecord {
   farmId: string
   supplyId: string
-  type: 'compra' | 'consumo' | 'ajuste'
+  /** mistura: saída dos ingredientes e entrada da mistura (mesmo batchId) */
+  type: 'compra' | 'consumo' | 'ajuste' | 'mistura'
   date: string
   halfSacks: number
+  /** Mistura feita: liga os lançamentos da mesma mistura (estornados juntos). */
+  batchId?: string | null
   /** Compra: valor pago (centavos). */
   costCents: number | null
   supplier: string
