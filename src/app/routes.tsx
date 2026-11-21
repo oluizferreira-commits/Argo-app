@@ -1,6 +1,7 @@
 import { createHashRouter, type RouteObject } from 'react-router'
 import { Layout } from '../components/Layout'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
+import { ComoChegarPage } from '../modules/acesso/ComoChegarPage'
 import { FazendaPage } from '../modules/fazendas/FazendaPage'
 import { HubPage } from '../modules/hub/HubPage'
 import { ClienteFormPage } from '../modules/clientes/ClienteFormPage'
@@ -41,6 +42,7 @@ const implemented: RouteObject[] = [
   { path: '/pastos/:id', element: <PastoPage />, handle: t('Pasto') },
   { path: '/pastos/:id/editar', element: <PastoFormPage />, handle: t('Editar pasto') },
   { path: '/fazenda', element: <FazendaPage />, handle: t('Fazenda') },
+  { path: '/acesso', element: <ComoChegarPage />, handle: t('Como chegar') },
   { path: '/vendas', element: <VendasPage />, handle: t('Vendas') },
   { path: '/vendas/nova', element: <NovaVendaPage />, handle: t('Nova venda') },
   { path: '/vendas/nova/:modo', element: <NovaVendaPage />, handle: t('Nova venda') },

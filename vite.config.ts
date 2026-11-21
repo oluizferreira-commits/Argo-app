@@ -12,6 +12,12 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 export default defineConfig({
   base,
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+  build: {
+    rollupOptions: {
+      // index.html = app; acesso.html = página pública "Como chegar" (sem login)
+      input: { main: 'index.html', acesso: 'acesso.html' },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

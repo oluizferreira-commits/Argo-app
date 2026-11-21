@@ -79,6 +79,21 @@ src/
   Chaves e documentos aparecem sempre mascarados na tela e no comprovante.
 - `src/modules/vendas/receipt.ts`: comprovante desenhado em imagem PNG (canvas), com QR Code; não é documento fiscal.
 
+## Como chegar à fazenda (mapa e rotas)
+
+- Tela `/acesso` (app) e página pública `acesso.html` (sem login), gerada como segunda entrada do Vite.
+- **Serviços externos (precisam de internet):**
+  - Satélite: Esri World Imagery + rótulos `World_Boundaries_and_Places` (server.arcgisonline.com), com atribuição.
+  - Roteamento rodoviário: OSRM público (router.project-osrm.org), dados do OpenStreetMap. Uso leve, sem garantia de serviço.
+  - Busca de cidades: Nominatim (nominatim.openstreetmap.org); reserva: Photon (photon.komoot.io).
+- A **coordenada oficial da porteira** é guardada na fazenda (`entrance`) e é sempre o destino. O roteamento nunca a substitui:
+  `snapEnd` (distância entre a porteira e o fim da estrada mapeada) valida a chegada (≤ 150 m = validada).
+- As cidades são só referência para desenhar a rota; os links de navegação (Google Maps, Waze, Apple Mapas) usam apenas o destino,
+  e o app de mapas do visitante calcula a partir da localização real dele.
+- Rotas calculadas ficam em `routeCache` (cópia local, fora do backup) para o guia funcionar sem internet.
+- **Privacidade:** nenhuma coordenada real fica no código (repositório público). A localização da porteira só sai do aparelho
+  dentro do link público gerado pelo usuário (codificado na parte `#` da URL, que não é enviada ao servidor do GitHub Pages).
+
 ## Esquema do banco
 
 | Versão | Tabelas adicionadas |
@@ -87,6 +102,7 @@ src/
 | v2 | pastures (pastos), pastureTasks (serviços dos pastos), movements (movimentações do rebanho) |
 | v3 | farms (fazendas) + índice `farmId` em pastures, pastureTasks e movements |
 | v4 | clients (clientes), sales (vendas) |
+| v5 | landmarks (pontos de referência), routeCache (cópia local das rotas — não entra no backup) |
 
 ## Migrações (preservação de dados)
 

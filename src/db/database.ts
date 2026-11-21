@@ -1,10 +1,11 @@
 import Dexie, { type EntityTable, type Table } from 'dexie'
-import type { AuditEntry, EntityMap, EntityName, MetaEntry, OutboxEntry } from './types'
+import type { AuditEntry, CachedRoute, EntityMap, EntityName, MetaEntry, OutboxEntry } from './types'
 
 export type ArgoDatabase = Dexie & {
   meta: EntityTable<MetaEntry, 'key'>
   auditLog: EntityTable<AuditEntry, 'id'>
   outbox: EntityTable<OutboxEntry, 'id'>
+  routeCache: EntityTable<CachedRoute, 'id'>
 } & { [E in keyof EntityMap]: EntityTable<EntityMap[E], 'id'> }
 
 export const DB_NAME = 'argo'
@@ -46,6 +47,12 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
   db.version(4).stores({
     clients: 'id, farmId, createdAt, updatedAt, name',
     sales: 'id, farmId, createdAt, updatedAt, date, clientId, number',
+  })
+
+  // v5 — Como chegar: pontos de referência (dado de negócio) e cópia local das rotas calculadas.
+  db.version(5).stores({
+    landmarks: 'id, farmId, createdAt, updatedAt',
+    routeCache: 'id, farmId',
   })
 
   return db

@@ -36,6 +36,12 @@ Ao abrir, o ARGO pede para escolher a fazenda (com PIN opcional). Para outra pes
 `https://oluizferreira-commits.github.io/Argo-app/`: ela instala no próprio iPhone e cadastra a fazenda dela.
 **Cada aparelho tem seus próprios dados**: até a sincronização em nuvem, ninguém vê os dados do outro.
 
+## Como chegar à fazenda
+
+Menu **Mais → Como chegar à fazenda**. Na primeira vez, cole a coordenada oficial da porteira e adicione as cidades de origem.
+O mapa de satélite e o cálculo das rotas precisam de internet; depois de calculada, a rota fica salva no aparelho.
+"Compartilhar página de acesso" gera um link que abre o mapa e a navegação para o visitante, sem precisar do app.
+
 ## Backup — importante
 
 Os dados ficam **somente neste iPhone** até a sincronização em nuvem ser ativada (etapa futura).

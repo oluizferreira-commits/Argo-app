@@ -36,6 +36,11 @@ const PATHS = {
   edit: 'M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4',
   archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4',
   list: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
+  map: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14',
+  pin: 'M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12ZM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
+  navigate: 'M3 11 21 3l-8 18-2-8-8-2Z',
+  share: 'M12 3v13M7 8l5-5 5 5M5 13v7h14v-7',
+  crosshair: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 2v4M12 18v4M2 12h4M18 12h4',
 } as const
 
 export type IconName = keyof typeof PATHS

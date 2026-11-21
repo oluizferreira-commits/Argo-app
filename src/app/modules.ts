@@ -30,6 +30,7 @@ export const MODULES: readonly ModuleDef[] = [
   { id: 'contas-receber', title: 'Contas a receber', description: 'Valores a receber por venda', path: '/contas-receber', icon: 'receipt', status: 'planejado', stage: 4 },
   { id: 'pagamentos', title: 'Pagamentos parciais', description: 'Recebimentos parciais e saldo', path: '/pagamentos', icon: 'cash', status: 'planejado', stage: 4 },
   { id: 'reserva', title: 'Reserva financeira', description: 'Controle da reserva de 35%', path: '/reserva', icon: 'vault', status: 'planejado', stage: 5 },
+  { id: 'acesso', title: 'Como chegar à fazenda', description: 'Mapa, rotas e guia de acesso', path: '/acesso', icon: 'map', status: 'disponivel' },
   { id: 'relatorios', title: 'Relatórios', description: 'Relatórios e exportações', path: '/relatorios', icon: 'chart', status: 'planejado', stage: 6 },
   { id: 'configuracoes', title: 'Configurações', description: 'Backup, armazenamento e sistema', path: '/configuracoes', icon: 'gear', status: 'disponivel' },
 ]

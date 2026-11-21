@@ -1105,3 +1105,145 @@ input[type='date'].input {
   font-style: italic;
   color: var(--gold-600);
 }
+
+/* ================= Como chegar: mapa ================= */
+.route-map {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgb(201 163 118 / 45%);
+  background: var(--green-950);
+  z-index: 0;
+}
+
+.route-map.picking {
+  cursor: crosshair;
+  outline: 3px solid var(--gold-500);
+}
+
+.route-map .leaflet-control-attribution {
+  font-size: 9px;
+  background: rgb(12 36 30 / 70%);
+  color: rgb(255 255 255 / 75%);
+}
+
+.route-map .leaflet-control-attribution a {
+  color: var(--gold-300);
+}
+
+.route-map .leaflet-bar a {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  background: var(--green-900);
+  color: var(--gold-300);
+  border-color: rgb(201 163 118 / 35%);
+}
+
+.argo-pin {
+  background: none;
+  border: 0;
+}
+
+.argo-pin span {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font: 700 11px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #fff;
+  background: rgb(12 36 30 / 85%);
+  border: 1px solid rgb(201 163 118 / 55%);
+  border-radius: 6px;
+  padding: 2px 6px;
+  pointer-events: none;
+}
+
+.argo-pin-entrance span {
+  top: -22px;
+  color: var(--gold-300);
+}
+
+.argo-pin-origin b {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold-400);
+  border: 3px solid var(--green-950);
+}
+
+.argo-pin-origin span,
+.argo-pin-lm span {
+  top: 28px;
+}
+
+.argo-pin-lm b,
+.argo-pin-pick b {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--green-950);
+  border: 2px solid var(--gold-400);
+  color: var(--gold-300);
+  font: 800 12px/1 -apple-system, sans-serif;
+}
+
+.argo-pin-atencao b {
+  border-color: #e0806f;
+  color: #f2b4a8;
+}
+
+.argo-pin-pick b {
+  width: 30px;
+  height: 30px;
+  background: var(--gold-400);
+  color: var(--green-950);
+  font-size: 20px;
+}
+
+.guide-line {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.guide-line:last-child {
+  border-bottom: 0;
+}
+
+.guide-km {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--gold-600);
+  font-size: 13px;
+  padding-top: 2px;
+}
+
+.guide-line.lm {
+  background: var(--gold-100);
+  margin: 0 -18px;
+  padding: 10px 18px;
+}
+
+.nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.nav-grid .btn {
+  padding: 0 8px;
+  font-size: 15px;
+}
+
+/* rótulos dos marcadores não bloqueiam o toque no mapa */
+.argo-pin,
+.argo-pin * {
+  pointer-events: none;
+}

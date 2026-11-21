@@ -61,6 +61,23 @@ export interface DiagnosticRecord extends BaseRecord {
   note: string
 }
 
+export interface GeoPoint {
+  lat: number
+  lng: number
+}
+
+/** Cidade de origem das rotas (coordenada vinda do OpenStreetMap). */
+export interface AccessOrigin {
+  id: string
+  name: string
+  /** Estado/região, ex.: "Pará". */
+  region: string
+  lat: number
+  lng: number
+  /** Referência do OpenStreetMap, ex.: "R185557". */
+  osm: string
+}
+
 /** Fazenda. Cada pasto, movimentação, cliente e venda pertence a uma fazenda. */
 export interface Farm extends BaseRecord {
   name: string
@@ -75,6 +92,23 @@ export interface Farm extends BaseRecord {
   /** Nome e cidade do recebedor, como aparecem no QR Code (sem acento). */
   pixName?: string
   pixCity?: string
+  /** Coordenada OFICIAL da entrada principal (porteira). Nunca é alterada pelo roteamento. */
+  entrance?: GeoPoint | null
+  /** Cidades de origem para as rotas de acesso. */
+  accessOrigins?: AccessOrigin[]
+}
+
+export type LandmarkKind = 'referencia' | 'bifurcacao' | 'atencao'
+
+/** Ponto de referência / bifurcação no caminho até a fazenda (cadastrado pelo usuário). */
+export interface Landmark extends BaseRecord {
+  farmId: string
+  name: string
+  kind: LandmarkKind
+  /** Instrução, ex.: "Na bifurcação, siga à direita". */
+  note: string
+  lat: number
+  lng: number
 }
 
 /** Pasto da fazenda. */
@@ -197,6 +231,7 @@ export interface EntityMap {
   farms: Farm
   clients: Client
   sales: Sale
+  landmarks: Landmark
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -204,7 +239,44 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>
+
+/** Passo da rota (manobra do serviço de roteamento). */
+export interface RouteStep {
+  type: string
+  modifier: string
+  name: string
+  ref: string
+  distance: number
+  lat: number
+  lng: number
+  exit?: number
+}
+
+/**
+ * Rota calculada (cópia local, não é dado de negócio): permite ver o guia sem internet.
+ * Recalculada quando a entrada ou a cidade de origem mudam.
+ */
+export interface CachedRoute {
+  /** `${farmId}|${originId}` */
+  id: string
+  farmId: string
+  originId: string
+  origin: GeoPoint
+  dest: GeoPoint
+  /** metros */
+  distance: number
+  /** segundos */
+  duration: number
+  /** [lat, lng] ao longo das estradas */
+  coords: [number, number][]
+  steps: RouteStep[]
+  /** Distância (m) entre o ponto da cidade e a estrada onde a rota começa. */
+  snapStart: number
+  /** Distância (m) entre a coordenada oficial da porteira e o fim da estrada mapeada. */
+  snapEnd: number
+  computedAt: string
+}

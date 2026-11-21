@@ -12,7 +12,7 @@ import { totalsByCategory } from '../rebanho/herd'
 import { useFarm } from '../fazendas/FarmContext'
 import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 
-const SHORTCUTS = ['rebanho', 'pastos', 'vendas', 'clientes', 'contas-receber', 'relatorios']
+const SHORTCUTS = ['rebanho', 'pastos', 'vendas', 'clientes', 'acesso', 'contas-receber']
 
 function greeting(): string {
   const h = new Date().getHours()
