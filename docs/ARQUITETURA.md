@@ -71,6 +71,11 @@ src/
 - Dados lançados antes do cadastro de fazendas são adotados pela primeira fazenda cadastrada.
 - O backup inclui todas as fazendas do aparelho.
 
+## Financeiro e dados do responsável
+
+- A aba Financeiro mostra no topo os **dados do responsável** (nome, CPF mascarado e se há chave Pix) e os módulos em grupos: Vendas, Recebimentos e Reserva.
+- `farm.responsibleCpf` (opcional, só números, validado pelos dígitos verificadores; campo sem índice, não exigiu nova versão do banco). Editado em Financeiro → Dados do responsável (`updateFarmResponsible`), junto com a chave Pix, que é sugerida com o CPF quando ainda não existe.
+
 ## Vendas e Pix
 
 - `src/modules/vendas/sales.ts`: venda e saída do rebanho gravadas na MESMA transação (nada fica pela metade).

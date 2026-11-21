@@ -24,12 +24,13 @@ import { MovimentarPage, MovimentarTipoPage } from '../modules/rebanho/Movimenta
 import { RebanhoPage } from '../modules/rebanho/RebanhoPage'
 import { DieselPage } from '../modules/diesel/DieselPage'
 import { EquipamentosPage } from '../modules/diesel/EquipamentosPage'
+import { DadosResponsavelPage } from '../modules/financeiro/DadosResponsavelPage'
+import { FinanceiroPage } from '../modules/financeiro/FinanceiroPage'
 import { InsumoPage } from '../modules/insumos/InsumoPage'
 import { InsumosPage } from '../modules/insumos/InsumosPage'
 import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
 import { SettingsPage } from '../modules/settings/SettingsPage'
 import { MODULES } from './modules'
-import { FINANCE_MODULE_IDS } from './navigation'
 
 /** `handle.title` = título exibido no cabeçalho. */
 export interface RouteHandle {
@@ -70,7 +71,8 @@ const implemented: RouteObject[] = [
   { path: '/diesel/equipamentos', element: <EquipamentosPage />, handle: t('Equipamentos') },
   { path: '/responsaveis', element: <ResponsaveisPage />, handle: t('Responsáveis') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
-  { path: '/financeiro', element: <HubPage ids={FINANCE_MODULE_IDS} intro="Vendas, clientes, recebimentos e reserva financeira." />, handle: t('Financeiro') },
+  { path: '/financeiro', element: <FinanceiroPage />, handle: t('Financeiro') },
+  { path: '/financeiro/dados', element: <DadosResponsavelPage />, handle: t('Dados do responsável') },
   { path: '/mais', element: <HubPage intro="Todos os módulos do ARGO." />, handle: t('Módulos') },
 ]
 

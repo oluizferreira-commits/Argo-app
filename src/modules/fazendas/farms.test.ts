@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { newId } from '../../core/ids'
 import { createDatabase, type ArgoDatabase } from '../../db/database'
-import { createFarm, getCurrentFarmId, setCurrentFarm, setFarmPin, verifyPin } from './farms'
+import { createFarm, getCurrentFarmId, setCurrentFarm, setFarmPin, updateFarmResponsible, verifyPin } from './farms'
 
 let db: ArgoDatabase
 afterEach(async () => db?.delete())
@@ -42,5 +42,19 @@ describe('fazendas', () => {
     const second = await createFarm(db, { name: 'Segunda', responsible: '', city: '' }, '')
     expect((await db.pastures.get('p1'))?.farmId).toBe(f.id)
     expect(second.id).not.toBe(f.id)
+  })
+})
+
+describe('responsável da fazenda', () => {
+  it('salva nome e CPF válido (só números) e recusa CPF inválido', async () => {
+    const db = createDatabase(`test-${newId()}`)
+    const f = await createFarm(db, { name: 'Fazenda', responsible: '', city: '' }, '')
+    const u = await updateFarmResponsible(db, f.id, { responsible: ' Luiz  Ferreira ', cpf: '529.982.247-25' })
+    expect(u.responsible).toBe('Luiz Ferreira')
+    expect(u.responsibleCpf).toBe('52998224725')
+    await expect(updateFarmResponsible(db, f.id, { responsible: 'Luiz', cpf: '111.111.111-11' })).rejects.toThrow('CPF inválido')
+    await expect(updateFarmResponsible(db, f.id, { responsible: ' ', cpf: '' })).rejects.toThrow('nome')
+    expect((await updateFarmResponsible(db, f.id, { responsible: 'Luiz', cpf: '' })).responsibleCpf).toBeNull()
+    await db.delete()
   })
 })

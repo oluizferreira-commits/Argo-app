@@ -82,6 +82,8 @@ export interface AccessOrigin {
 export interface Farm extends BaseRecord {
   name: string
   responsible: string
+  /** CPF do responsável (só números, validado). Fica só no aparelho; aparece mascarado. */
+  responsibleCpf?: string | null
   city: string
   /** PIN opcional (hash SHA-256 com sal). null = sem senha. */
   pinHash: string | null

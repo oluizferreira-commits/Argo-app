@@ -2,7 +2,7 @@ import type { ArgoDatabase } from '../../db/database'
 import { getMeta, setMeta } from '../../db/device'
 import { Repository } from '../../db/repository'
 import type { Farm } from '../../db/types'
-import { normalizePixKey, PixError, pixText, type PixKeyType } from '../../domain/pix'
+import { isValidCpf, normalizePixKey, PixError, pixText, type PixKeyType } from '../../domain/pix'
 
 export class FarmError extends Error {
   constructor(message: string) {
@@ -140,4 +140,16 @@ export async function getCurrentFarmId(db: ArgoDatabase): Promise<string | null>
 
 export async function setCurrentFarm(db: ArgoDatabase, id: string | null): Promise<void> {
   await setMeta(db, CURRENT_KEY, id)
+}
+
+// ------------------------------------------------------------------ responsável
+
+/** Nome e CPF do responsável pela fazenda. CPF vazio = não informado. */
+export async function updateFarmResponsible(db: ArgoDatabase, id: string, input: { responsible: string; cpf: string }): Promise<Farm> {
+  const responsible = input.responsible.trim().replace(/\s+/g, ' ')
+  if (!responsible) throw new FarmError('Informe o nome do responsável.')
+  if (responsible.length > 60) throw new FarmError('Nome muito longo (máx. 60 caracteres).')
+  const cpf = input.cpf.replace(/\D/g, '')
+  if (cpf && !isValidCpf(cpf)) throw new FarmError('CPF inválido. Confira os números.')
+  return new Repository(db, 'farms').update(id, { responsible, responsibleCpf: cpf || null })
 }
