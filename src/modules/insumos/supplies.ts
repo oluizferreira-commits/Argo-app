@@ -1,7 +1,8 @@
 import { newId, nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { RecipeItem, Supply, SupplyMovement } from '../../db/types'
+import type { RecipeItem, Supply, SupplyCategory, SupplyMovement, SupplyUnit } from '../../db/types'
+import { formatMoney, parseDecimal } from '../../core/money'
 import { todayLocal } from '../rebanho/herd'
 
 export class SupplyError extends Error {
@@ -64,12 +65,89 @@ export function parseKgPerSack(text: string): number {
   return g
 }
 
+// ------------------------------------------------------------------ unidades (saco, litro, kg)
+
+export const unitOf = (s: Pick<Supply, 'unit'>): SupplyUnit => s.unit ?? 'saco'
+export const categoryOf = (s: Pick<Supply, 'category'>): SupplyCategory => s.category ?? 'geral'
+export const UNIT_LABEL: Record<SupplyUnit, string> = { saco: 'sacos', L: 'litros', kg: 'kg' }
+export const CATEGORY_LABEL: Record<SupplyCategory, string> = { geral: 'Sal e insumos', herbicida: 'Herbicidas', semente: 'Sementes' }
+
+/** Quantidade de um lançamento na unidade do estoque: meios sacos (saco) ou mL/g (L/kg). */
+export const movQty = (m: Pick<SupplyMovement, 'qty' | 'halfSacks'>) => m.qty ?? m.halfSacks
+
+/** "150" ou "12,5" litros/kg → mL/g. Até 3 casas. */
+export function parseMilli(text: string): number {
+  const v = parseDecimal(text, 3)
+  if (v === null || v <= 0) throw new SupplyError('Informe a quantidade (ex.: 20 ou 12,5).')
+  if (v > 1_000_000_000) throw new SupplyError('Quantidade muito alta. Confira o número.')
+  return v
+}
+
+/** Lê a quantidade digitada na unidade do produto. */
+export function parseQty(text: string, unit: SupplyUnit): number {
+  return unit === 'saco' ? parseSacks(text) : parseMilli(text)
+}
+
+export function formatQty(amount: number, unit: SupplyUnit): string {
+  if (unit === 'saco') return formatSacks(amount)
+  return `${(amount / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${unit}`
+}
+
+/** Preço por unidade (R$/L, R$/kg ou R$/saco) a partir de valor e quantidade. */
+export function unitPrice(cents: number, amount: number, unit: SupplyUnit): string {
+  if (!amount) return '—'
+  const per = unit === 'saco' ? (cents * 2) / amount : (cents * 1000) / amount
+  return `${formatMoney(Math.round(per))}/${unit === 'saco' ? 'saco' : unit}`
+}
+
+// ------------------------------------------------------------------ custo médio ponderado
+
+export interface SupplyLedger {
+  balance: number
+  /** valor do estoque (centavos) */
+  valueCents: number
+  /** custo de cada lançamento de saída, pelo custo médio do momento */
+  costById: Map<string, number>
+}
+
+/** Custo médio ponderado (em ordem de data): compras somam valor; saídas saem pelo custo médio do momento. */
+export function supplyLedger(movements: readonly SupplyMovement[], supplyId: string, upTo?: { date: string }): SupplyLedger {
+  let balance = 0
+  let value = 0
+  const costById = new Map<string, number>()
+  const list = movements
+    .filter((m) => m.supplyId === supplyId && m.status === 'ativo' && m.deletedAt === null && (!upTo || m.date <= upTo.date))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
+  for (const m of list) {
+    const q = movQty(m)
+    if (q > 0 && m.type === 'compra' && m.costCents) {
+      if (balance <= 0) {
+        balance += q
+        value = balance > 0 ? Math.round((m.costCents * balance) / q) : 0
+      } else {
+        balance += q
+        value += m.costCents
+      }
+    } else if (q > 0) {
+      // entrada sem valor (ajuste, mistura): entra pelo custo médio atual
+      value += balance > 0 ? Math.round((value * q) / balance) : 0
+      balance += q
+    } else {
+      const cost = balance > 0 ? Math.round((value * -q) / balance) : 0
+      costById.set(m.id, cost)
+      balance += q
+      value = balance > 0 ? value - cost : 0
+    }
+  }
+  return { balance, valueCents: Math.max(0, value), costById }
+}
+
 // ------------------------------------------------------------------ produtos
 
 const activeMov = (m: SupplyMovement) => m.status === 'ativo' && m.deletedAt === null
 
 export function supplyStock(movements: readonly SupplyMovement[], supplyId: string): number {
-  return movements.filter((m) => m.supplyId === supplyId && activeMov(m)).reduce((a, m) => a + m.halfSacks, 0)
+  return movements.filter((m) => m.supplyId === supplyId && activeMov(m)).reduce((a, m) => a + movQty(m), 0)
 }
 
 function cleanSupply(name: string) {
@@ -94,15 +172,17 @@ export async function createSupply(
   gramsPerSack: number | null,
   key?: string,
   mixture?: { recipe: RecipeItem[]; yieldHalves: number },
+  details?: SupplyDetails,
 ): Promise<Supply> {
   const n = cleanSupply(name)
+  const extra = details ? cleanDetails(details) : {}
   return db.transaction('rw', [db.supplies, db.auditLog, db.outbox, db.meta], async () => {
     if (key) {
       const existing = await db.supplies.get(key)
       if (existing) return existing
     }
     await assertUniqueSupply(db, farmId, n)
-    return new Repository(db, 'supplies').create({ farmId, name: n, gramsPerSack, active: true, recipe: mixture?.recipe ?? null, yieldHalves: mixture?.yieldHalves ?? null }, key)
+    return new Repository(db, 'supplies').create({ farmId, name: n, gramsPerSack, active: true, recipe: mixture?.recipe ?? null, yieldHalves: mixture?.yieldHalves ?? null, ...extra }, key)
   })
 }
 
@@ -178,12 +258,54 @@ export async function setRecipe(db: ArgoDatabase, mixtureId: string, recipe: Rec
   })
 }
 
-export async function updateSupply(db: ArgoDatabase, s: Supply, name: string, gramsPerSack: number | null): Promise<Supply> {
+/** Dados do cadastro de herbicidas e sementes (e do estoque mínimo de qualquer produto). */
+export interface SupplyDetails {
+  category: SupplyCategory
+  unit: SupplyUnit
+  manufacturer?: string
+  activeIngredient?: string
+  species?: string
+  cultivar?: string
+  /** VC% × 10 */
+  culturalValue?: number | null
+  minQty?: number | null
+  notes?: string
+}
+
+function cleanDetails(d: SupplyDetails): Partial<Supply> {
+  if (!['geral', 'herbicida', 'semente'].includes(d.category)) throw new SupplyError('Categoria inválida.')
+  if (!['saco', 'L', 'kg'].includes(d.unit)) throw new SupplyError('Unidade inválida.')
+  if (d.category === 'semente' && !d.species?.trim()) throw new SupplyError('Informe a espécie do capim (ex.: Brachiaria brizantha, Panicum maximum).')
+  if (d.culturalValue != null && (d.culturalValue <= 0 || d.culturalValue > 1000)) throw new SupplyError('Valor cultural (VC%) deve ficar entre 0 e 100.')
+  if (d.minQty != null && d.minQty < 0) throw new SupplyError('Estoque mínimo inválido.')
+  const t = (x: string | undefined, max: number) => (x ?? '').trim().replace(/\s+/g, ' ').slice(0, max)
+  return {
+    category: d.category,
+    unit: d.unit,
+    manufacturer: t(d.manufacturer, 60),
+    activeIngredient: t(d.activeIngredient, 80),
+    species: t(d.species, 60),
+    cultivar: t(d.cultivar, 60),
+    culturalValue: d.culturalValue ?? null,
+    minQty: d.minQty ?? null,
+    notes: t(d.notes, 1000),
+  }
+}
+
+export async function updateSupply(db: ArgoDatabase, s: Supply, name: string, gramsPerSack: number | null, details?: SupplyDetails): Promise<Supply> {
   const n = cleanSupply(name)
-  return db.transaction('rw', [db.supplies, db.auditLog, db.outbox, db.meta], async () => {
+  const extra = details ? cleanDetails(details) : {}
+  return db.transaction('rw', [db.supplies, db.supplyMovements, db.auditLog, db.outbox, db.meta], async () => {
     await assertUniqueSupply(db, s.farmId, n, s.id)
-    return new Repository(db, 'supplies').update(s.id, { name: n, gramsPerSack })
+    if (details && unitOf(s) !== details.unit && (await db.supplyMovements.where('supplyId').equals(s.id).count()) > 0)
+      throw new SupplyError('A unidade não pode mudar depois que o produto já tem lançamentos.')
+    return new Repository(db, 'supplies').update(s.id, { name: n, gramsPerSack, ...extra })
   })
+}
+
+/** Estoque abaixo do mínimo cadastrado (só quando o produto tem mínimo). */
+export function isLowStock(s: Pick<Supply, 'minQty'>, stock: number): boolean {
+  return s.minQty != null && s.minQty > 0 && stock < s.minQty
 }
 
 export async function setSupplyActive(db: ArgoDatabase, id: string, active: boolean): Promise<Supply> {
@@ -196,8 +318,15 @@ export interface SupplyMovementInput {
   supplyId: string
   type: 'compra' | 'consumo' | 'ajuste'
   date: string
-  /** quantidade positiva em meios sacos */
-  halves: number
+  /** quantidade positiva em meios sacos (produtos em saco) */
+  halves?: number
+  /** quantidade positiva em mL/g (produtos em L/kg) */
+  qty?: number
+  /** compra: nota fiscal e lote */
+  invoice?: string
+  lot?: string
+  /** consumo de uma operação de campo */
+  operationId?: string
   /** ajuste: entrada ou saída */
   direction?: 'entrada' | 'saida'
   costCents?: number | null
@@ -213,7 +342,6 @@ export async function recordSupplyMovement(
   key?: string,
   authorize?: { reason: string },
 ): Promise<SupplyMovement> {
-  if (!Number.isInteger(input.halves) || input.halves <= 0) throw new SupplyError('Informe a quantidade de sacos.')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new SupplyError('Informe a data.')
   if (input.date > todayLocal()) throw new SupplyError('A data não pode ser no futuro.')
   const notes = (input.notes ?? '').trim()
@@ -223,7 +351,7 @@ export async function recordSupplyMovement(
     if (!input.costCents || input.costCents <= 0) throw new SupplyError('Informe o valor pago.')
     if (!supplier) throw new SupplyError('Informe o fornecedor.')
   } else if (input.type === 'consumo') {
-    if (!input.pastureId) throw new SupplyError('Escolha o pasto (cocho).')
+    if (!input.pastureId) throw new SupplyError(input.operationId ? 'Escolha o pasto.' : 'Escolha o pasto (cocho).')
     sign = -1
   } else {
     if (input.type !== 'ajuste') throw new SupplyError('Tipo de lançamento inválido.')
@@ -238,20 +366,31 @@ export async function recordSupplyMovement(
     }
     const supply = await db.supplies.get(input.supplyId)
     if (!supply || supply.farmId !== farmId) throw new SupplyError('Produto não encontrado.')
+    const unit = unitOf(supply)
+    const amount = unit === 'saco' ? input.halves : input.qty
+    if (amount === undefined || !Number.isInteger(amount) || amount <= 0) throw new SupplyError(unit === 'saco' ? 'Informe a quantidade de sacos.' : 'Informe a quantidade.')
     if (input.type === 'compra' && isMixture(supply)) throw new SupplyError('A mistura não é comprada: lance "Mistura feita".')
     if (input.type === 'consumo') {
-      const mix = mixtureUsing(await db.supplies.where('farmId').equals(farmId).toArray(), supply.id)
+      const mix = input.operationId ? undefined : mixtureUsing(await db.supplies.where('farmId').equals(farmId).toArray(), supply.id)
       if (mix) throw new SupplyError(`${supply.name} vai para o cocho misturado: lance o consumo em "${mix.name}".`)
       const p = await db.pastures.get(input.pastureId!)
       if (!p || p.farmId !== farmId || p.deletedAt !== null) throw new SupplyError('Pasto não encontrado.')
     }
     let authorized = false
+    const movs = await db.supplyMovements.where('supplyId').equals(supply.id).toArray()
     if (sign < 0) {
-      const stock = supplyStock(await db.supplyMovements.where('supplyId').equals(supply.id).toArray(), supply.id)
-      if (stock - input.halves < 0) {
-        if (!authorize?.reason.trim()) throw new NegativeStockError(stock)
+      const stock = supplyStock(movs, supply.id)
+      if (stock - amount < 0) {
+        if (!authorize?.reason.trim()) throw new NegativeStockError(stock, unit === 'saco' ? undefined : `Estoque insuficiente de ${supply.name}: há ${formatQty(stock, unit)}. Para lançar assim mesmo, é preciso autorizar.`)
         authorized = true
       }
+    }
+    // saída: guarda o custo pelo custo médio do estoque na data (preserva o custo histórico)
+    let outCost: number | null = null
+    if (sign < 0) {
+      const tmpId = '__saida__'
+      const probe = { id: tmpId, supplyId: supply.id, type: input.type, date: input.date, halfSacks: unit === 'saco' ? -amount : 0, qty: unit === 'saco' ? null : -amount, status: 'ativo', deletedAt: null, createdAt: '9999', costCents: null } as unknown as SupplyMovement
+      outCost = supplyLedger([...movs, probe], supply.id).costById.get(tmpId) ?? 0
     }
     return new Repository(db, 'supplyMovements').create(
       {
@@ -259,8 +398,12 @@ export async function recordSupplyMovement(
         supplyId: supply.id,
         type: input.type,
         date: input.date,
-        halfSacks: sign * input.halves,
-        costCents: input.type === 'compra' ? input.costCents! : null,
+        halfSacks: unit === 'saco' ? sign * amount : 0,
+        qty: unit === 'saco' ? null : sign * amount,
+        invoice: input.type === 'compra' ? (input.invoice ?? '').trim().slice(0, 40) : '',
+        lot: (input.lot ?? '').trim().slice(0, 40),
+        operationId: input.operationId ?? null,
+        costCents: input.type === 'compra' ? input.costCents! : outCost,
         supplier: input.type === 'compra' ? supplier : '',
         pastureId: input.type === 'consumo' ? input.pastureId! : null,
         notes: authorized ? `${notes ? `${notes} · ` : ''}Estoque negativo autorizado: ${authorize!.reason.trim()}` : notes,
@@ -332,15 +475,16 @@ export async function recordMixture(
  * Estorna um lançamento (fica no histórico). Estornar uma entrada não pode deixar o estoque negativo.
  * Lançamentos de uma mesma mistura são estornados juntos.
  */
-export async function reverseSupplyMovement(db: ArgoDatabase, id: string, reason: string): Promise<SupplyMovement> {
+export async function reverseSupplyMovement(db: ArgoDatabase, id: string, reason: string, fromOperation = false): Promise<SupplyMovement> {
   return db.transaction('rw', [db.supplyMovements, db.auditLog, db.outbox, db.meta], async () => {
     const m = await db.supplyMovements.get(id)
     if (!m) throw new SupplyError('Lançamento não encontrado.')
     if (m.status === 'estornado') throw new SupplyError('Este lançamento já foi estornado.')
+    if (m.operationId && !fromOperation) throw new SupplyError('Este consumo é de uma operação de campo: corrija ou cancele pela operação.')
     const all = await db.supplyMovements.where('farmId').equals(m.farmId).toArray()
     const group = m.batchId ? all.filter((x) => x.batchId === m.batchId && x.status === 'ativo') : [m]
     for (const g of group) {
-      if (g.halfSacks > 0 && supplyStock(all, g.supplyId) - g.halfSacks < 0)
+      if (movQty(g) > 0 && supplyStock(all, g.supplyId) - movQty(g) < 0)
         throw new SupplyError(
           g.type === 'mistura'
             ? 'Não é possível estornar a mistura: parte dela já foi para o cocho. Estorne antes esses consumos.'

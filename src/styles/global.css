@@ -1822,3 +1822,33 @@ input[type='date'].input {
   color: var(--warn);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------- manejo */
+.quick-ops {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.quick-ops .btn {
+  min-height: 48px;
+  padding: 0 12px;
+  font-size: 15.5px;
+}
+.op-line + .op-line {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.op-line-cost {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+.kpi-grid > div.kpi {
+  cursor: default;
+}
+/* link no meio de texto/cartão, na identidade do app */
+.inline-link {
+  color: var(--green-700);
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid rgb(39 97 83 / 30%);
+}

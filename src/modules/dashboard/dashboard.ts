@@ -24,7 +24,7 @@ import type {
 import { MOVEMENT_INFO } from '../../domain/movements'
 import type { IconName } from '../../components/Icon'
 import { formatLiters, fuelStock } from '../diesel/fuel'
-import { formatSacks, supplyStock } from '../insumos/supplies'
+import { formatQty, formatSacks, isLowStock, supplyStock, unitOf } from '../insumos/supplies'
 import { computeBalances, pendingSpecification } from '../rebanho/herd'
 import { saleBalance } from '../receber/receivables'
 import { reserveSummary } from '../reserva/reserve'
@@ -171,7 +171,9 @@ export function computePendencies(d: DashboardData, today: string, ind = compute
   const supplyMovs = d.supplyMovements.filter(alive)
   for (const s of d.supplies.filter(alive)) {
     const st = supplyStock(supplyMovs, s.id)
-    if (st < 0) out.push({ id: `estoque:${s.id}`, priority: 1, icon: 'sack', title: `Estoque negativo · ${s.name}`, detail: `${formatSacks(st)}: lance a compra ou a mistura que falta`, to: `/insumos/${s.id}` })
+    if (st < 0) out.push({ id: `estoque:${s.id}`, priority: 1, icon: 'sack', title: `Estoque negativo · ${s.name}`, detail: `${formatQty(st, unitOf(s))}: lance a compra ou a mistura que falta`, to: `/insumos/${s.id}` })
+    else if (s.active && isLowStock(s, st))
+      out.push({ id: `estoque-baixo:${s.id}`, priority: 2, icon: 'sack', title: `Estoque baixo · ${s.name}`, detail: `Há ${formatQty(st, unitOf(s))}; mínimo ${formatQty(s.minQty ?? 0, unitOf(s))}`, to: `/insumos/${s.id}` })
   }
   const fuel = fuelStock(d.fuelMovements.filter(alive))
   if (fuel < 0) out.push({ id: 'estoque:diesel', priority: 1, icon: 'fuel', title: 'Estoque negativo · Diesel', detail: `${formatLiters(fuel)}: lance a compra que falta`, to: '/diesel' })
@@ -327,6 +329,7 @@ export function recentActivities(audit: readonly AuditEntry[], d: Pick<Dashboard
   const pastures = new Map(d.pastures.map((p) => [p.id, p.name]))
   const clients = new Map(d.clients.map((c) => [c.id, c.name]))
   const supplies = new Map(d.supplies.map((s) => [s.id, s.name]))
+  const units = new Map(d.supplies.map((s) => [s.id, unitOf(s)]))
   const equipments = new Map(d.equipments.map((e) => [e.id, e.name]))
   const seen = new Set<string>()
   const out: Activity[] = []
@@ -353,16 +356,20 @@ export function recentActivities(audit: readonly AuditEntry[], d: Pick<Dashboard
           act = { icon: 'vault', text: `Reserva: ${r.type === 'deposito' ? 'depósito' : 'retirada'} de ${formatMoney(r.amountCents as number)}`, to: '/reserva' }
           break
         case 'supplyMovements': {
+          if (r.operationId) break
           const key = (r.batchId as string | null) ?? r.id
           if (seen.has(key)) break
           seen.add(key)
-          const halves = Math.abs(r.halfSacks as number)
+          const amount = Math.abs(((r.qty as number | null) ?? (r.halfSacks as number)) || 0)
+          const unit = units.get(r.supplyId as string) ?? 'saco'
+          const halves = amount
           const label = r.type === 'compra' ? 'compra' : r.type === 'consumo' ? `cocho · ${pastures.get(r.pastureId as string) ?? 'pasto'}` : r.type === 'mistura' ? 'mistura feita' : 'ajuste'
-          act = { icon: 'sack', text: `${supplies.get(r.supplyId as string) ?? 'Insumo'}: ${label} · ${formatSacks(halves)}`, to: `/insumos/${r.supplyId}` }
+          act = { icon: 'sack', text: `${supplies.get(r.supplyId as string) ?? 'Insumo'}: ${label} · ${formatQty(amount, unit)}`, to: `/insumos/${r.supplyId}` }
           if (r.type === 'mistura') act.text = `Mistura feita · ${formatSacks(halves)}`
           break
         }
         case 'fuelMovements': {
+          if (r.operationId) break
           const l = formatLiters(Math.abs(r.centiliters as number))
           act = { icon: 'fuel', text: r.type === 'compra' ? `Diesel: compra de ${l}` : r.type === 'consumo' ? `Diesel: ${l} · ${equipments.get(r.equipmentId as string) ?? 'equipamento'}` : `Diesel: ajuste de ${l}`, to: '/diesel' }
           break
@@ -375,6 +382,9 @@ export function recentActivities(audit: readonly AuditEntry[], d: Pick<Dashboard
           break
         case 'vaccinationApplications':
           act = { icon: 'syringe', text: `Vacinados: ${r.quantity as number} animal(is)`, to: `/vacinacao/${r.vaccinationId}` }
+          break
+        case 'fieldOperations':
+          act = { icon: 'pasture', text: `Operação de campo nº ${String(r.number).padStart(4, '0')} · ${pastures.get(r.pastureId as string) ?? 'pasto'} · ${formatMoney(r.totalCents as number)}`, to: `/manejo/${r.id}` }
           break
         case 'pastures':
           act = { icon: 'pasture', text: `Pasto cadastrado · ${r.name as string}`, to: `/pastos/${r.id}` }

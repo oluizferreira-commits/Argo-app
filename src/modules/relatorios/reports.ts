@@ -1,7 +1,10 @@
 import { formatDecimal, formatMoney } from '../../core/money'
-import type { Client, Equipment, Farm, FuelMovement, Movement, Pasture, Payment, ReserveEntry, Responsible, Sale } from '../../db/types'
+import type { Client, Equipment, FieldOperation, Farm, FuelMovement, Movement, Pasture, Payment, ReserveEntry, Responsible, Sale, Supply, SupplyMovement } from '../../db/types'
 import { CATEGORIES, category, isUnspecified } from '../../domain/categories'
 import { formatLiters, fuelLedger } from '../diesel/fuel'
+import { formatQty } from '../insumos/supplies'
+import { EMPTY_FILTER, grassLabel, manejoStats, type ManejoFilter } from '../manejo/manejoStats'
+import { formatHa, formatHours, typeLabel } from '../manejo/operations'
 import { computeBalances, formatDay, todayLocal } from '../rebanho/herd'
 import { activePayments, METHOD_LABELS, saleBalance } from '../receber/receivables'
 import { rateOn, reserveShare } from '../reserva/reserve'
@@ -73,6 +76,7 @@ export const REPORTS = [
   { id: 'nascimentos-mortes', title: 'Nascimentos e mortes' },
   { id: 'rebanho', title: 'Rebanho por pasto e categoria' },
   { id: 'diesel', title: 'Diesel' },
+  { id: 'manejo', title: 'Manejo de pastagens' },
 ] as const
 
 export type ReportId = (typeof REPORTS)[number]['id']
@@ -88,6 +92,9 @@ export interface ReportData {
   fuelMovements?: FuelMovement[]
   equipments?: Equipment[]
   responsibles?: Responsible[]
+  fieldOperations?: FieldOperation[]
+  supplies?: Supply[]
+  supplyMovements?: SupplyMovement[]
   today?: string
 }
 
@@ -630,6 +637,80 @@ function diesel(d: ReportData, p: Period): Report {
   }
 }
 
+// ------------------------------------------------------------------ manejo de pastagens
+
+/** Relatório de manejo (operações de campo) com filtros opcionais além do período. */
+export function manejoReport(d: ReportData, p: Period | null, extra: Partial<ManejoFilter> = {}, filterText = ''): Report {
+  const range = p ? periodRange(p) : null
+  const people = new Map((d.responsibles ?? []).map((r) => [r.id, r.name]))
+  const st = manejoStats(d.fieldOperations ?? [], d.supplies ?? [], d.supplyMovements ?? [], d.pastures, d.today ?? todayLocal(), {
+    ...EMPTY_FILTER,
+    ...extra,
+    start: range?.start ?? extra.start ?? null,
+    end: range?.end ?? extra.end ?? null,
+  })
+  const pastures = new Map(d.pastures.map((x) => [x.id, x.name]))
+  const ops = [...st.operations].sort((a, b) => a.date.localeCompare(b.date) || a.number - b.number)
+  return {
+    id: 'manejo',
+    title: 'Manejo de pastagens',
+    summary: [
+      { label: 'Operações', value: n(st.machines.operations) },
+      { label: 'Hectares trabalhados', value: formatHa(st.machines.workedCentiHa) },
+      { label: 'Custo total', value: formatMoney(st.totalCents) },
+      { label: 'Herbicidas', value: formatMoney(st.herbicides.totalCents) },
+      { label: 'Diesel', value: `${lit(st.machines.dieselCl)} · ${formatMoney(st.machines.dieselCents)}` },
+    ],
+    tables: [
+      {
+        title: 'Custo por pasto',
+        columns: [{ label: 'Pasto' }, { label: 'Oper.', align: R }, { label: 'Herbicidas/produtos', align: R }, { label: 'Sementes', align: R }, { label: 'Diesel', align: R }, { label: 'Outros', align: R }, { label: 'Total', align: R }, { label: 'Formação', align: R }, { label: 'R$/ha do pasto', align: R }],
+        rows: st.pastures.map((c) => [c.name, n(c.operations), formatMoney(c.herbicideCents), formatMoney(c.seedsCents), formatMoney(c.dieselCents), formatMoney(c.otherCents), formatMoney(c.totalCents), formatMoney(c.formationCents), c.perHaCents === null ? '-' : formatMoney(c.perHaCents)]),
+        foot: ['Total', n(st.machines.operations), '', '', '', '', formatMoney(st.totalCents), '', ''],
+        wide: true,
+      },
+      {
+        title: 'Operações',
+        columns: [{ label: 'Data' }, { label: 'Nº' }, { label: 'Tipo' }, { label: 'Pasto' }, { label: 'Área', align: R }, { label: 'Responsável' }, { label: 'Produtos' }, { label: 'Diesel', align: R }, { label: 'Total', align: R }, { label: 'R$/ha', align: R }],
+        rows: ops.map((o) => [
+          formatDay(o.date),
+          String(o.number).padStart(4, '0'),
+          typeLabel(o.type),
+          pastures.get(o.pastureId) ?? '-',
+          formatHa(o.workedAreaCentiHa),
+          (o.responsibleId && people.get(o.responsibleId)) || '-',
+          o.products.map((x) => `${x.name} ${formatQty(x.qty, x.unit)}`).join(' + ') || '-',
+          lit(o.equipments.reduce((a, e) => a + e.dieselCl, 0)),
+          formatMoney(o.totalCents),
+          formatMoney(o.workedAreaCentiHa ? Math.round((o.totalCents * 100) / o.workedAreaCentiHa) : 0),
+        ]),
+        wide: true,
+      },
+      {
+        title: 'Herbicidas e produtos consumidos',
+        columns: [{ label: 'Produto' }, { label: 'Quantidade', align: R }, { label: 'Custo', align: R }],
+        rows: st.herbicides.byProduct.map((x) => [x.supply?.name ?? '-', x.supply ? formatQty(x.qty, x.supply.unit ?? 'saco') : '-', formatMoney(x.cents)]),
+      },
+      {
+        title: 'Sementes por variedade',
+        columns: [{ label: 'Espécie / cultivar' }, { label: 'Quantidade', align: R }, { label: 'Custo', align: R }],
+        rows: st.seeds.byGrass.map((x) => [grassLabel(x.key), `${(x.qty / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg`, formatMoney(x.cents)]),
+      },
+      {
+        title: 'Tratores e equipamentos',
+        columns: [{ label: 'Equipamento' }, { label: 'Operações', align: R }, { label: 'Horas', align: R }, { label: 'Diesel', align: R }, { label: 'Custo diesel', align: R }],
+        rows: st.machines.byEquipment.map((x) => [x.name, n(x.ops), formatHours(x.hours), lit(x.cl), formatMoney(x.cents)]),
+      },
+    ],
+    notes: [
+      ...(filterText ? [`Filtros: ${filterText}.`] : []),
+      `Estoque atual: herbicidas ${formatMoney(st.herbicides.stockValueCents)}; sementes ${formatMoney(st.seeds.stockValueCents)}. Sementes compradas no período: ${(st.seeds.kgBought / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg (${formatMoney(st.seeds.boughtCents)}); usadas: ${(st.seeds.kgUsed / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} kg em ${formatHa(st.seeds.plantedCentiHa)} plantados.`,
+      'Custos guardados em cada operação no dia do lançamento (custo médio ponderado de cada estoque). Operações canceladas não entram. Formação = plantio e replantio. R$/ha do pasto = custo total ÷ área do pasto.',
+    ],
+    empty: ops.length ? undefined : 'Nenhuma operação de campo no período.',
+  }
+}
+
 const BUILDERS: Record<ReportId, (d: ReportData, p: Period) => Report> = {
   vendas,
   arrobas,
@@ -639,6 +720,7 @@ const BUILDERS: Record<ReportId, (d: ReportData, p: Period) => Report> = {
   'nascimentos-mortes': nascimentosMortes,
   rebanho,
   diesel,
+  manejo: (d, p) => manejoReport(d, p),
 }
 
 export function buildReports(ids: readonly ReportId[], d: ReportData, p: Period): Report[] {

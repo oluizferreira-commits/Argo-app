@@ -200,7 +200,24 @@ export interface Supply extends BaseRecord {
   /** Peso de um saco, em gramas (null = ainda não informado). */
   gramsPerSack: number | null
   active: boolean
+  /** Categoria (ausente = 'geral': sal, mistura e outros em sacos). */
+  category?: SupplyCategory
+  /** Unidade do estoque (ausente = 'saco', em meios sacos). 'L' e 'kg' guardam mililitros / gramas em `qty`. */
+  unit?: SupplyUnit
+  manufacturer?: string
+  /** Herbicida: princípio ativo. */
+  activeIngredient?: string
+  /** Semente: espécie e cultivar/variedade, valor cultural (VC% × 10). */
+  species?: string
+  cultivar?: string
+  culturalValue?: number | null
+  /** Estoque mínimo (mesma unidade do estoque: meios sacos, mL ou g). null = sem alerta. */
+  minQty?: number | null
+  notes?: string
 }
+
+export type SupplyCategory = 'geral' | 'herbicida' | 'semente'
+export type SupplyUnit = 'saco' | 'L' | 'kg'
 
 /**
  * Movimento do estoque de insumos. Quantidade em MEIOS SACOS (inteiro com sinal):
@@ -215,6 +232,13 @@ export interface SupplyMovement extends BaseRecord {
   halfSacks: number
   /** Mistura feita: liga os lançamentos da mesma mistura (estornados juntos). */
   batchId?: string | null
+  /** Produtos em L/kg: quantidade com sinal em mL/g (o `halfSacks` fica 0). */
+  qty?: number | null
+  /** Compra: nota fiscal e lote. */
+  invoice?: string
+  lot?: string
+  /** Lançamento gerado por uma operação de campo (só é corrigido pela operação). */
+  operationId?: string | null
   /** Compra: valor pago (centavos). */
   costCents: number | null
   supplier: string
@@ -254,11 +278,82 @@ export interface FuelMovement extends BaseRecord {
   responsibleId: string | null
   /** Leitura do horímetro (horas × 10) ou do hodômetro (km × 10). */
   meterReading: number | null
+  /** Consumo gerado por uma operação de campo (só é corrigido pela operação) e o pasto trabalhado. */
+  operationId?: string | null
+  pastureId?: string | null
   notes: string
   authorizedNegative: boolean
   status: 'ativo' | 'estornado'
   reversedAt: string | null
   reverseReason: string
+}
+
+export type FieldOperationType = 'herbicida' | 'plantio' | 'replantio' | 'recuperacao' | 'outra'
+
+/** Produto usado na operação (custo guardado no momento: custo médio do estoque). */
+export interface FieldOperationProduct {
+  supplyId: string
+  name: string
+  category: SupplyCategory
+  unit: SupplyUnit
+  /** quantidade usada: meios sacos (saco) ou mL/g (L/kg) */
+  qty: number
+  costCents: number
+  /** semente: espécie, cultivar e lote usados */
+  species?: string
+  cultivar?: string
+  lot?: string
+  movementId: string
+}
+
+/** Equipamento usado na operação. */
+export interface FieldOperationEquipment {
+  equipmentId: string
+  name: string
+  responsibleId: string | null
+  /** horímetro (horas × 10) inicial / final, quando houver */
+  meterStart: number | null
+  meterEnd: number | null
+  /** horas trabalhadas × 10 */
+  hoursTenths: number | null
+  /** diesel em centilitros e o custo (custo médio do diesel no momento) */
+  dieselCl: number
+  dieselCents: number
+  fuelMovementId: string | null
+}
+
+export interface FieldOperationCost {
+  description: string
+  costCents: number
+}
+
+/** Operação de campo: aplicação de herbicida, plantio, replantio, recuperação ou outra. */
+export interface FieldOperation extends BaseRecord {
+  farmId: string
+  number: number
+  type: FieldOperationType
+  date: string
+  pastureId: string
+  /** área do pasto (snapshot, centésimos de ha) e área efetivamente trabalhada */
+  pastureAreaCentiHa: number | null
+  workedAreaCentiHa: number
+  responsibleId: string | null
+  products: FieldOperationProduct[]
+  equipments: FieldOperationEquipment[]
+  otherCosts: FieldOperationCost[]
+  /** totais em centavos (guardados: preservam o custo histórico) */
+  productsCents: number
+  seedsCents: number
+  dieselCents: number
+  otherCents: number
+  totalCents: number
+  notes: string
+  status: 'concluida' | 'cancelada'
+  canceledAt: string | null
+  cancelReason: string
+  /** correção: a operação nova aponta para a que ela substitui */
+  replacesId: string | null
+  replacedById: string | null
 }
 
 /** Campanha de vacinação de um lote (cobertura pode ser parcial). */
@@ -427,6 +522,7 @@ export interface EntityMap {
   fuelMovements: FuelMovement
   vaccinations: Vaccination
   vaccinationApplications: VaccinationApplication
+  fieldOperations: FieldOperation
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -434,7 +530,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

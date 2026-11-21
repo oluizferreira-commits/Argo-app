@@ -29,6 +29,9 @@ import { FinanceiroPage } from '../modules/financeiro/FinanceiroPage'
 import { NovaVacinacaoPage } from '../modules/vacinacao/NovaVacinacaoPage'
 import { VacinacaoDetailPage } from '../modules/vacinacao/VacinacaoDetailPage'
 import { VacinacaoPage } from '../modules/vacinacao/VacinacaoPage'
+import { ManejoPage } from '../modules/manejo/ManejoPage'
+import { OperacaoFormPage } from '../modules/manejo/OperacaoFormPage'
+import { OperacaoPage } from '../modules/manejo/OperacaoPage'
 import { InsumoPage } from '../modules/insumos/InsumoPage'
 import { InsumosPage } from '../modules/insumos/InsumosPage'
 import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
@@ -75,6 +78,9 @@ const implemented: RouteObject[] = [
   { path: '/vacinacao', element: <VacinacaoPage />, handle: t('Vacinação') },
   { path: '/vacinacao/nova', element: <NovaVacinacaoPage />, handle: t('Nova vacinação') },
   { path: '/vacinacao/:id', element: <VacinacaoDetailPage />, handle: t('Vacinação') },
+  { path: '/manejo', element: <ManejoPage />, handle: t('Manejo de pastagens') },
+  { path: '/manejo/nova', element: <OperacaoFormPage />, handle: t('Operação de campo') },
+  { path: '/manejo/:id', element: <OperacaoPage />, handle: t('Operação de campo') },
   { path: '/responsaveis', element: <ResponsaveisPage />, handle: t('Responsáveis') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <FinanceiroPage />, handle: t('Financeiro') },

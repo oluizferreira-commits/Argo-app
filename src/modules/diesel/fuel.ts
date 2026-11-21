@@ -180,6 +180,11 @@ export interface FuelMovementInput {
   responsibleId?: string | null
   meterReading?: number | null
   notes?: string
+  /** consumo de uma operação de campo (e o pasto trabalhado) */
+  operationId?: string
+  pastureId?: string | null
+  /** correção de operação: as leituras já foram conferidas no lançamento original */
+  skipMeterCheck?: boolean
 }
 
 export async function recordFuelMovement(
@@ -219,7 +224,7 @@ export async function recordFuelMovement(
       if (!eq || eq.farmId !== farmId || eq.deletedAt !== null) throw new FuelError('Equipamento não encontrado.')
       if (eq.meter !== 'nenhum' && input.meterReading != null) {
         if (!Number.isInteger(input.meterReading) || input.meterReading < 0) throw new FuelError('Leitura inválida.')
-        const last = lastMeterReading(all, eq.id, { date: input.date })
+        const last = input.skipMeterCheck ? undefined : lastMeterReading(all, eq.id, { date: input.date })
         if (last && last.meterReading! > input.meterReading)
           throw new FuelError(`A leitura não pode ser menor que a anterior (${formatMeter(last.meterReading, eq.meter)} em ${last.date.split('-').reverse().join('/')}).`)
         meterReading = input.meterReading
@@ -248,6 +253,8 @@ export async function recordFuelMovement(
         equipmentId: input.type === 'consumo' ? input.equipmentId! : null,
         responsibleId: input.type === 'ajuste' ? null : (input.responsibleId ?? null),
         meterReading,
+        operationId: input.operationId ?? null,
+        pastureId: input.type === 'consumo' ? (input.pastureId ?? null) : null,
         notes: authorized ? `${notes ? `${notes} · ` : ''}Estoque negativo autorizado: ${authorize!.reason.trim()}` : notes,
         authorizedNegative: authorized,
         status: 'ativo',
@@ -260,11 +267,12 @@ export async function recordFuelMovement(
 }
 
 /** Estorna um lançamento (fica no histórico). Estornar uma entrada não pode deixar o estoque negativo. */
-export async function reverseFuelMovement(db: ArgoDatabase, id: string, reason: string): Promise<FuelMovement> {
+export async function reverseFuelMovement(db: ArgoDatabase, id: string, reason: string, fromOperation = false): Promise<FuelMovement> {
   return db.transaction('rw', [db.fuelMovements, db.auditLog, db.outbox, db.meta], async () => {
     const m = await db.fuelMovements.get(id)
     if (!m) throw new FuelError('Lançamento não encontrado.')
     if (m.status === 'estornado') throw new FuelError('Este lançamento já foi estornado.')
+    if (m.operationId && !fromOperation) throw new FuelError('Este abastecimento é de uma operação de campo: corrija ou cancele pela operação.')
     if (m.centiliters > 0) {
       const stock = fuelStock(await db.fuelMovements.where('farmId').equals(m.farmId).toArray())
       if (stock - m.centiliters < 0) throw new FuelError('Não é possível estornar: o estoque ficaria negativo (o diesel já foi usado).')

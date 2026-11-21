@@ -90,6 +90,20 @@ Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendência
 - Sem duplicidade: não abre outra campanha do mesmo pasto + lote + vacina enquanto a anterior tiver pendentes; envio repetido não duplica (chave do formulário).
 - **Próxima vacinação**: aparece na Agenda do Painel (com responsável) até ser registrada; "Registrar a próxima vacinação" cria a nova campanha já preenchida e marca a anterior (`followUpId`, campo sem índice — o banco continua na v9). Lote com pendentes aparece na Central de Pendências.
 
+## Manejo e formação de pastagens
+
+Objetivo: saber quanto custa formar, recuperar e manter cada pasto, **sem estoques ou lançamentos paralelos**.
+
+- **Estoque único**: herbicidas e sementes são produtos do estoque de Insumos (`supplies`) com `category` ('herbicida' | 'semente'; ausente = 'geral') e `unit` ('L' | 'kg'; ausente = 'saco'). Em L/kg a quantidade fica em `qty` (mL/g, inteiro com sinal) e `halfSacks` = 0; `movQty()` lê qualquer um. Compras com fornecedor, NF, lote e valor (total ou unitário). Estoque mínimo opcional (`minQty`) → "Estoque baixo" na Central de Pendências.
+- **Custo médio ponderado** (`supplyLedger`), como no diesel: compras somam valor; cada saída sai pelo custo médio da data e o custo é **gravado no lançamento** (`costCents` da saída).
+- **Operações de campo** (`fieldOperations`, v10): herbicida, plantio, replantio, recuperação, outra. Pasto, área do pasto (snapshot) e área trabalhada (parcial permitida, nunca maior que o pasto), responsável, vários produtos (com lote), vários equipamentos (responsável, horímetro inicial/final, horas, diesel), outros custos e observações.
+  - Ao concluir, numa única transação: cada produto vira um **consumo no estoque de Insumos** e o diesel de cada equipamento vira **um único consumo no Diesel** (com equipamento, responsável, pasto e `operationId`). Não há segunda baixa: esses lançamentos só são estornados pela operação (bloqueado no Diesel/Insumos).
+  - Custos guardados na operação (produtos, sementes, diesel, outros, total) — preservam o histórico mesmo com compras lançadas depois. Custo/ha = total ÷ área trabalhada.
+  - **Cancelar** (motivo + PIN) estorna os consumos e mantém a operação no histórico. **Corrigir** = cancelar + nova operação na mesma transação, ligadas por `replacesId`/`replacedById` (o horímetro da correção não é comparado com leituras lançadas depois).
+- **Financeiro sem duplicidade**: só as **compras** (insumos, herbicidas, sementes, diesel) são despesa (Painel → Despesas do mês). Consumo não gera despesa: vira custo atribuído ao pasto. Separação: valor comprado (compras), valor em estoque (`supplyLedger`/`fuelLedger`), valor consumido (operações) e custo do pasto (soma das operações). O app não tem contas a pagar: compra lançada = paga.
+- **Pasto**: seção "Manejo, Formação e Custos" (capim plantado = sementes do último plantio/replantio, custo acumulado, formação × manutenção, custo/ha do pasto, produtos, diesel, equipamentos, responsáveis, histórico com filtros de período e tipo).
+- **Painel de manejo** (`/manejo`, `manejoStats.ts`) com filtros (período, pasto, tipo, equipamento, produto, espécie) e PDF; relatório "Manejo de pastagens" também em Relatórios.
+
 ## Aba Pastos (listagem)
 
 Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem acento), filtros Todos / Com animais / Vazios / Com pendências e lista em grade fixa (ícone | nome e área | cabeças | seta). Pendências reais abaixo do nome, cada uma com link próprio: "Especificar" (gado sem categoria / bezerros sem sexo) abre a especificação do pasto; "serviço pendente" abre o pasto. Cálculos em `src/modules/pastos/pastureList.ts` (só leem os saldos; regras de contagem inalteradas).
@@ -192,6 +206,7 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 | v7 | reserveEntries (depósitos e retiradas da reserva financeira) |
 | v8 | reserveChecks (conferências do saldo da reserva com o banco) |
 | v9 | responsibles, supplies, supplyMovements (insumos em meios sacos), equipments, fuelMovements (diesel em centilitros), vaccinations, vaccinationApplications |
+| v10 | fieldOperations (operações de campo). Campos novos sem índice em supplies (categoria, unidade L/kg, fabricante, princípio ativo, espécie, cultivar, VC%, mínimo), supplyMovements (qty em mL/g, NF, lote, operationId) e fuelMovements (operationId, pastureId) |
 
 ## Migrações (preservação de dados)
 

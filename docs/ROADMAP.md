@@ -24,6 +24,8 @@
 | 7.3.1 | Painel operacional: indicadores, Central de Pendências, Novo lançamento, Agenda, Atividades recentes; sistema e backup em Configurações | **concluída** (v0.12.0) |
 | 7.3.2 | Pix com nome completo (QR abreviado); aba Pastos reorganizada (resumo, pesquisa, filtros) | **concluída** (v0.12.1–0.12.2) |
 | 7.4 | Vacinação com cobertura parcial e várias aplicações por campanha | **concluída** (v0.13.0) |
+| 8 | Manejo e formação de pastagens: herbicidas e sementes no estoque, operações de campo com máquinas e diesel, custo por pasto, painel e relatórios | **concluída** (v0.14.0) |
+| 8.1 | Próximos passos possíveis: manutenção e depreciação de máquinas, contas a pagar (valor pago × comprado), estoque por lote de semente | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
 
 Observação: os itens "Controle de pastos" e "Nascimentos e mortes" do plano original foram incorporados à Etapa 2,

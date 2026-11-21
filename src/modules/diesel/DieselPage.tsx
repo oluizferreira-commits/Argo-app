@@ -175,7 +175,12 @@ export function DieselPage() {
                     {m.status === 'estornado' && m.reverseReason && ` · estorno: ${m.reverseReason}`}
                   </div>
                 </div>
-                {m.status === 'ativo' && (
+                {m.operationId && (
+                  <Link to={`/manejo/${m.operationId}`} className="btn btn-outline btn-icon" aria-label="Abrir operação de campo">
+                    <Icon name="pasture" size={20} />
+                  </Link>
+                )}
+                {m.status === 'ativo' && !m.operationId && (
                   <button className="btn btn-danger btn-icon" aria-label={`Estornar ${TYPE_LABEL[m.type]} de ${formatLiters(Math.abs(m.centiliters))}`} onClick={() => reverse(m)}>
                     <Icon name="undo" size={20} />
                   </button>

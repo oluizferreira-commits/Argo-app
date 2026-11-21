@@ -27,7 +27,7 @@ function Relatorios({ only }: { only: ReportId | undefined }) {
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
 
   const data = useLiveQuery(async () => {
-    const [pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles] = await Promise.all([
+    const [pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles, fieldOperations, supplies, supplyMovements] = await Promise.all([
       db.pastures.where('farmId').equals(farm.id).toArray(),
       db.movements.where('farmId').equals(farm.id).toArray(),
       db.sales.where('farmId').equals(farm.id).toArray(),
@@ -37,8 +37,11 @@ function Relatorios({ only }: { only: ReportId | undefined }) {
       db.fuelMovements.where('farmId').equals(farm.id).toArray(),
       db.equipments.where('farmId').equals(farm.id).toArray(),
       db.responsibles.where('farmId').equals(farm.id).toArray(),
+      db.fieldOperations.where('farmId').equals(farm.id).toArray(),
+      db.supplies.where('farmId').equals(farm.id).toArray(),
+      db.supplyMovements.where('farmId').equals(farm.id).toArray(),
     ])
-    return { farm, pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles }
+    return { farm, pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles, fieldOperations, supplies, supplyMovements }
   }, [farm])
 
   const period: Period = kind === 'ano' ? { kind, year } : { kind, year, month }
@@ -47,7 +50,7 @@ function Relatorios({ only }: { only: ReportId | undefined }) {
   // anos disponíveis: do primeiro lançamento até o ano atual
   const firstYear = useMemo(() => {
     if (!data) return thisYear
-    const dates = [...data.movements.map((m) => m.date), ...data.sales.map((s) => s.date), ...data.payments.map((p) => p.date), ...data.fuelMovements.map((f) => f.date)]
+    const dates = [...data.movements.map((m) => m.date), ...data.sales.map((s) => s.date), ...data.payments.map((p) => p.date), ...data.fuelMovements.map((f) => f.date), ...data.fieldOperations.map((o) => o.date)]
     return dates.length ? Math.min(thisYear, ...dates.map((d) => Number(d.slice(0, 4)))) : thisYear
   }, [data, thisYear])
   const years = Array.from({ length: thisYear - firstYear + 1 }, (_, i) => thisYear - i)

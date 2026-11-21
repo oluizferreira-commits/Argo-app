@@ -10,6 +10,7 @@ import { useFarm } from '../fazendas/FarmContext'
 import { useBalances } from '../rebanho/useHerd'
 import { archivePasture, formatArea, PastureError } from './pastures'
 import { PastureTasks } from './PastureTasks'
+import { PastureManejo } from '../manejo/PastureManejo'
 
 export function PastoPage() {
   const { id = '' } = useParams()
@@ -99,6 +100,8 @@ export function PastoPage() {
 
       <h2 className="section-title">Serviços</h2>
       <PastureTasks pastureId={id} tasks={tasks} />
+
+      <PastureManejo pastureId={id} />
 
       {pasture.notes && (
         <>

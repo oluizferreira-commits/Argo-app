@@ -81,6 +81,12 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     vaccinationApplications: 'id, farmId, vaccinationId, date, createdAt, updatedAt',
   })
 
+  // v10 — operações de campo (herbicida, plantio, replantio, recuperação). Só tabela nova:
+  // produtos e diesel continuam nos estoques existentes (lançamentos ligados por operationId).
+  db.version(10).stores({
+    fieldOperations: 'id, farmId, pastureId, date, createdAt, updatedAt',
+  })
+
   return db
 }
 

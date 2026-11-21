@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { newId } from '../../core/ids'
-import { formatMoney, parseMoney } from '../../core/money'
+import { formatMoney, parseDecimal, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
 import type { Supply, SupplyMovement } from '../../db/types'
 import { Icon } from '../../components/Icon'
@@ -10,15 +10,24 @@ import { useFarm } from '../fazendas/FarmContext'
 import { formatDay, todayLocal } from '../rebanho/herd'
 import { usePastures } from '../rebanho/useHerd'
 import {
+  categoryOf,
+  CATEGORY_LABEL,
   formatKg,
+  formatQty,
   formatSacks,
+  isLowStock,
   isMixture,
+  movQty,
+  UNIT_LABEL,
+  parseQty,
+  supplyLedger,
+  unitOf,
+  unitPrice,
   mixtureUsing,
   recordMixture,
   recipeText,
   setRecipe,
   NegativeStockError,
-  parseKgPerSack,
   parseSacks,
   recordSupplyMovement,
   reverseSupplyMovement,
@@ -28,11 +37,14 @@ import {
   updateSupply,
   type SupplyMovementInput,
 } from './supplies'
+import { SupplyFields } from './SupplyFields'
+import { fieldsToDetails, initialFields } from './supplyFieldsState'
 import { useSupplies, type SupplyRow } from './useSupplies'
 
 type FormType = SupplyMovementInput['type'] | 'mistura'
 const TYPE_LABEL: Record<SupplyMovement['type'], string> = { compra: 'Compra', consumo: 'Consumo no cocho', ajuste: 'Ajuste', mistura: 'Mistura feita' }
-const movLabel = (m: SupplyMovement) => (m.type === 'mistura' && m.halfSacks < 0 ? 'Usado na mistura' : TYPE_LABEL[m.type])
+const movLabel = (m: SupplyMovement) =>
+  m.operationId ? 'Operação de campo' : m.type === 'mistura' && m.halfSacks < 0 ? 'Usado na mistura' : TYPE_LABEL[m.type]
 
 export function InsumoPage() {
   const { id } = useParams()
@@ -46,6 +58,10 @@ export function InsumoPage() {
   const row = data.rows.find((r) => r.supply.id === id)
   if (!row) return <p className="muted">Produto não encontrado.</p>
   const { supply: s, halves } = row
+  const unit = unitOf(s)
+  const cat = categoryOf(s)
+  const field = cat !== 'geral' || unit !== 'saco' // herbicida/semente: saída pelas operações de campo
+  const ledger = supplyLedger(data.movements, s.id)
   const supplies = data.rows.map((r) => r.supply)
   const names = new Map(supplies.map((x) => [x.id, x.name]))
   const mixture = isMixture(s)
@@ -57,7 +73,7 @@ export function InsumoPage() {
 
   async function reverse(m: SupplyMovement) {
     const together = m.batchId ? '\n\nOs ingredientes e a mistura desse lançamento serão estornados juntos.' : ''
-    const reason = window.prompt(`Estornar ${movLabel(m).toLowerCase()} (${formatSacks(Math.abs(m.halfSacks))})?${together}\n\nInforme o motivo:`)
+    const reason = window.prompt(`Estornar ${movLabel(m).toLowerCase()} (${formatQty(Math.abs(movQty(m)), unitOf(s))})?${together}\n\nInforme o motivo:`)
     if (reason === null) return
     try {
       await reverseSupplyMovement(db, m.id, reason)
@@ -71,13 +87,38 @@ export function InsumoPage() {
     <>
       <section className="hero">
         <div className="gold-rule" />
-        <p style={{ marginTop: 0 }}>{s.name} · estoque</p>
+        <p style={{ marginTop: 0 }}>
+          {s.name} · {cat === 'geral' ? 'estoque' : CATEGORY_LABEL[cat].toLowerCase().replace(/s$/, '')}
+        </p>
         <div className="big-number" style={{ marginTop: 6, fontSize: 36 }} data-testid="supply-stock">
-          {formatSacks(halves)}
+          {formatQty(halves, unit)}
         </div>
-        <p data-testid="supply-kg">{s.gramsPerSack ? `${formatKg(sacksToKg(halves, s.gramsPerSack))} · saco de ${formatKg(s.gramsPerSack / 1000)}` : 'Informe o peso do saco para ver em kg.'}</p>
+        {unit === 'saco' && (
+          <p data-testid="supply-kg">{s.gramsPerSack ? `${formatKg(sacksToKg(halves, s.gramsPerSack))} · saco de ${formatKg(s.gramsPerSack / 1000)}` : 'Informe o peso do saco para ver em kg.'}</p>
+        )}
+        {ledger.valueCents > 0 && (
+          <p data-testid="supply-value">
+            Em estoque {formatMoney(ledger.valueCents)} · custo médio {unitPrice(ledger.valueCents, ledger.balance, unit)}
+          </p>
+        )}
       </section>
 
+      {isLowStock(s, halves) && halves >= 0 && (
+        <div className="notice notice-warn" data-testid="low-stock">
+          <Icon name="alert" />
+          <div>
+            <strong>Estoque baixo:</strong> abaixo do mínimo de {formatQty(s.minQty ?? 0, unit)}.
+          </div>
+        </div>
+      )}
+      {field && (
+        <Link to="/manejo" className="notice notice-ok" style={{ textDecoration: 'none' }}>
+          <Icon name="pasture" />
+          <div>
+            A saída deste produto é lançada numa <strong>operação de campo</strong> (Manejo de pastagens), que já calcula o custo por pasto.
+          </div>
+        </Link>
+      )}
       {halves < 0 && (
         <div className="notice notice-warn">
           <Icon name="alert" />
@@ -121,8 +162,15 @@ export function InsumoPage() {
       ) : (
         <div className="card row" style={{ justifyContent: 'space-between' }}>
           <div>
-            <div className="status-label">Peso do saco</div>
-            <div className="status-detail">{s.gramsPerSack ? formatKg(s.gramsPerSack / 1000) : 'Não informado'}</div>
+            <div className="status-label">{unit === 'saco' ? 'Peso do saco' : 'Cadastro'}</div>
+            <div className="status-detail" data-testid="supply-details">
+              {unit === 'saco'
+                ? s.gramsPerSack
+                  ? formatKg(s.gramsPerSack / 1000)
+                  : 'Não informado'
+                : [s.species, s.cultivar, s.culturalValue ? `VC ${(s.culturalValue / 10).toLocaleString('pt-BR')}%` : '', s.activeIngredient, s.manufacturer].filter(Boolean).join(' · ') || 'Toque para completar'}
+              {s.minQty ? ` · mínimo ${formatQty(s.minQty, unit)}` : ''}
+            </div>
           </div>
           <button className="btn btn-outline btn-icon" aria-label="Editar produto" onClick={() => setEditing(true)}>
             <Icon name="edit" size={20} />
@@ -136,7 +184,7 @@ export function InsumoPage() {
         <MovementForm key={form} supply={s} type={form} onClose={() => setForm(null)} />
       ) : (
         <div className="stack" style={{ gap: 10 }}>
-          {!usedBy && (
+          {!usedBy && !field && (
             <button className="btn btn-primary btn-block" onClick={() => setForm('consumo')} disabled={pastures.length === 0}>
               <Icon name="pasture" /> Consumo no cocho
             </button>
@@ -148,7 +196,7 @@ export function InsumoPage() {
           )}
           <div className="row">
             {!mixture && (
-              <button className={`btn ${usedBy ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1 }} onClick={() => setForm('compra')}>
+              <button className={`btn ${usedBy || field ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1 }} onClick={() => setForm('compra')}>
                 <Icon name="plus" /> Compra
               </button>
             )}
@@ -170,9 +218,9 @@ export function InsumoPage() {
             <div className={`task${m.status === 'estornado' ? ' reversed' : ''}`} key={m.id}>
               <div className="status-body">
                 <div className="status-label">
-                  <span className={m.halfSacks > 0 ? 'delta-plus' : 'delta-minus'}>
-                    {m.halfSacks > 0 ? '+' : '−'}
-                    {formatSacks(Math.abs(m.halfSacks))}
+                  <span className={movQty(m) > 0 ? 'delta-plus' : 'delta-minus'}>
+                    {movQty(m) > 0 ? '+' : '−'}
+                    {formatQty(Math.abs(movQty(m)), unit)}
                   </span>{' '}
                   · {movLabel(m)}
                   {m.type === 'consumo' && m.pastureId && ` · ${pastureName.get(m.pastureId) ?? 'pasto removido'}`}
@@ -181,13 +229,21 @@ export function InsumoPage() {
                 </div>
                 <div className="status-detail">
                   {formatDay(m.date)}
-                  {m.type === 'compra' && m.costCents !== null && ` · ${formatMoney(m.costCents)} · ${m.supplier}`}
+                  {m.type === 'compra' && m.costCents !== null && ` · ${formatMoney(m.costCents)} (${unitPrice(m.costCents, movQty(m), unit)}) · ${m.supplier}`}
+                  {m.invoice && ` · NF ${m.invoice}`}
+                  {m.lot && ` · lote ${m.lot}`}
+                  {m.type !== 'compra' && movQty(m) < 0 && m.costCents ? ` · custo ${formatMoney(m.costCents)}` : ''}
                   {m.notes && ` · ${m.notes}`}
                   {m.status === 'estornado' && m.reverseReason && ` · estorno: ${m.reverseReason}`}
                 </div>
               </div>
-              {m.status === 'ativo' && (
-                <button className="btn btn-danger btn-icon" aria-label={`Estornar ${movLabel(m)} de ${formatSacks(Math.abs(m.halfSacks))}`} onClick={() => reverse(m)}>
+              {m.operationId && (
+                <Link to={`/manejo/${m.operationId}`} className="btn btn-outline btn-icon" aria-label="Abrir operação de campo">
+                  <Icon name="chevronRight" size={20} />
+                </Link>
+              )}
+              {m.status === 'ativo' && !m.operationId && (
+                <button className="btn btn-danger btn-icon" aria-label={`Estornar ${movLabel(m)} de ${formatQty(Math.abs(movQty(m)), unit)}`} onClick={() => reverse(m)}>
                   <Icon name="undo" size={20} />
                 </button>
               )}
@@ -363,14 +419,15 @@ function MixtureForm({ mixture, supplies, onClose }: { mixture: Supply; supplies
 
 function SupplyEdit({ supply, onClose }: { supply: Supply; onClose: () => void }) {
   const [name, setName] = useState(supply.name)
-  const [kg, setKg] = useState(supply.gramsPerSack ? String(supply.gramsPerSack / 1000).replace('.', ',') : '')
+  const [fields, setFields] = useState(() => initialFields(supply))
   const [error, setError] = useState<string | null>(null)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     try {
-      await updateSupply(db, supply, name, kg.trim() ? parseKgPerSack(kg) : null)
+      const { gramsPerSack, details } = fieldsToDetails(fields)
+      await updateSupply(db, supply, name, gramsPerSack, details)
       onClose()
     } catch (err) {
       setError(err instanceof SupplyError ? err.message : (err as Error).message)
@@ -378,19 +435,14 @@ function SupplyEdit({ supply, onClose }: { supply: Supply; onClose: () => void }
   }
 
   return (
-    <form onSubmit={submit} className="card stack">
-      <div className="field">
+    <form onSubmit={submit} className="card stack" data-testid="supply-edit">
+      <div className="field" style={{ margin: 0 }}>
         <label className="label" htmlFor="sup-edit-name">
           Nome do produto
         </label>
         <input id="sup-edit-name" className="input" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
       </div>
-      <div className="field">
-        <label className="label" htmlFor="sup-edit-kg">
-          Peso do saco (kg)
-        </label>
-        <input id="sup-edit-kg" className="input" inputMode="decimal" placeholder="Ex.: 25" value={kg} onChange={(e) => setKg(e.target.value)} />
-      </div>
+      <SupplyFields value={fields} onChange={setFields} unitLocked />
       {error && (
         <div className="notice notice-error" role="alert">
           <Icon name="alert" />
@@ -417,8 +469,14 @@ function MovementForm({ supply, type, onClose }: { supply: Supply; type: SupplyM
   const pastures = usePastures() ?? []
   const [key] = useState(newId)
   const [date, setDate] = useState(todayLocal)
+  const unit = unitOf(supply)
   const [sacks, setSacks] = useState('')
   const [cost, setCost] = useState('')
+  const [costMode, setCostMode] = useState<'total' | 'unitario'>('total')
+  const [invoice, setInvoice] = useState('')
+  const [lot, setLot] = useState('')
+  const [bags, setBags] = useState('')
+  const [kgPerBag, setKgPerBag] = useState(supply.gramsPerSack ? String(supply.gramsPerSack / 1000).replace('.', ',') : '')
   const [supplier, setSupplier] = useState('')
   const [pastureId, setPastureId] = useState('')
   const [direction, setDirection] = useState<'entrada' | 'saida' | ''>('')
@@ -427,13 +485,34 @@ function MovementForm({ supply, type, onClose }: { supply: Supply; type: SupplyM
   const [negative, setNegative] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  /** valor total pago: digitado direto ou valor unitário × quantidade */
+  function totalCents(amount: number): number | null {
+    const v = parseMoney(cost)
+    if (v === null) return null
+    if (costMode === 'total') return v
+    return unit === 'saco' ? Math.round((v * amount) / 2) : Math.round((v * amount) / 1000)
+  }
+
+  // semente: "N sacos de X kg" preenche a quantidade em kg
+  function setFromBags(b: string, k: string) {
+    setBags(b)
+    setKgPerBag(k)
+    const nb = parseDecimal(b, 2)
+    const nk = parseDecimal(k, 3)
+    if (nb && nk) setSacks(((nb * nk) / 100000).toLocaleString('pt-BR', { maximumFractionDigits: 3 }).replace(/\./g, ''))
+  }
+
   function input(): SupplyMovementInput {
+    const amount = parseQty(sacks, unit)
     return {
       supplyId: supply.id,
       type,
       date,
-      halves: parseSacks(sacks),
-      costCents: type === 'compra' ? parseMoney(cost) : null,
+      halves: unit === 'saco' ? amount : undefined,
+      qty: unit === 'saco' ? undefined : amount,
+      invoice,
+      lot,
+      costCents: type === 'compra' ? totalCents(amount) : null,
       supplier,
       pastureId: type === 'consumo' ? pastureId || null : null,
       direction: type === 'ajuste' ? direction || undefined : undefined,
@@ -461,7 +540,7 @@ function MovementForm({ supply, type, onClose }: { supply: Supply; type: SupplyM
 
   const kgPreview = (() => {
     try {
-      return supply.gramsPerSack && sacks.trim() ? formatKg(sacksToKg(parseSacks(sacks), supply.gramsPerSack)) : null
+      return unit === 'saco' && supply.gramsPerSack && sacks.trim() ? formatKg(sacksToKg(parseSacks(sacks), supply.gramsPerSack)) : null
     } catch {
       return null
     }
@@ -496,18 +575,36 @@ function MovementForm({ supply, type, onClose }: { supply: Supply; type: SupplyM
           </select>
         </div>
       )}
+      {type === 'compra' && categoryOf(supply) === 'semente' && (
+        <div className="row" style={{ alignItems: 'flex-start' }}>
+          <div className="field" style={{ flex: 1, margin: 0 }}>
+            <label className="label" htmlFor="mv-bags">
+              Sacos
+            </label>
+            <input id="mv-bags" className="input" inputMode="decimal" value={bags} onChange={(e) => setFromBags(e.target.value, kgPerBag)} />
+          </div>
+          <div className="field" style={{ flex: 1, margin: 0 }}>
+            <label className="label" htmlFor="mv-kgbag">
+              kg por saco
+            </label>
+            <input id="mv-kgbag" className="input" inputMode="decimal" value={kgPerBag} onChange={(e) => setFromBags(bags, e.target.value)} />
+          </div>
+        </div>
+      )}
       <div className="field">
         <label className="label" htmlFor="mv-sacks">
-          Quantidade (sacos)
+          Quantidade ({UNIT_LABEL[unit]})
         </label>
-        <input id="mv-sacks" className="input" inputMode="decimal" placeholder="Ex.: 1; 0,5; 2,5" value={sacks} onChange={(e) => setSacks(e.target.value)} />
-        <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          {['0,5', '1', '1,5', '2'].map((v) => (
-            <button type="button" key={v} className={`chip${sacks === v ? ' active' : ''}`} onClick={() => setSacks(v)}>
-              {v}
-            </button>
-          ))}
-        </div>
+        <input id="mv-sacks" className="input" inputMode="decimal" placeholder={unit === 'saco' ? 'Ex.: 1; 0,5; 2,5' : 'Ex.: 20 ou 12,5'} value={sacks} onChange={(e) => setSacks(e.target.value)} />
+        {unit === 'saco' && (
+          <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            {['0,5', '1', '1,5', '2'].map((v) => (
+              <button type="button" key={v} className={`chip${sacks === v ? ' active' : ''}`} onClick={() => setSacks(v)}>
+                {v}
+              </button>
+            ))}
+          </div>
+        )}
         {kgPreview && <p className="muted" style={{ margin: '6px 0 0' }}>= {kgPreview}</p>}
       </div>
       <div className="field">
@@ -519,10 +616,44 @@ function MovementForm({ supply, type, onClose }: { supply: Supply; type: SupplyM
       {type === 'compra' && (
         <>
           <div className="field">
+            <div className="row" style={{ gap: 8, marginBottom: 8 }}>
+              {(['total', 'unitario'] as const).map((m) => (
+                <button type="button" key={m} className={`chip${costMode === m ? ' active' : ''}`} onClick={() => setCostMode(m)}>
+                  {m === 'total' ? 'Valor total' : `Valor por ${unit === 'saco' ? 'saco' : unit}`}
+                </button>
+              ))}
+            </div>
             <label className="label" htmlFor="mv-cost">
-              Valor pago (total)
+              {costMode === 'total' ? 'Valor total pago' : `Valor por ${unit === 'saco' ? 'saco' : unit}`}
             </label>
             <input id="mv-cost" className="input" inputMode="decimal" placeholder="R$ 0,00" value={cost} onChange={(e) => setCost(e.target.value)} />
+            {(() => {
+              try {
+                const amount = parseQty(sacks, unit)
+                const t = totalCents(amount)
+                return t ? (
+                  <p className="muted" style={{ margin: '6px 0 0' }} data-testid="purchase-preview">
+                    Total {formatMoney(t)} · {unitPrice(t, amount, unit)}
+                  </p>
+                ) : null
+              } catch {
+                return null
+              }
+            })()}
+          </div>
+          <div className="row" style={{ alignItems: 'flex-start' }}>
+            <div className="field" style={{ flex: 1, margin: 0 }}>
+              <label className="label" htmlFor="mv-invoice">
+                Nota fiscal
+              </label>
+              <input id="mv-invoice" className="input" maxLength={40} value={invoice} onChange={(e) => setInvoice(e.target.value)} />
+            </div>
+            <div className="field" style={{ flex: 1, margin: 0 }}>
+              <label className="label" htmlFor="mv-lot">
+                Lote
+              </label>
+              <input id="mv-lot" className="input" maxLength={40} value={lot} onChange={(e) => setLot(e.target.value)} />
+            </div>
           </div>
           <div className="field">
             <label className="label" htmlFor="mv-supplier">

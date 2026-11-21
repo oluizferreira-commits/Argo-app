@@ -18,6 +18,8 @@ const QUICK_OPTIONS: Option[] = [
   { label: 'Entrada ou saída de estoque', detail: 'Sal, mistura e outros insumos', icon: 'sack', to: '/insumos' },
   { label: 'Compra de combustível', detail: 'Diesel: posto, litros e valor', icon: 'fuel', to: '/diesel?novo=compra' },
   { label: 'Consumo de combustível', detail: 'Abastecimento de equipamento', icon: 'fuel', to: '/diesel?novo=consumo' },
+  { label: 'Aplicação de herbicida', detail: 'Operação de campo: produtos, trator, diesel e custo por pasto', icon: 'syringe', to: '/manejo/nova?tipo=herbicida' },
+  { label: 'Plantio de capim', detail: 'Sementes, máquinas, diesel e custo por hectare', icon: 'pasture', to: '/manejo/nova?tipo=plantio' },
   { label: 'Registrar vacinação', detail: 'Por pasto e lote, com aplicação parcial', icon: 'syringe', to: '/vacinacao/nova' },
   { label: 'Registrar pesagem', detail: 'Em breve. Hoje a pesagem é feita dentro da venda por arroba', icon: 'scale', to: null },
   { label: 'Registrar manutenção', detail: 'Em breve', icon: 'gear', to: null },
