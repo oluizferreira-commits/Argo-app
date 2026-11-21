@@ -8,8 +8,10 @@ export function Stepper(props: {
   label: string
   /** Texto exibido quando vazio (padrão "0"). */
   placeholder?: string
+  /** Valor de partida dos botões − e + quando o campo está vazio (ex.: contagem parte do saldo do sistema). */
+  base?: number
 }) {
-  const n = props.value === '' ? 0 : Number(props.value)
+  const n = props.value === '' ? (props.base ?? 0) : Number(props.value)
   const set = (v: number) => {
     const clamped = Math.max(0, props.max !== undefined ? Math.min(props.max, v) : v)
     props.onChange(String(clamped))

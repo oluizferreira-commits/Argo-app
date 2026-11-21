@@ -398,7 +398,7 @@ function CountFields(props: {
                 <div className="status-label">{c.label}</div>
                 <div className="status-detail">No sistema: {props.expected(c.id)}</div>
               </div>
-              <Stepper label={c.label} placeholder="—" value={props.qty[c.id] ?? ''} onChange={(v) => setCount({ ...props.qty, [c.id]: v })} />
+              <Stepper label={c.label} placeholder="—" base={props.expected(c.id)} value={props.qty[c.id] ?? ''} onChange={(v) => setCount({ ...props.qty, [c.id]: v })} />
             </div>
           ))}
         </div>
@@ -483,7 +483,7 @@ function SpecifyFields(props: {
             <div className="status-label">{c.label}</div>
             <div className="status-detail">Já especificado: {props.expected(c.id)}</div>
           </div>
-          <Stepper label={c.label} placeholder="—" value={props.qty[c.id] ?? ''} onChange={(v) => props.setQty({ ...props.qty, [c.id]: v })} />
+          <Stepper label={c.label} placeholder="—" base={props.expected(c.id)} value={props.qty[c.id] ?? ''} onChange={(v) => props.setQty({ ...props.qty, [c.id]: v })} />
         </div>
       ))}
       {props.counted && (
