@@ -12,7 +12,27 @@ export interface PlaceResult {
   kind: string
 }
 
-const PLACE_TYPES = new Set(['city', 'town', 'village', 'municipality', 'hamlet', 'suburb', 'administrative'])
+const PLACE_TYPES = new Set(['city', 'town', 'village', 'municipality', 'hamlet', 'suburb', 'administrative', 'city_district', 'locality'])
+
+/** Tipo de localidade em português (para diferenciar resultados com o mesmo nome). */
+export const KIND_LABEL: Record<string, string> = {
+  municipality: 'Município',
+  city: 'Cidade',
+  town: 'Cidade',
+  village: 'Vila',
+  hamlet: 'Povoado',
+  locality: 'Localidade',
+  city_district: 'Distrito',
+  suburb: 'Bairro',
+  administrative: 'Área administrativa',
+}
+
+/** Município e cidade primeiro. */
+const KIND_ORDER = ['municipality', 'city', 'town', 'village', 'city_district', 'hamlet', 'locality', 'suburb', 'administrative']
+
+export function kindLabel(kind: string): string {
+  return KIND_LABEL[kind] ?? 'Localidade'
+}
 
 export class GeocodeError extends Error {
   constructor(message: string) {
@@ -33,6 +53,7 @@ async function nominatim(q: string): Promise<PlaceResult[]> {
     osm_id: number
     category: string
     type: string
+    addresstype?: string
     address?: { state?: string }
   }[]
   return data
@@ -43,7 +64,7 @@ async function nominatim(q: string): Promise<PlaceResult[]> {
       lat: Number(d.lat),
       lng: Number(d.lon),
       osm: `${d.osm_type[0].toUpperCase()}${d.osm_id}`,
-      kind: d.type,
+      kind: d.type === 'administrative' && d.addresstype ? d.addresstype : d.type,
     }))
 }
 
@@ -84,7 +105,8 @@ export async function searchPlaces(q: string): Promise<PlaceResult[]> {
       throw new GeocodeError('Sem conexão com a busca de cidades. Verifique a internet.')
     }
   }
-  // remove repetidos (mesmo objeto do OSM)
+  // remove repetidos (mesmo objeto do OSM) e põe município/cidade primeiro
   const seen = new Set<string>()
-  return results.filter((r) => r.name && !seen.has(r.osm) && seen.add(r.osm))
+  const rank = (k: string) => (KIND_ORDER.indexOf(k) + 1 || 99)
+  return results.filter((r) => r.name && !seen.has(r.osm) && seen.add(r.osm)).sort((a, b) => rank(a.kind) - rank(b.kind))
 }

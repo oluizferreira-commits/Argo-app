@@ -16,10 +16,11 @@ import {
   removeLandmark,
   removeOrigin,
   setEntrance,
+  shareMessage,
   shareUrl,
 } from './access'
 import { CoordError, formatCoordinate, parseCoordinate } from './geo'
-import { GeocodeError, searchPlaces, type PlaceResult } from './geocode'
+import { GeocodeError, kindLabel, searchPlaces, type PlaceResult } from './geocode'
 import { renderGuideImage } from './guideImage'
 import { RouteMap } from './RouteMap'
 import { NavigationButtons, RouteSummary } from './RouteSummary'
@@ -112,6 +113,7 @@ function AccessView() {
   const [editingEntrance, setEditingEntrance] = useState(false)
   const [picking, setPicking] = useState(false)
   const [picked, setPicked] = useState<GeoPoint | null>(null)
+  const [linkWithPoints, setLinkWithPoints] = useState(false)
 
   const load = useCallback(
     async (o: AccessOrigin, force: boolean) => {
@@ -149,18 +151,18 @@ function AccessView() {
 
   async function share() {
     setMsg(null)
-    const url = shareUrl(buildSharePayload(farm, landmarks!))
-    const text = `Como chegar à ${farm.name}`
+    const url = shareUrl(buildSharePayload(farm, landmarks!, { includeLandmarks: linkWithPoints }))
+    const text = shareMessage(farm.name)
     try {
-      if (navigator.share) await navigator.share({ title: text, text, url })
+      if (navigator.share) await navigator.share({ title: `Como chegar à ${farm.name}`, text, url })
       else {
-        await navigator.clipboard.writeText(url)
+        await navigator.clipboard.writeText(`${text}\n${url}`)
         setMsg({ kind: 'ok', text: 'Link copiado.' })
       }
     } catch (e) {
       if ((e as DOMException).name !== 'AbortError') {
         try {
-          await navigator.clipboard.writeText(url)
+          await navigator.clipboard.writeText(`${text}\n${url}`)
           setMsg({ kind: 'ok', text: 'Link copiado.' })
         } catch {
           setMsg({ kind: 'error', text: 'Não foi possível compartilhar o link.' })
@@ -244,12 +246,25 @@ function AccessView() {
             <button className="btn btn-gold btn-block" onClick={share}>
               <Icon name="share" /> Compartilhar página de acesso
             </button>
+            {landmarks.length > 0 && (
+              <label className="row" style={{ gap: 10, fontSize: 15 }}>
+                <input
+                  type="checkbox"
+                  checked={linkWithPoints}
+                  onChange={(e) => setLinkWithPoints(e.target.checked)}
+                  style={{ width: 24, height: 24, accentColor: 'var(--green-700)' }}
+                />
+                <span>
+                  Incluir os {landmarks.length} pontos de referência no link <span className="muted">(o link fica maior)</span>
+                </span>
+              </label>
+            )}
             <button className="btn btn-outline btn-block" onClick={guideImage} disabled={!route}>
               <Icon name="download" /> Guia de chegada (imagem para WhatsApp)
             </button>
             <p className="muted" style={{ fontSize: 14 }}>
-              Quem receber o link vê o mapa, as rotas e os pontos, e pode abrir a navegação. O link contém a localização da porteira:
-              compartilhe só com quem deve chegar à fazenda.
+              Quem receber o link vê o mapa e as rotas e pode abrir a navegação. Os pontos de referência sempre vão no guia em imagem
+              (pelo QR Code). O link contém a localização da porteira: compartilhe só com quem deve chegar à fazenda.
             </p>
             <Notice msg={msg} />
           </div>
@@ -358,7 +373,7 @@ function OriginPicker({ origins, selected, onSelect }: { origins: AccessOrigin[]
                   <div className="status-body">
                     <div className="status-label">{r.name}</div>
                     <div className="status-detail">
-                      {r.region || 'Brasil'} · {r.kind}
+                      {kindLabel(r.kind)} · {r.region || 'Brasil'}
                     </div>
                   </div>
                   <Icon name="plus" size={20} />

@@ -99,7 +99,8 @@ export interface SharePayload {
   landmarks: { name: string; kind: LandmarkKind; note: string; lat: number; lng: number }[]
 }
 
-export function buildSharePayload(farm: Farm, landmarks: readonly Landmark[]): SharePayload {
+export function buildSharePayload(farm: Farm, landmarks: readonly Landmark[], opts: { includeLandmarks?: boolean } = {}): SharePayload {
+  const include = opts.includeLandmarks ?? true
   if (!farm.entrance) throw new CoordError('Informe a coordenada da entrada principal.')
   const r6 = (n: number) => Math.round(n * 1e6) / 1e6
   return {
@@ -107,7 +108,7 @@ export function buildSharePayload(farm: Farm, landmarks: readonly Landmark[]): S
     farm: farm.name,
     entrance: { lat: r6(farm.entrance.lat), lng: r6(farm.entrance.lng) },
     origins: (farm.accessOrigins ?? []).map((o) => ({ name: o.name, region: o.region, lat: r6(o.lat), lng: r6(o.lng) })),
-    landmarks: landmarks
+    landmarks: (include ? landmarks : [])
       .filter((l) => l.deletedAt === null)
       .map((l) => ({ name: l.name, kind: l.kind, note: l.note, lat: r6(l.lat), lng: r6(l.lng) })),
   }
@@ -125,19 +126,79 @@ function fromBase64Url(s: string): string {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))
 }
 
-export function encodeShare(p: SharePayload): string {
-  return toBase64Url(JSON.stringify(p))
+// ---------- formato compacto (v2) ----------
+// Texto curto, depois base64url. A porteira vai EXATA (6 casas decimais). Cidades e pontos vão
+// como diferença em relação à porteira (cidades: 4 casas ≈ 11 m; pontos: 5 casas ≈ 1 m), em base 36.
+//   linha 1: nome da fazenda
+//   linha 2: lat,lng da porteira (× 1e6, base 36)
+//   linha 3: cidades  "nome:UF:dlat:dlng" separadas por "|"
+//   linha 4: pontos   "tipo:dlat:dlng:nome:instrução" separados por "|"  (tipo r/b/a)
+const KIND_CODE: Record<LandmarkKind, string> = { referencia: 'r', bifurcacao: 'b', atencao: 'a' }
+const CODE_KIND: Record<string, LandmarkKind> = { r: 'referencia', b: 'bifurcacao', a: 'atencao' }
+const UF: Record<string, string> = {
+  Acre: 'AC', Alagoas: 'AL', Amapá: 'AP', Amazonas: 'AM', Bahia: 'BA', Ceará: 'CE', 'Distrito Federal': 'DF', 'Espírito Santo': 'ES', Goiás: 'GO',
+  Maranhão: 'MA', 'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS', 'Minas Gerais': 'MG', Pará: 'PA', Paraíba: 'PB', Paraná: 'PR', Pernambuco: 'PE',
+  Piauí: 'PI', 'Rio de Janeiro': 'RJ', 'Rio Grande do Norte': 'RN', 'Rio Grande do Sul': 'RS', Rondônia: 'RO', Roraima: 'RR', 'Santa Catarina': 'SC',
+  'São Paulo': 'SP', Sergipe: 'SE', Tocantins: 'TO',
+}
+const UF_NAME = Object.fromEntries(Object.entries(UF).map(([k, v]) => [v, k]))
+
+/** Remove os caracteres usados como separadores no formato compacto. */
+const clean = (s: string) => s.replace(/[\n|:]/g, ' ').replace(/\s+/g, ' ').trim()
+const b36 = (n: number) => Math.round(n).toString(36)
+const fromB36 = (s: string) => {
+  const n = parseInt(s, 36)
+  if (!/^-?[0-9a-z]+$/.test(s) || !Number.isFinite(n)) throw new Error('número inválido')
+  return n
 }
 
-/** Lê o conteúdo do link público; null se inválido. */
+export function encodeShare(p: SharePayload): string {
+  const eLat = Math.round(p.entrance.lat * 1e6)
+  const eLng = Math.round(p.entrance.lng * 1e6)
+  const lines = [
+    clean(p.farm),
+    `${b36(eLat)},${b36(eLng)}`,
+    p.origins.map((o) => [clean(o.name), UF[o.region] ?? clean(o.region), b36(o.lat * 1e4 - eLat / 100), b36(o.lng * 1e4 - eLng / 100)].join(':')).join('|'),
+    p.landmarks.map((l) => [KIND_CODE[l.kind], b36(l.lat * 1e5 - eLat / 10), b36(l.lng * 1e5 - eLng / 10), clean(l.name), clean(l.note)].join(':')).join('|'),
+  ]
+  while (lines.length > 2 && lines[lines.length - 1] === '') lines.pop()
+  return `2${toBase64Url(lines.join('\n'))}`
+}
+
+function decodeV2(body: string): SharePayload {
+  const [farm = '', ent = '', origins = '', landmarks = ''] = fromBase64Url(body).split('\n')
+  const [la, ln] = ent.split(',')
+  const eLat = fromB36(la)
+  const eLng = fromB36(ln)
+  return {
+    v: 1,
+    farm,
+    entrance: { lat: eLat / 1e6, lng: eLng / 1e6 },
+    origins: origins
+      ? origins.split('|').map((o) => {
+          const [name, uf, dlat, dlng] = o.split(':')
+          return { name, region: UF_NAME[uf] ?? uf, lat: (fromB36(dlat) + eLat / 100) / 1e4, lng: (fromB36(dlng) + eLng / 100) / 1e4 }
+        })
+      : [],
+    landmarks: landmarks
+      ? landmarks.split('|').map((l) => {
+          const [k, dlat, dlng, name, note = ''] = l.split(':')
+          return { kind: CODE_KIND[k] ?? 'referencia', lat: (fromB36(dlat) + eLat / 10) / 1e5, lng: (fromB36(dlng) + eLng / 10) / 1e5, name, note }
+        })
+      : [],
+  }
+}
+
+/** Lê o conteúdo do link público (formato compacto v2 ou o antigo v1); null se inválido. */
 export function decodeShare(hash: string): SharePayload | null {
   try {
-    const p = JSON.parse(fromBase64Url(hash.replace(/^#/, ''))) as SharePayload
+    const h = hash.replace(/^#/, '')
+    const p = (h.startsWith('2') ? decodeV2(h.slice(1)) : (JSON.parse(fromBase64Url(h)) as SharePayload))
     const okPoint = (x: unknown) => {
       const q = x as GeoPoint
       return q && Number.isFinite(q.lat) && Number.isFinite(q.lng) && Math.abs(q.lat) <= 90 && Math.abs(q.lng) <= 180
     }
-    if (p.v !== 1 || typeof p.farm !== 'string' || !okPoint(p.entrance)) return null
+    if (p.v !== 1 || typeof p.farm !== 'string' || !p.farm || !okPoint(p.entrance)) return null
     if (!Array.isArray(p.origins) || !p.origins.every(okPoint)) return null
     if (!Array.isArray(p.landmarks) || !p.landmarks.every(okPoint)) return null
     return {
@@ -156,6 +217,11 @@ export function decodeShare(hash: string): SharePayload | null {
   } catch {
     return null
   }
+}
+
+/** Texto da mensagem de compartilhamento (WhatsApp etc.). */
+export function shareMessage(farmName: string): string {
+  return `📍 Como chegar à ${farmName}\nMapa, rota e navegação até a porteira:`
 }
 
 export function shareUrl(p: SharePayload): string {

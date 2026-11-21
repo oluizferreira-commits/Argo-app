@@ -94,6 +94,8 @@ src/
 - As cidades são só referência para desenhar a rota; os links de navegação (Google Maps, Waze, Apple Mapas) usam apenas o destino,
   e o app de mapas do visitante calcula a partir da localização real dele.
 - Rotas calculadas ficam em `routeCache` (cópia local, fora do backup) para o guia funcionar sem internet.
+- Link público compacto (formato v2): texto curto em base64url; porteira exata (6 casas), cidades e pontos como diferença
+  em relação à porteira, em base 36. Links do formato antigo (v1, JSON) continuam abrindo.
 - **Privacidade:** nenhuma coordenada real fica no código (repositório público). A localização da porteira só sai do aparelho
   dentro do link público gerado pelo usuário (codificado na parte `#` da URL, que não é enviada ao servidor do GitHub Pages).
 

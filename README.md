@@ -40,7 +40,8 @@ Ao abrir, o ARGO pede para escolher a fazenda (com PIN opcional). Para outra pes
 
 Menu **Mais → Como chegar à fazenda**. Na primeira vez, cole a coordenada oficial da porteira e adicione as cidades de origem.
 O mapa de satélite e o cálculo das rotas precisam de internet; depois de calculada, a rota fica salva no aparelho.
-"Compartilhar página de acesso" gera um link que abre o mapa e a navegação para o visitante, sem precisar do app.
+"Compartilhar página de acesso" gera um link curto (porteira e cidades) que abre o mapa e a navegação para o visitante,
+sem precisar do app. Os pontos de referência podem ir no link (opção) e sempre vão no guia em imagem (QR Code).
 
 ## Backup — importante
 

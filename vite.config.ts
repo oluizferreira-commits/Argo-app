@@ -7,6 +7,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 // BASE_PATH é definido no deploy (ex.: "/Argo-app/" no GitHub Pages).
 // Em desenvolvimento local fica "/".
 const base = process.env.BASE_PATH ?? '/'
+// Endereço público completo (para a prévia do link no WhatsApp). Definido no deploy.
+process.env.VITE_SITE_URL ??= base
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 export default defineConfig({
@@ -49,6 +51,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         navigateFallback: 'index.html',
+        // a página pública nunca é trocada pelo app
+        navigateFallbackDenylist: [/acesso\.html/],
         cleanupOutdatedCaches: true,
       },
       devOptions: { enabled: false },

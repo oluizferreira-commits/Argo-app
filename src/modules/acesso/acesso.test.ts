@@ -131,6 +131,54 @@ describe('dados de acesso da fazenda', () => {
     expect(decodeShare(encodeShare({ ...payload, entrance: { lat: 999, lng: 0 } }))).toBeNull()
   })
 
+  it('link compacto: porteira exata, cidades e pontos preservados, tamanho curto', () => {
+    const payload = {
+      v: 1 as const,
+      farm: 'Fazenda São José',
+      entrance: { lat: -10.123456, lng: -48.654321 },
+      origins: [
+        { name: 'Cidade Um', region: 'Pará', lat: -10.4123, lng: -48.9456 },
+        { name: "Cidade D'Dois", region: 'Pará', lat: -10.2, lng: -49.1 },
+        { name: 'Cidade Três', region: 'Tocantins', lat: -10.6, lng: -49.0 },
+      ],
+      landmarks: Array.from({ length: 5 }, (_, i) => ({
+        name: `Ponte do córrego ${i}`,
+        kind: 'bifurcacao' as const,
+        note: 'Na bifurcação, siga à direita',
+        lat: -10.15123 - i / 100,
+        lng: -48.70456 - i / 100,
+      })),
+    }
+    const code = encodeShare(payload)
+    const d = decodeShare(code)!
+    expect(d.entrance).toEqual(payload.entrance) // exata, 6 casas
+    expect(d.farm).toBe('Fazenda São José')
+    expect(d.origins.map((o) => o.name)).toEqual(['Cidade Um', "Cidade D'Dois", 'Cidade Três'])
+    expect(d.origins[2].region).toBe('Tocantins')
+    d.origins.forEach((o, i) => {
+      expect(Math.abs(o.lat - payload.origins[i].lat)).toBeLessThan(1e-4)
+      expect(Math.abs(o.lng - payload.origins[i].lng)).toBeLessThan(1e-4)
+    })
+    d.landmarks.forEach((l, i) => {
+      expect(l).toMatchObject({ name: payload.landmarks[i].name, kind: 'bifurcacao', note: 'Na bifurcação, siga à direita' })
+      expect(Math.abs(l.lat - payload.landmarks[i].lat)).toBeLessThan(1e-5)
+    })
+    // o formato antigo tinha ~1.230 caracteres para estes dados (5 pontos com instrução longa)
+    expect(code.length).toBeLessThan(600)
+    const minimal = encodeShare({ ...payload, origins: payload.origins, landmarks: [] })
+    expect(minimal.length).toBeLessThan(170)
+  })
+
+  it('separadores no nome não quebram o link; link antigo (v1) continua abrindo', () => {
+    const p = { v: 1 as const, farm: 'Faz: A | B', entrance: GATE, origins: [], landmarks: [{ name: 'X:Y', kind: 'atencao' as const, note: 'a|b', lat: -10.51, lng: -48.31 }] }
+    const d = decodeShare(encodeShare(p))!
+    expect(d.farm).toBe('Faz A B')
+    expect(d.landmarks[0]).toMatchObject({ name: 'X Y', note: 'a b', kind: 'atencao' })
+    const v1 = btoa(JSON.stringify({ ...p, farm: 'Antigo' })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    expect(decodeShare(v1)?.farm).toBe('Antigo')
+    expect(decodeShare('2' + 'lixo')).toBeNull()
+  })
+
   it('cópia da rota fica inválida se a porteira ou a cidade mudar', () => {
     const r = { origin: CITY, dest: GATE } as never
     expect(cacheIsValid(r, CITY, GATE)).toBe(true)
