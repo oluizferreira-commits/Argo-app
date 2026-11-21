@@ -1,6 +1,7 @@
 import { createHashRouter, type RouteObject } from 'react-router'
 import { Layout } from '../components/Layout'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
+import { FazendaPage } from '../modules/fazendas/FazendaPage'
 import { HubPage } from '../modules/hub/HubPage'
 import { PastoFormPage } from '../modules/pastos/PastoFormPage'
 import { PastoPage } from '../modules/pastos/PastoPage'
@@ -33,6 +34,7 @@ const implemented: RouteObject[] = [
   { path: '/pastos/novo', element: <PastoFormPage />, handle: t('Novo pasto') },
   { path: '/pastos/:id', element: <PastoPage />, handle: t('Pasto') },
   { path: '/pastos/:id/editar', element: <PastoFormPage />, handle: t('Editar pasto') },
+  { path: '/fazenda', element: <FazendaPage />, handle: t('Fazenda') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <HubPage ids={FINANCE_MODULE_IDS} intro="Vendas, clientes, recebimentos e reserva financeira." />, handle: t('Financeiro') },
   { path: '/mais', element: <HubPage intro="Todos os módulos do ARGO." />, handle: t('Módulos') },

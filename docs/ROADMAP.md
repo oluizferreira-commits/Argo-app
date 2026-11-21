@@ -4,6 +4,7 @@
 |---|---|---|
 | 1 | Fundação: PWA, identidade visual, navegação, banco local, histórico, backup, estrutura de sincronização | **concluída** (v0.1.0) |
 | 2 | Rebanho por contagem + pastos: cadastro de pastos (nome, hectares, observações, serviços), contagem inicial e conferência, nascimento, compra, transferência, mudança de categoria, morte, venda (quantidade), estorno, histórico | **concluída** (v0.2.0) |
+| 2.1 | Várias fazendas: tela de entrada com escolha da fazenda e PIN opcional; categoria Reprodutor | **concluída** (v0.3.0) |
 | 3 | Vendas por arroba · vendas por lote/preço por cabeça (ligadas às saídas do rebanho) | próxima |
 | 4 | Clientes | planejada |
 | 5 | Contas a receber · pagamentos parciais | planejada |

@@ -7,19 +7,21 @@ import { category } from '../../domain/categories'
 import { COUNT_REASONS, MOVEMENT_INFO } from '../../domain/movements'
 import { Icon } from '../../components/Icon'
 import { formatDay, HerdError, reverseMovement } from './herd'
+import { useFarm } from '../fazendas/FarmContext'
 import { usePastureMap } from './useHerd'
 
 export function MovimentacaoPage() {
   const { id = '' } = useParams()
   const location = useLocation()
   const justSaved = (location.state as { saved?: boolean } | null)?.saved === true
+  const { farm } = useFarm()
   const m = useLiveQuery(() => db.movements.get(id), [id])
   const pastures = usePastureMap()
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   if (m === undefined) return null
-  if (!m) return <div className="card empty">Movimentação não encontrada.</div>
+  if (!m || m.farmId !== farm.id) return <div className="card empty">Movimentação não encontrada.</div>
 
   const info = MOVEMENT_INFO[m.type]
   const name = (pid: string) => pastures.get(pid)?.name ?? 'pasto removido'

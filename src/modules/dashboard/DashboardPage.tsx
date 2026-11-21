@@ -9,7 +9,8 @@ import { useOnline } from '../../hooks/useOnline'
 import { useStorageStatus } from '../../hooks/useStorageStatus'
 import { isStandalone } from '../../platform/storage'
 import { totalsByCategory } from '../rebanho/herd'
-import { useBalances, usePastures } from '../rebanho/useHerd'
+import { useFarm } from '../fazendas/FarmContext'
+import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 
 const SHORTCUTS = ['rebanho', 'pastos', 'vendas-arroba', 'contas-receber', 'reserva', 'relatorios']
 
@@ -28,11 +29,9 @@ export function DashboardPage() {
   const standalone = isStandalone()
   const pastures = usePastures()
   const { balances } = useBalances()
-  const pendingTasks = useLiveQuery(
-    async () => (await db.pastureTasks.toArray()).filter((t) => t.deletedAt === null && !t.done).length,
-    [],
-    0,
-  )
+  const { farm } = useFarm()
+  const pendingMap = usePendingTasks()
+  const pendingTasks = pendingMap ? [...pendingMap.values()].reduce((a, b) => a + b, 0) : 0
   const herdTotal = pastures
     ? [...totalsByCategory(balances, pastures.map((p) => p.id)).values()].reduce((a, b) => a + b, 0)
     : 0
@@ -45,6 +44,9 @@ export function DashboardPage() {
         <p>
           {new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
         </p>
+              <Link to="/fazenda" className="farm-chip">
+          <Icon name="pasture" size={16} /> {farm.name}
+        </Link>
       </section>
 
       {!standalone && (

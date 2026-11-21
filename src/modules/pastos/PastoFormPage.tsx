@@ -5,19 +5,22 @@ import { newId } from '../../core/ids'
 import { db } from '../../db/database'
 import type { Pasture } from '../../db/types'
 import { Icon } from '../../components/Icon'
+import { useFarm } from '../fazendas/FarmContext'
 import { createPasture, parseArea, PastureError, updatePasture } from './pastures'
 
 /** Cadastro (/pastos/novo) e edição (/pastos/:id/editar). */
 export function PastoFormPage() {
   const { id } = useParams()
+  const { farm } = useFarm()
   const existing = useLiveQuery(async () => (id ? ((await db.pastures.get(id)) ?? null) : null), [id])
   if (id && existing === undefined) return null
-  if (id && !existing) return <div className="card empty">Pasto não encontrado.</div>
+  if (id && (!existing || existing.farmId !== farm.id)) return <div className="card empty">Pasto não encontrado.</div>
   return <PastoForm key={existing?.id ?? 'novo'} existing={existing ?? null} />
 }
 
 function PastoForm({ existing }: { existing: Pasture | null }) {
   const navigate = useNavigate()
+  const { farm } = useFarm()
   const [formKey] = useState(newId)
   const [name, setName] = useState(existing?.name ?? '')
   const [area, setArea] = useState(existing?.areaHa != null ? String(existing.areaHa).replace('.', ',') : '')
@@ -32,7 +35,7 @@ function PastoForm({ existing }: { existing: Pasture | null }) {
     setSaving(true)
     try {
       const input = { name, areaHa: parseArea(area), notes }
-      const p = existing ? await updatePasture(db, existing.id, input, existing.rev) : await createPasture(db, input, formKey)
+      const p = existing ? await updatePasture(db, existing.id, input, existing.rev) : await createPasture(db, farm.id, input, formKey)
       navigate(`/pastos/${p.id}`, { replace: true })
     } catch (err) {
       setError(err instanceof PastureError ? err.message : `Não foi possível salvar: ${(err as Error).message}`)

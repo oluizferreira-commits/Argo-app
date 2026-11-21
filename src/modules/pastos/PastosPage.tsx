@@ -1,20 +1,13 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router'
-import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
 import { pastureTotal } from '../rebanho/herd'
-import { useBalances, usePastures } from '../rebanho/useHerd'
+import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 import { formatArea } from './pastures'
 
 export function PastosPage() {
   const pastures = usePastures()
   const { balances } = useBalances()
-  const pending = useLiveQuery(async () => {
-    const tasks = await db.pastureTasks.toArray()
-    const map = new Map<string, number>()
-    for (const t of tasks) if (t.deletedAt === null && !t.done) map.set(t.pastureId, (map.get(t.pastureId) ?? 0) + 1)
-    return map
-  })
+  const pending = usePendingTasks()
   if (!pastures || !pending) return null
 
   return (

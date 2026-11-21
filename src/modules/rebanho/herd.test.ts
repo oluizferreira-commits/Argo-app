@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { newId } from '../../core/ids'
 import { createDatabase, type ArgoDatabase } from '../../db/database'
+import { createFarm } from '../fazendas/farms'
 import { archivePasture, createPasture, parseArea } from '../pastos/pastures'
 import {
   balanceOf,
@@ -21,11 +22,12 @@ afterEach(async () => db?.delete())
 
 async function setup() {
   db = createDatabase(`test-${newId()}`)
-  const a = await createPasture(db, { name: 'Pasto Grande', areaHa: 50, notes: '' })
-  const b = await createPasture(db, { name: 'Piquete 2', areaHa: null, notes: '' })
+  const farm = await createFarm(db, { name: 'Fazenda Teste', responsible: '', city: '' }, '')
+  const a = await createPasture(db, farm.id, { name: 'Pasto Grande', areaHa: 50, notes: '' })
+  const b = await createPasture(db, farm.id, { name: 'Piquete 2', areaHa: null, notes: '' })
   const today = todayLocal()
   const balances = async () => computeBalances(await db.movements.toArray())
-  return { a, b, today, balances }
+  return { farm, a, b, today, balances }
 }
 
 describe('rebanho por contagem', () => {
@@ -143,6 +145,17 @@ describe('rebanho por contagem', () => {
     await expect(reverseMovement(db, m.id, '')).rejects.toThrow(/Não é possível estornar/)
   })
 
+  it('movimentação herda a fazenda e não mistura fazendas', async () => {
+    const { farm, a, today } = await setup()
+    const m = await recordMovement(db, { type: 'compra', date: today, notes: '', entries: entriesIn(a.id, { vaca: 1 }) })
+    expect(m.farmId).toBe(farm.id)
+    const other = await createFarm(db, { name: 'Outra', responsible: '', city: '' }, '')
+    const x = await createPasture(db, other.id, { name: 'X', areaHa: null, notes: '' })
+    await expect(
+      recordMovement(db, { type: 'transferencia', date: today, notes: '', entries: entriesTransfer(a.id, x.id, { vaca: 1 }) }),
+    ).rejects.toThrow(/fazendas diferentes/)
+  })
+
   it('cada movimentação fica no histórico (auditoria)', async () => {
     const { a, today } = await setup()
     const m = await recordMovement(db, { type: 'compra', date: today, notes: 'feira', entries: entriesIn(a.id, { vaca: 2 }) })
@@ -154,8 +167,11 @@ describe('rebanho por contagem', () => {
 
 describe('pastos', () => {
   it('nome único (sem diferenciar maiúsculas) e área em formato brasileiro', async () => {
-    await setup()
-    await expect(createPasture(db, { name: 'pasto grande', areaHa: null, notes: '' })).rejects.toThrow(/Já existe/)
+    const { farm } = await setup()
+    await expect(createPasture(db, farm.id, { name: 'pasto grande', areaHa: null, notes: '' })).rejects.toThrow(/Já existe/)
+    // O mesmo nome é permitido em outra fazenda.
+    const other = await createFarm(db, { name: 'Fazenda do Irmão', responsible: '', city: '' }, '')
+    await expect(createPasture(db, other.id, { name: 'Pasto Grande', areaHa: null, notes: '' })).resolves.toBeTruthy()
     expect(parseArea('12,5')).toBe(12.5)
     expect(parseArea('1.234,5')).toBe(1234.5)
     expect(parseArea('12.5')).toBe(12.5)

@@ -59,12 +59,22 @@ src/
 6. **Valores financeiros** serão gravados em **centavos (inteiros)** para evitar erros de arredondamento.
    Pagamentos parciais serão registros próprios ligados à conta a receber. O saldo é calculado e nunca sobrescrito.
 
+## Fazendas e entrada no app
+
+- Todo dado de negócio pertence a uma fazenda (`farmId`). As telas só mostram a fazenda aberta (`useFarm()`).
+- `FarmGate` (src/modules/fazendas) controla a entrada: cadastro da primeira fazenda → "Escolha a fazenda" → PIN.
+- PIN opcional de 4 a 6 números, guardado como SHA-256 com sal (nunca o número). É pedido a cada abertura do app.
+  Proteção local do aparelho; login entre aparelhos só virá com a sincronização em nuvem.
+- Dados lançados antes do cadastro de fazendas são adotados pela primeira fazenda cadastrada.
+- O backup inclui todas as fazendas do aparelho.
+
 ## Esquema do banco
 
 | Versão | Tabelas adicionadas |
 |---|---|
 | v1 | meta, auditLog, outbox, diagnostics |
 | v2 | pastures (pastos), pastureTasks (serviços dos pastos), movements (movimentações do rebanho) |
+| v3 | farms (fazendas) + índice `farmId` em pastures, pastureTasks e movements |
 
 ## Migrações (preservação de dados)
 

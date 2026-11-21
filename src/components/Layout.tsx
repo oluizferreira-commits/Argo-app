@@ -2,7 +2,6 @@ import { NavLink, Outlet, useLocation, useMatches, useNavigate } from 'react-rou
 import { TABS } from '../app/navigation'
 import { useOnline } from '../hooks/useOnline'
 import { Icon } from './Icon'
-import { UpdatePrompt } from './UpdatePrompt'
 
 export function Layout() {
   const { pathname } = useLocation()
@@ -53,7 +52,6 @@ export function Layout() {
         ))}
       </nav>
 
-      <UpdatePrompt />
     </div>
   )
 }

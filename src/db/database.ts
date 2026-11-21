@@ -33,6 +33,15 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     movements: 'id, createdAt, updatedAt, date, type, *pastureIds',
   })
 
+  // v3 — várias fazendas: os dados passam a pertencer a uma fazenda (farmId).
+  // Registros anteriores sem farmId são adotados pela primeira fazenda cadastrada.
+  db.version(3).stores({
+    farms: 'id, createdAt, updatedAt, name',
+    pastures: 'id, createdAt, updatedAt, name, farmId',
+    pastureTasks: 'id, pastureId, createdAt, updatedAt, farmId',
+    movements: 'id, createdAt, updatedAt, date, type, *pastureIds, farmId',
+  })
+
   return db
 }
 

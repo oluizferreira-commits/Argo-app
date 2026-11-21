@@ -60,8 +60,19 @@ export interface DiagnosticRecord extends BaseRecord {
   note: string
 }
 
+/** Fazenda. Cada pasto, movimentação, cliente e venda pertence a uma fazenda. */
+export interface Farm extends BaseRecord {
+  name: string
+  responsible: string
+  city: string
+  /** PIN opcional (hash SHA-256 com sal). null = sem senha. */
+  pinHash: string | null
+  pinSalt: string | null
+}
+
 /** Pasto da fazenda. */
 export interface Pasture extends BaseRecord {
+  farmId: string
   name: string
   /** Área em hectares (null = não informada). */
   areaHa: number | null
@@ -70,6 +81,7 @@ export interface Pasture extends BaseRecord {
 
 /** Serviço/pendência de um pasto (ex.: "cerca a ser feita"). */
 export interface PastureTask extends BaseRecord {
+  farmId: string
   pastureId: string
   description: string
   done: boolean
@@ -90,6 +102,7 @@ export interface MovementEntry {
  * corrige-se com um estorno (que também fica registrado).
  */
 export interface Movement extends BaseRecord {
+  farmId: string
   type: MovementType
   /** Data em que o fato aconteceu (AAAA-MM-DD). */
   date: string
@@ -109,6 +122,7 @@ export interface Movement extends BaseRecord {
  */
 export interface EntityMap {
   diagnostics: DiagnosticRecord
+  farms: Farm
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -116,7 +130,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'pastures', 'pastureTasks', 'movements']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

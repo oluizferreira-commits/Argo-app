@@ -40,24 +40,31 @@ function clean(input: PastureInput): PastureInput {
   return { name, areaHa: input.areaHa, notes: input.notes.trim() }
 }
 
-async function assertUniqueName(db: ArgoDatabase, name: string, exceptId?: string) {
+async function assertUniqueName(db: ArgoDatabase, farmId: string, name: string, exceptId?: string) {
   const key = name.toLocaleLowerCase('pt-BR')
-  const clash = (await db.pastures.toArray()).find(
+  const clash = (await db.pastures.where('farmId').equals(farmId).toArray()).find(
     (p) => p.deletedAt === null && p.id !== exceptId && p.name.toLocaleLowerCase('pt-BR') === key,
   )
   if (clash) throw new PastureError(`Já existe um pasto chamado "${clash.name}".`)
 }
 
-export async function createPasture(db: ArgoDatabase, input: PastureInput, idempotencyKey?: string): Promise<Pasture> {
+export async function createPasture(
+  db: ArgoDatabase,
+  farmId: string,
+  input: PastureInput,
+  idempotencyKey?: string,
+): Promise<Pasture> {
   const repo = new Repository(db, 'pastures')
   const data = clean(input)
-  return db.transaction('rw', [db.pastures, db.auditLog, db.outbox, db.meta], async () => {
+  return db.transaction('rw', [db.pastures, db.farms, db.auditLog, db.outbox, db.meta], async () => {
     if (idempotencyKey) {
       const existing = await db.pastures.get(idempotencyKey)
       if (existing) return existing
     }
-    await assertUniqueName(db, data.name)
-    return repo.create(data, idempotencyKey)
+    const farm = await db.farms.get(farmId)
+    if (!farm || farm.deletedAt !== null) throw new PastureError('Fazenda não encontrada.')
+    await assertUniqueName(db, farmId, data.name)
+    return repo.create({ ...data, farmId }, idempotencyKey)
   })
 }
 
@@ -65,7 +72,9 @@ export async function updatePasture(db: ArgoDatabase, id: string, input: Pasture
   const repo = new Repository(db, 'pastures')
   const data = clean(input)
   return db.transaction('rw', [db.pastures, db.auditLog, db.outbox, db.meta], async () => {
-    await assertUniqueName(db, data.name, id)
+    const current = await db.pastures.get(id)
+    if (!current) throw new PastureError('Pasto não encontrado.')
+    await assertUniqueName(db, current.farmId, data.name, id)
     return repo.update(id, data, expectedRev)
   })
 }
@@ -86,7 +95,12 @@ export async function addTask(db: ArgoDatabase, pastureId: string, description: 
   const text = description.trim()
   if (!text) throw new PastureError('Descreva o serviço.')
   if (text.length > 200) throw new PastureError('Descrição muito longa (máx. 200 caracteres).')
-  return new Repository(db, 'pastureTasks').create({ pastureId, description: text, done: false, doneAt: null }, idempotencyKey)
+  const pasture = await db.pastures.get(pastureId)
+  if (!pasture) throw new PastureError('Pasto não encontrado.')
+  return new Repository(db, 'pastureTasks').create(
+    { farmId: pasture.farmId, pastureId, description: text, done: false, doneAt: null },
+    idempotencyKey,
+  )
 }
 
 export async function setTaskDone(db: ArgoDatabase, id: string, done: boolean): Promise<PastureTask> {

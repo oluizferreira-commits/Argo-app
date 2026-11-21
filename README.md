@@ -30,6 +30,12 @@ Não há computador. O fluxo é:
 
 O andamento da publicação fica visível no GitHub (aba **Actions**).
 
+## Fazendas e compartilhamento
+
+Ao abrir, o ARGO pede para escolher a fazenda (com PIN opcional). Para outra pessoa testar, basta enviar o link
+`https://oluizferreira-commits.github.io/Argo-app/`: ela instala no próprio iPhone e cadastra a fazenda dela.
+**Cada aparelho tem seus próprios dados**: até a sincronização em nuvem, ninguém vê os dados do outro.
+
 ## Backup — importante
 
 Os dados ficam **somente neste iPhone** até a sincronização em nuvem ser ativada (etapa futura).

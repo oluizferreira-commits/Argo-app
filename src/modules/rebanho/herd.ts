@@ -209,10 +209,14 @@ export async function recordMovement(db: ArgoDatabase, input: MovementInput, ide
     const pastureIds = [...new Set(input.entries.map((e) => e.pastureId))]
     const pastures = await db.pastures.bulkGet(pastureIds)
     if (pastures.some((p) => !p || p.deletedAt !== null)) throw new HerdError('Pasto não encontrado ou arquivado.')
+    const farmIds = new Set(pastures.map((p) => p!.farmId))
+    if (farmIds.size !== 1) throw new HerdError('Uma movimentação não pode envolver pastos de fazendas diferentes.')
+    const farmId = pastures[0]!.farmId
     const names = new Map(pastures.map((p) => [p!.id, p!.name]))
     assertNoNegative(computeBalances(await db.movements.toArray()), input.entries, names)
     return repo.create(
       {
+        farmId,
         type: input.type,
         date: input.date,
         entries: input.entries,
@@ -245,6 +249,7 @@ export async function reverseMovement(db: ArgoDatabase, id: string, notes: strin
       )
     }
     const reversal = await repo.create({
+      farmId: original.farmId,
       type: 'estorno',
       date: todayLocal(),
       entries,

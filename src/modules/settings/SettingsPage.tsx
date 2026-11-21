@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 import { backupFileName, BackupError, createBackup, importBackup, markBackupDone, parseBackup } from '../../backup/backup'
 import { formatBytes, formatDateTime } from '../../core/format'
 import { newId } from '../../core/ids'
@@ -10,6 +11,7 @@ import { StatusItem } from '../../components/StatusItem'
 import { useStorageStatus } from '../../hooks/useStorageStatus'
 import { readFileText, saveFile } from '../../platform/files'
 import { isStandalone, requestPersistentStorage } from '../../platform/storage'
+import { useFarm } from '../fazendas/FarmContext'
 
 const diagnostics = new Repository(db, 'diagnostics')
 
@@ -28,11 +30,34 @@ function Notice({ msg }: { msg: Msg }) {
 export function SettingsPage() {
   return (
     <>
+      <FarmSection />
       <StorageSection />
       <BackupSection />
       <SyncSection />
       <StorageTestSection />
       <AboutSection />
+    </>
+  )
+}
+
+function FarmSection() {
+  const { farm, switchFarm } = useFarm()
+  return (
+    <>
+      <h2 className="section-title">Fazenda</h2>
+      <div className="card stack">
+        <Link to="/fazenda" style={{ color: 'inherit', textDecoration: 'none' }}>
+          <StatusItem
+            icon="pasture"
+            label={farm.name}
+            detail={[farm.responsible, farm.city].filter(Boolean).join(' · ') || 'Toque para editar'}
+            badge={<Icon name="chevronRight" size={20} className="muted" />}
+          />
+        </Link>
+        <button className="btn btn-outline btn-block" onClick={() => void switchFarm()}>
+          <Icon name="arrows" /> Trocar de fazenda
+        </button>
+      </div>
     </>
   )
 }
@@ -155,7 +180,7 @@ function BackupSection() {
           onChange={(e) => importFile(e.target.files?.[0])}
         />
         <p className="muted">
-          O backup inclui todos os registros, inclusive excluídos, e o histórico completo de alterações.
+          O backup inclui todas as fazendas deste aparelho, todos os registros (inclusive excluídos) e o histórico completo.
         </p>
         <Notice msg={msg} />
       </div>

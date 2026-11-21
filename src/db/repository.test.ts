@@ -68,7 +68,7 @@ describe('Repository', () => {
 })
 
 describe('migração de esquema', () => {
-  it('banco v1 existente é atualizado para v2 preservando os dados', async () => {
+  it('banco v1 existente é atualizado para a versão atual preservando os dados', async () => {
     const { default: Dexie } = await import('dexie')
     const name = `test-${newId()}`
     const v1 = new Dexie(name)
@@ -77,7 +77,7 @@ describe('migração de esquema', () => {
     v1.close()
     db = createDatabase(name)
     await db.open()
-    expect(db.verno).toBe(2)
+    expect(db.verno).toBe(3)
     expect(await db.diagnostics.get('antigo')).toMatchObject({ note: 'registro da v1' })
     expect(await db.pastures.count()).toBe(0)
   })

@@ -4,6 +4,8 @@ import { RouterProvider } from 'react-router'
 import { router } from './app/routes'
 import { db } from './db/database'
 import { getDeviceId } from './db/device'
+import { UpdatePrompt } from './components/UpdatePrompt'
+import { FarmGate } from './modules/fazendas/FarmGate'
 import { requestPersistentStorage } from './platform/storage'
 import './styles/global.css'
 
@@ -20,7 +22,10 @@ async function boot() {
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <FarmGate>
+        <RouterProvider router={router} />
+      </FarmGate>
+      <UpdatePrompt />
     </StrictMode>,
   )
 }

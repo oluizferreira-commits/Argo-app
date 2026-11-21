@@ -6,12 +6,14 @@ import { db } from '../../db/database'
 import { CATEGORIES } from '../../domain/categories'
 import { Icon } from '../../components/Icon'
 import { balanceOf, pastureTotal } from '../rebanho/herd'
+import { useFarm } from '../fazendas/FarmContext'
 import { useBalances } from '../rebanho/useHerd'
 import { addTask, archivePasture, formatArea, PastureError, removeTask, setTaskDone } from './pastures'
 
 export function PastoPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { farm } = useFarm()
   const pasture = useLiveQuery(() => db.pastures.get(id), [id])
   const tasks = useLiveQuery(
     async () => (await db.pastureTasks.where('pastureId').equals(id).toArray()).filter((t) => t.deletedAt === null),
@@ -23,7 +25,7 @@ export function PastoPage() {
   const [error, setError] = useState<string | null>(null)
 
   if (pasture === undefined || tasks === undefined) return null
-  if (!pasture || pasture.deletedAt !== null) return <div className="card empty">Pasto não encontrado ou arquivado.</div>
+  if (!pasture || pasture.deletedAt !== null || pasture.farmId !== farm.id) return <div className="card empty">Pasto não encontrado ou arquivado.</div>
 
   const total = pastureTotal(balances, id)
   const sorted = [...tasks].sort((a, b) => Number(a.done) - Number(b.done) || b.createdAt.localeCompare(a.createdAt))
