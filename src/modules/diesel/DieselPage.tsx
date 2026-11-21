@@ -88,7 +88,7 @@ export function DieselPage() {
       ) : (
         <div className="stack" style={{ gap: 10 }}>
           {activeEquip.length === 0 ? (
-            <Link to="/diesel/equipamentos" className="notice notice-warn" style={{ textDecoration: 'none' }}>
+            <Link to="/maquinas" className="notice notice-warn" style={{ textDecoration: 'none' }}>
               <Icon name="alert" />
               <div>
                 <strong>Cadastre os equipamentos</strong> (trator, caminhonete, roçadeira…) para lançar os abastecimentos.
@@ -121,7 +121,7 @@ export function DieselPage() {
           </div>
           <Icon name="chevronRight" size={20} className="muted" />
         </Link>
-        <Link to="/diesel/equipamentos">
+        <Link to="/maquinas">
           <div className="status-icon">
             <Icon name="gear" />
           </div>

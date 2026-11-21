@@ -1852,3 +1852,20 @@ input[type='date'].input {
   text-decoration: none;
   border-bottom: 1px solid rgb(39 97 83 / 30%);
 }
+
+/* ---------------------------------------------------------------- máquinas */
+.timer {
+  font-size: 40px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--green-900);
+  letter-spacing: 1px;
+}
+.btn-big {
+  min-height: 64px;
+  font-size: 19px;
+  letter-spacing: 0.5px;
+}
+.running-banner .num {
+  font-weight: 800;
+}

@@ -242,7 +242,7 @@ export function OperationList({ ops, pastureName, showCanceled }: { ops: FieldOp
         <Link key={o.id} to={`/manejo/${o.id}`} className={`vacc-item${o.status === 'cancelada' ? ' reversed' : ''}`} data-testid="operation-item">
           <span className="vacc-head">
             <span className="pasture-name">
-              {typeLabel(o.type)} · {pastureName(o.pastureId)}
+              {typeLabel(o.type, o.customType)} · {o.pastureId ? pastureName(o.pastureId) : o.location}
             </span>
             <strong>{formatMoney(o.totalCents)}</strong>
           </span>

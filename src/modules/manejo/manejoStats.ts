@@ -123,6 +123,7 @@ export function manejoStats(ops: readonly FieldOperation[], supplies: readonly S
   // custo por pasto
   const byPasture = new Map<string, PastureCost>()
   for (const o of list) {
+    if (!o.pastureId) continue // serviço fora de pasto (ex.: transporte): não é custo de pasto
     const p = pastures.find((x) => x.id === o.pastureId)
     const c =
       byPasture.get(o.pastureId) ??

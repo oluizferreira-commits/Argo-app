@@ -4,6 +4,7 @@ import { isStandalone } from '../../platform/storage'
 import { useFarm } from '../fazendas/FarmContext'
 import { AgendaSection, IndicatorsSection, PendingCenter, RecentActivity } from './DashboardSections'
 import { QuickLaunch } from './QuickLaunch'
+import { RunningServicesBanner } from '../maquinas/RunningServicesBanner'
 import { useDashboardData } from './useDashboardData'
 
 function greeting(): string {
@@ -35,6 +36,8 @@ export function DashboardPage() {
           </Link>
         </div>
       </section>
+
+      <RunningServicesBanner />
 
       {d && (
         <>

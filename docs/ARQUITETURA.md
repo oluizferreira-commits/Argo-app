@@ -90,6 +90,15 @@ Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendência
 - Sem duplicidade: não abre outra campanha do mesmo pasto + lote + vacina enquanto a anterior tiver pendentes; envio repetido não duplica (chave do formulário).
 - **Próxima vacinação**: aparece na Agenda do Painel (com responsável) até ser registrada; "Registrar a próxima vacinação" cria a nova campanha já preenchida e marca a anterior (`followUpId`, campo sem índice — o banco continua na v9). Lote com pendentes aparece na Central de Pendências.
 
+## Máquinas e horímetro digital
+
+- **Cadastro único**: o mesmo `equipments` do Diesel ganhou marca, modelo, ano, nº de série (identification), aquisição, observações, situação (`status`: ativo, parado, em manutenção, inativo) e horímetro inicial (`meterInitial`, centésimos de hora). `/diesel/equipamentos` abre a tela Máquinas.
+- **Sessões** (`machineSessions`): INICIAR SERVIÇO cria uma sessão por máquina (mesmo `serviceId`), com horário real de início; pausar/retomar guardam os intervalos; ENCERRAR grava o fim e as horas. Tempo = (fim − início) − pausas, calculado pelos horários gravados: funciona com o app fechado, em segundo plano e sem internet (o relógio da tela só mostra). Uma máquina não fica em dois serviços ao mesmo tempo; máquina inativa ou em manutenção não inicia serviço.
+- **Horímetro acumulado** (`meterAt`): última leitura absoluta (inicial, ajuste autorizado, leitura digitada no diesel ou na operação) + horas das sessões encerradas depois dela. Leitura gravada pelo horímetro digital no diesel é marcada (`meterFromSession`) e não conta de novo.
+- **Operação de campo**: "Concluir a operação" abre o formulário já preenchido (tipo, pasto ou local, máquinas, responsáveis, horas). Cada sessão entra em **uma** operação (`operationId`); cancelar a operação libera a sessão (as horas continuam no horímetro: a máquina trabalhou). Novos tipos: roçada, limpeza, adubação, preparo de solo, transporte, outra (nome livre). Transporte, preparo e outra podem ser fora de pasto (`pastureId` = '' e `location`), sem custo de pasto.
+- **Ajustes autorizados** (motivo + PIN): tempo de uma sessão encerrada (ex.: esqueceu de encerrar) e horímetro absoluto (`meterAdjustments`). Tudo no histórico.
+- Sincronização: os registros ficam no aparelho e entram na fila (`outbox`) para a sincronização futura; não há nuvem configurada.
+
 ## Manejo e formação de pastagens
 
 Objetivo: saber quanto custa formar, recuperar e manter cada pasto, **sem estoques ou lançamentos paralelos**.
@@ -207,6 +216,7 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 | v8 | reserveChecks (conferências do saldo da reserva com o banco) |
 | v9 | responsibles, supplies, supplyMovements (insumos em meios sacos), equipments, fuelMovements (diesel em centilitros), vaccinations, vaccinationApplications |
 | v10 | fieldOperations (operações de campo). Campos novos sem índice em supplies (categoria, unidade L/kg, fabricante, princípio ativo, espécie, cultivar, VC%, mínimo), supplyMovements (qty em mL/g, NF, lote, operationId) e fuelMovements (operationId, pastureId) |
+| v11 | machineSessions (horímetro digital), meterAdjustments (ajustes autorizados do horímetro). Equipamento ganha marca, modelo, ano, aquisição, situação e horímetro inicial (sem índice) |
 
 ## Migrações (preservação de dados)
 

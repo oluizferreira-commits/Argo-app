@@ -261,6 +261,54 @@ export interface Equipment extends BaseRecord {
   responsibleId: string | null
   meter: 'horimetro' | 'km' | 'nenhum'
   active: boolean
+  brand?: string
+  model?: string
+  year?: number | null
+  acquiredAt?: string | null
+  notes?: string
+  /** situação (ausente = ativo se `active`, senão inativo) */
+  status?: EquipmentStatus
+  /** horímetro inicial (centésimos de hora) e quando foi lido */
+  meterInitial?: number | null
+  meterInitialAt?: string | null
+}
+
+export type EquipmentStatus = 'ativo' | 'parado' | 'manutencao' | 'inativo'
+
+/**
+ * Sessão do horímetro digital: uma máquina num serviço, com horários reais de início, pausas e fim.
+ * As máquinas de um mesmo serviço compartilham `serviceId`. Horas = (fim − início) − pausas.
+ */
+export interface MachineSession extends BaseRecord {
+  farmId: string
+  serviceId: string
+  equipmentId: string
+  serviceType: FieldOperationType
+  customType: string
+  pastureId: string | null
+  location: string
+  responsibleId: string | null
+  startedAt: string
+  endedAt: string | null
+  pauses: { start: string; end: string | null }[]
+  status: 'em-andamento' | 'pausada' | 'encerrada' | 'cancelada'
+  /** calculado ao encerrar */
+  workedSeconds: number | null
+  /** ajuste autorizado do tempo (com motivo) */
+  adjustedSeconds?: number | null
+  adjustReason?: string
+  /** operação de campo em que as horas foram lançadas (uma só) */
+  operationId: string | null
+  notes: string
+}
+
+/** Ajuste manual autorizado do horímetro (valor absoluto, centésimos de hora). */
+export interface MeterAdjustment extends BaseRecord {
+  farmId: string
+  equipmentId: string
+  value: number
+  reason: string
+  at: string
 }
 
 /**
@@ -281,6 +329,8 @@ export interface FuelMovement extends BaseRecord {
   /** Consumo gerado por uma operação de campo (só é corrigido pela operação) e o pasto trabalhado. */
   operationId?: string | null
   pastureId?: string | null
+  /** leitura vinda do horímetro digital (não é leitura digitada) */
+  meterFromSession?: boolean
   notes: string
   authorizedNegative: boolean
   status: 'ativo' | 'estornado'
@@ -288,7 +338,7 @@ export interface FuelMovement extends BaseRecord {
   reverseReason: string
 }
 
-export type FieldOperationType = 'herbicida' | 'plantio' | 'replantio' | 'recuperacao' | 'outra'
+export type FieldOperationType = 'herbicida' | 'plantio' | 'replantio' | 'recuperacao' | 'rocada' | 'limpeza' | 'adubacao' | 'transporte' | 'preparo' | 'outra'
 
 /** Produto usado na operação (custo guardado no momento: custo médio do estoque). */
 export interface FieldOperationProduct {
@@ -320,6 +370,9 @@ export interface FieldOperationEquipment {
   dieselCl: number
   dieselCents: number
   fuelMovementId: string | null
+  /** horas vindas do horímetro digital (sessão) */
+  sessionId?: string | null
+  sessionSeconds?: number | null
 }
 
 export interface FieldOperationCost {
@@ -332,8 +385,12 @@ export interface FieldOperation extends BaseRecord {
   farmId: string
   number: number
   type: FieldOperationType
+  /** "outra": nome do serviço digitado pelo produtor */
+  customType?: string
   date: string
+  /** '' = serviço fora de pasto (ex.: transporte); então vale `location` */
   pastureId: string
+  location?: string
   /** área do pasto (snapshot, centésimos de ha) e área efetivamente trabalhada */
   pastureAreaCentiHa: number | null
   workedAreaCentiHa: number
@@ -523,6 +580,8 @@ export interface EntityMap {
   vaccinations: Vaccination
   vaccinationApplications: VaccinationApplication
   fieldOperations: FieldOperation
+  machineSessions: MachineSession
+  meterAdjustments: MeterAdjustment
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -530,7 +589,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

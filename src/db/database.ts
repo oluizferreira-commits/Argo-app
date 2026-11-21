@@ -87,6 +87,12 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     fieldOperations: 'id, farmId, pastureId, date, createdAt, updatedAt',
   })
 
+  // v11 — horímetro digital (sessões de máquina) e ajustes autorizados do horímetro.
+  db.version(11).stores({
+    machineSessions: 'id, farmId, equipmentId, serviceId, status, startedAt, createdAt, updatedAt',
+    meterAdjustments: 'id, farmId, equipmentId, at, createdAt, updatedAt',
+  })
+
   return db
 }
 

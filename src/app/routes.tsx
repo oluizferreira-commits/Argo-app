@@ -23,7 +23,6 @@ import { MovimentacaoPage } from '../modules/rebanho/MovimentacaoPage'
 import { MovimentarPage, MovimentarTipoPage } from '../modules/rebanho/MovimentarPage'
 import { RebanhoPage } from '../modules/rebanho/RebanhoPage'
 import { DieselPage } from '../modules/diesel/DieselPage'
-import { EquipamentosPage } from '../modules/diesel/EquipamentosPage'
 import { DadosResponsavelPage } from '../modules/financeiro/DadosResponsavelPage'
 import { FinanceiroPage } from '../modules/financeiro/FinanceiroPage'
 import { NovaVacinacaoPage } from '../modules/vacinacao/NovaVacinacaoPage'
@@ -32,6 +31,9 @@ import { VacinacaoPage } from '../modules/vacinacao/VacinacaoPage'
 import { ManejoPage } from '../modules/manejo/ManejoPage'
 import { OperacaoFormPage } from '../modules/manejo/OperacaoFormPage'
 import { OperacaoPage } from '../modules/manejo/OperacaoPage'
+import { MaquinaPage } from '../modules/maquinas/MaquinaPage'
+import { MaquinasPage } from '../modules/maquinas/MaquinasPage'
+import { IniciarServicoPage, ServicoPage } from '../modules/maquinas/ServicoPages'
 import { InsumoPage } from '../modules/insumos/InsumoPage'
 import { InsumosPage } from '../modules/insumos/InsumosPage'
 import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
@@ -74,7 +76,11 @@ const implemented: RouteObject[] = [
   { path: '/insumos', element: <InsumosPage />, handle: t('Insumos') },
   { path: '/insumos/:id', element: <InsumoPage />, handle: t('Insumo') },
   { path: '/diesel', element: <DieselPage />, handle: t('Diesel') },
-  { path: '/diesel/equipamentos', element: <EquipamentosPage />, handle: t('Equipamentos') },
+  { path: '/diesel/equipamentos', element: <MaquinasPage />, handle: t('Máquinas') },
+  { path: '/maquinas', element: <MaquinasPage />, handle: t('Máquinas') },
+  { path: '/maquinas/servico/novo', element: <IniciarServicoPage />, handle: t('Iniciar serviço') },
+  { path: '/maquinas/servico/:id', element: <ServicoPage />, handle: t('Serviço') },
+  { path: '/maquinas/:id', element: <MaquinaPage />, handle: t('Máquina') },
   { path: '/vacinacao', element: <VacinacaoPage />, handle: t('Vacinação') },
   { path: '/vacinacao/nova', element: <NovaVacinacaoPage />, handle: t('Nova vacinação') },
   { path: '/vacinacao/:id', element: <VacinacaoDetailPage />, handle: t('Vacinação') },

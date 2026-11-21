@@ -7,6 +7,7 @@ import { formatLiters } from '../diesel/fuel'
 import { useFarm } from '../fazendas/FarmContext'
 import { verifyPin } from '../fazendas/farms'
 import { formatQty } from '../insumos/supplies'
+import { formatHoursMinutes } from '../maquinas/machines'
 import { formatDay } from '../rebanho/herd'
 import { cancelOperation, costPerHa, formatHa, formatHours, typeLabel } from './operations'
 import { useManejo } from './useManejo'
@@ -46,7 +47,7 @@ export function OperacaoPage() {
       <section className="hero">
         <div className="gold-rule" />
         <p style={{ marginTop: 0 }}>
-          Operação nº {num(op.number)} · {typeLabel(op.type)}
+          Operação nº {num(op.number)} · {typeLabel(op.type, op.customType)}
         </p>
         <div className="big-number" style={{ marginTop: 6, fontSize: 34 }} data-testid="op-detail-total">
           {formatMoney(op.totalCents)}
@@ -84,9 +85,15 @@ export function OperacaoPage() {
         <dl className="kv">
           <dt>Data</dt>
           <dd>{formatDay(op.date)}</dd>
-          <dt>Pasto</dt>
+          <dt>{op.pastureId ? 'Pasto' : 'Local'}</dt>
           <dd>
-            <Link className="inline-link" to={`/pastos/${op.pastureId}`}>{pasture?.name ?? 'pasto removido'}</Link>
+            {op.pastureId ? (
+              <Link className="inline-link" to={`/pastos/${op.pastureId}`}>
+                {pasture?.name ?? 'pasto removido'}
+              </Link>
+            ) : (
+              op.location
+            )}
           </dd>
           <dt>Área trabalhada</dt>
           <dd>
@@ -168,7 +175,7 @@ export function OperacaoPage() {
                     {[
                       person(e.responsibleId) !== '—' ? person(e.responsibleId) : '',
                       e.meterStart !== null || e.meterEnd !== null ? `medidor ${e.meterStart !== null ? (e.meterStart / 10).toLocaleString('pt-BR') : '?'} → ${e.meterEnd !== null ? (e.meterEnd / 10).toLocaleString('pt-BR') : '?'}` : '',
-                      e.hoursTenths !== null ? formatHours(e.hoursTenths) : '',
+                      e.sessionSeconds != null ? `${formatHoursMinutes(e.sessionSeconds)} (horímetro digital)` : e.hoursTenths !== null ? formatHours(e.hoursTenths) : '',
                       e.dieselCl ? `${formatLiters(e.dieselCl)} diesel · ${formatMoney(e.dieselCents)}` : 'sem diesel',
                     ]
                       .filter(Boolean)

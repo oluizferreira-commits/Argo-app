@@ -351,7 +351,7 @@ export async function recordSupplyMovement(
     if (!input.costCents || input.costCents <= 0) throw new SupplyError('Informe o valor pago.')
     if (!supplier) throw new SupplyError('Informe o fornecedor.')
   } else if (input.type === 'consumo') {
-    if (!input.pastureId) throw new SupplyError(input.operationId ? 'Escolha o pasto.' : 'Escolha o pasto (cocho).')
+    if (!input.pastureId && !input.operationId) throw new SupplyError('Escolha o pasto (cocho).')
     sign = -1
   } else {
     if (input.type !== 'ajuste') throw new SupplyError('Tipo de lançamento inválido.')
@@ -373,8 +373,10 @@ export async function recordSupplyMovement(
     if (input.type === 'consumo') {
       const mix = input.operationId ? undefined : mixtureUsing(await db.supplies.where('farmId').equals(farmId).toArray(), supply.id)
       if (mix) throw new SupplyError(`${supply.name} vai para o cocho misturado: lance o consumo em "${mix.name}".`)
-      const p = await db.pastures.get(input.pastureId!)
-      if (!p || p.farmId !== farmId || p.deletedAt !== null) throw new SupplyError('Pasto não encontrado.')
+      if (input.pastureId) {
+        const p = await db.pastures.get(input.pastureId)
+        if (!p || p.farmId !== farmId || p.deletedAt !== null) throw new SupplyError('Pasto não encontrado.')
+      }
     }
     let authorized = false
     const movs = await db.supplyMovements.where('supplyId').equals(supply.id).toArray()
@@ -405,7 +407,7 @@ export async function recordSupplyMovement(
         operationId: input.operationId ?? null,
         costCents: input.type === 'compra' ? input.costCents! : outCost,
         supplier: input.type === 'compra' ? supplier : '',
-        pastureId: input.type === 'consumo' ? input.pastureId! : null,
+        pastureId: input.type === 'consumo' ? (input.pastureId ?? null) : null,
         notes: authorized ? `${notes ? `${notes} · ` : ''}Estoque negativo autorizado: ${authorize!.reason.trim()}` : notes,
         authorizedNegative: authorized,
         status: 'ativo',

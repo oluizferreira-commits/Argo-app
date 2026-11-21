@@ -12,6 +12,7 @@ interface Option {
 
 /** Atalhos para os formulários que já existem nos módulos (nada de formulário paralelo). */
 const QUICK_OPTIONS: Option[] = [
+  { label: 'Iniciar serviço de máquina', detail: 'Horímetro digital: início, pausa e fim pelo relógio', icon: 'clock', to: '/maquinas/servico/novo' },
   { label: 'Registrar animal', detail: 'Nascimento, compra, morte, transferência ou contagem', icon: 'herd', to: '/rebanho/movimentar' },
   { label: 'Registrar despesa', detail: 'Em breve. Compras de diesel e de insumos já contam como despesa', icon: 'wallet', to: null },
   { label: 'Registrar receita', detail: 'Venda de gado (por arroba ou por cabeça)', icon: 'cash', to: '/vendas/nova' },

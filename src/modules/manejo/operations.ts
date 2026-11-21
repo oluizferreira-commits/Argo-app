@@ -10,6 +10,7 @@ import { Repository } from '../../db/repository'
 import type { FieldOperation, FieldOperationEquipment, FieldOperationProduct, FieldOperationType, FuelMovement } from '../../db/types'
 import { formatLiters, fuelLedger, recordFuelMovement, reverseFuelMovement } from '../diesel/fuel'
 import { categoryOf, formatQty, recordSupplyMovement, reverseSupplyMovement, unitOf } from '../insumos/supplies'
+import { loadMeterContext, meterAt, sessionSeconds } from '../maquinas/machines'
 import { todayLocal } from '../rebanho/herd'
 
 export class OperationError extends Error {
@@ -24,22 +25,32 @@ export const OPERATION_TYPES: { id: FieldOperationType; label: string; short: st
   { id: 'plantio', label: 'Plantio de capim', short: 'Plantio' },
   { id: 'replantio', label: 'Replantio', short: 'Replantio' },
   { id: 'recuperacao', label: 'Recuperação de pastagem', short: 'Recuperação' },
-  { id: 'outra', label: 'Outra operação de manejo', short: 'Outra' },
+  { id: 'rocada', label: 'Roçada', short: 'Roçada' },
+  { id: 'limpeza', label: 'Limpeza de pasto', short: 'Limpeza' },
+  { id: 'adubacao', label: 'Adubação', short: 'Adubação' },
+  { id: 'preparo', label: 'Preparo de solo', short: 'Preparo' },
+  { id: 'transporte', label: 'Transporte', short: 'Transporte' },
+  { id: 'outra', label: 'Outra operação', short: 'Outra' },
 ]
-export const typeLabel = (t: FieldOperationType) => OPERATION_TYPES.find((x) => x.id === t)?.label ?? t
+/** Serviços que podem ser feitos fora de um pasto (informar o local). */
+export const PASTURE_OPTIONAL: FieldOperationType[] = ['transporte', 'preparo', 'outra']
+export const typeLabel = (t: FieldOperationType, custom?: string) => (t === 'outra' && custom ? custom : (OPERATION_TYPES.find((x) => x.id === t)?.label ?? t))
 /** Formação = plantio e replantio; manutenção = herbicida, recuperação e outras. */
 export const isFormation = (t: FieldOperationType) => t === 'plantio' || t === 'replantio'
 const needsSeeds = (t: FieldOperationType) => t === 'plantio' || t === 'replantio'
 
 export interface OperationInput {
   type: FieldOperationType
+  customType?: string
   date: string
+  /** '' = fora de pasto (só nos serviços que permitem); então `location` é obrigatório */
   pastureId: string
+  location?: string
   /** área trabalhada em centésimos de hectare */
   workedAreaCentiHa: number
   responsibleId: string | null
   products: { supplyId: string; qty: number; lot?: string }[]
-  equipments: { equipmentId: string; responsibleId: string | null; meterStart: number | null; meterEnd: number | null; hoursTenths: number | null; dieselCl: number }[]
+  equipments: { equipmentId: string; responsibleId: string | null; meterStart: number | null; meterEnd: number | null; hoursTenths: number | null; dieselCl: number; sessionId?: string | null }[]
   otherCosts: { description: string; costCents: number }[]
   notes: string
 }
@@ -70,6 +81,8 @@ function dieselCost(movs: readonly FuelMovement[], date: string, cl: number): nu
 
 const TABLES = (db: ArgoDatabase) => [
   db.fieldOperations,
+  db.machineSessions,
+  db.meterAdjustments,
   db.supplies,
   db.supplyMovements,
   db.fuelMovements,
@@ -84,8 +97,11 @@ const TABLES = (db: ArgoDatabase) => [
 function validate(input: OperationInput) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new OperationError('Informe a data.')
   if (input.date > todayLocal()) throw new OperationError('A data não pode ser no futuro.')
-  if (!input.pastureId) throw new OperationError('Escolha o pasto.')
-  if (!Number.isInteger(input.workedAreaCentiHa) || input.workedAreaCentiHa <= 0) throw new OperationError('Informe a área trabalhada (ha).')
+  if (!input.pastureId && !PASTURE_OPTIONAL.includes(input.type)) throw new OperationError('Escolha o pasto.')
+  if (!input.pastureId && !(input.location ?? '').trim()) throw new OperationError('Escolha o pasto ou informe o local do serviço.')
+  if (input.type === 'outra' && !(input.customType ?? '').trim()) throw new OperationError('Informe qual é o serviço.')
+  if (!Number.isInteger(input.workedAreaCentiHa) || input.workedAreaCentiHa < 0 || (input.pastureId && input.workedAreaCentiHa === 0))
+    throw new OperationError('Informe a área trabalhada (ha).')
   if (input.products.some((p) => !p.supplyId || !Number.isInteger(p.qty) || p.qty <= 0)) throw new OperationError('Informe a quantidade de cada produto.')
   const pk = input.products.map((p) => `${p.supplyId}|${(p.lot ?? '').trim().toLowerCase()}`)
   if (new Set(pk).size !== pk.length) throw new OperationError('O mesmo produto (e lote) aparece duas vezes. Junte as quantidades numa linha.')
@@ -109,6 +125,8 @@ function validate(input: OperationInput) {
 async function cancelInside(db: ArgoDatabase, op: FieldOperation, reason: string) {
   for (const p of op.products) await reverseSupplyMovement(db, p.movementId, reason, true)
   for (const e of op.equipments) if (e.fuelMovementId) await reverseFuelMovement(db, e.fuelMovementId, reason, true)
+  // as horas do horímetro digital continuam valendo (a máquina trabalhou); só deixam de estar nesta operação
+  for (const e of op.equipments) if (e.sessionId) await new Repository(db, 'machineSessions').update(e.sessionId, { operationId: null })
   await new Repository(db, 'fieldOperations').update(op.id, { status: 'cancelada', canceledAt: nowIso(), cancelReason: reason })
 }
 
@@ -128,9 +146,10 @@ export async function createOperation(
   return db.transaction('rw', TABLES(db), async () => {
     const existing = await db.fieldOperations.get(opId)
     if (existing) return existing
-    const pasture = await db.pastures.get(input.pastureId)
-    if (!pasture || pasture.farmId !== farmId || pasture.deletedAt !== null) throw new OperationError('Pasto não encontrado.')
-    if (pasture.areaHa !== null && input.workedAreaCentiHa > Math.round(pasture.areaHa * 100))
+    const pasture = input.pastureId ? await db.pastures.get(input.pastureId) : undefined
+    if (input.pastureId && (!pasture || pasture.farmId !== farmId || pasture.deletedAt !== null)) throw new OperationError('Pasto não encontrado.')
+    const place = pasture?.name ?? (input.location ?? '').trim()
+    if (pasture && pasture.areaHa !== null && input.workedAreaCentiHa > Math.round(pasture.areaHa * 100))
       throw new OperationError(`A área trabalhada não pode passar da área do pasto (${formatHa(Math.round(pasture.areaHa * 100))}).`)
     if (input.responsibleId) {
       const r = await db.responsibles.get(input.responsibleId)
@@ -145,7 +164,7 @@ export async function createOperation(
       if (!opts.correctionReason?.trim()) throw new OperationError('Informe o motivo da correção.')
     }
     const number = all.reduce((m, o) => Math.max(m, o.number), 0) + 1
-    const tag = `Operação nº ${String(number).padStart(4, '0')} · ${typeLabel(input.type)}`
+    const tag = `Operação nº ${String(number).padStart(4, '0')} · ${typeLabel(input.type, input.customType)}`
     if (replaced) await cancelInside(db, replaced, `Corrigida pela operação nº ${String(number).padStart(4, '0')}: ${opts.correctionReason!.trim()}`)
 
     // produtos → consumo no estoque de Insumos (custo médio do momento)
@@ -158,7 +177,7 @@ export async function createOperation(
       const m = await recordSupplyMovement(
         db,
         farmId,
-        { supplyId: s.id, type: 'consumo', date: input.date, halves: unit === 'saco' ? line.qty : undefined, qty: unit === 'saco' ? undefined : line.qty, pastureId: pasture.id, operationId: opId, lot: line.lot, notes: tag },
+        { supplyId: s.id, type: 'consumo', date: input.date, halves: unit === 'saco' ? line.qty : undefined, qty: unit === 'saco' ? undefined : line.qty, pastureId: pasture?.id ?? null, operationId: opId, lot: line.lot, notes: tag },
         `${opId}-p${i + 1}`,
         opts.authorize,
       )
@@ -178,9 +197,27 @@ export async function createOperation(
 
     // equipamentos → diesel: UM consumo no Diesel por equipamento (sem segunda baixa)
     const equipments: FieldOperationEquipment[] = []
-    for (const [i, line] of input.equipments.entries()) {
+    const meterCtx = await loadMeterContext(db, farmId)
+    for (let [i, line] of input.equipments.entries()) {
       const eq = await db.equipments.get(line.equipmentId)
       if (!eq || eq.farmId !== farmId || eq.deletedAt !== null) throw new OperationError('Equipamento não encontrado.')
+      // horímetro digital: horas e leituras vêm da sessão (não se digita de novo; uma sessão = uma operação)
+      let seconds: number | null = null
+      if (line.sessionId) {
+        const ses = await db.machineSessions.get(line.sessionId)
+        if (!ses || ses.equipmentId !== eq.id || ses.farmId !== farmId) throw new OperationError('Sessão do horímetro não encontrada.')
+        if (ses.status !== 'encerrada') throw new OperationError(`Encerre o serviço de ${eq.name} antes de concluir a operação.`)
+        if (ses.operationId && ses.operationId !== replaced?.id) throw new OperationError(`As horas de ${eq.name} já estão em outra operação.`)
+        seconds = sessionSeconds(ses)
+        const before = meterAt(eq, meterCtx, ses.startedAt)
+        line = {
+          ...line,
+          hoursTenths: Math.round(seconds / 360),
+          meterStart: before === null ? null : Math.round(before / 10),
+          meterEnd: before === null ? null : Math.round((before + seconds / 36) / 10),
+        }
+        await new Repository(db, 'machineSessions').update(ses.id, { operationId: opId })
+      }
       let fuelMovementId: string | null = null
       let dieselCents = 0
       if (line.dieselCl > 0) {
@@ -196,18 +233,31 @@ export async function createOperation(
             responsibleId: line.responsibleId ?? eq.responsibleId,
             meterReading: eq.meter !== 'nenhum' ? line.meterEnd : null,
             operationId: opId,
-            pastureId: pasture.id,
-            notes: `${tag} · ${pasture.name}`,
-            // correção: a leitura pode ser anterior a outras já lançadas depois no mesmo equipamento
-            skipMeterCheck: Boolean(replaced),
+            pastureId: pasture?.id ?? null,
+            notes: `${tag} · ${place}`,
+            // correção ou horímetro digital: a leitura pode ser anterior a outras já lançadas
+            skipMeterCheck: Boolean(replaced) || seconds !== null,
+            meterFromSession: seconds !== null,
           },
           `${opId}-e${i + 1}`,
           opts.authorize,
         )
         fuelMovementId = f.id
       }
-      const hoursTenths = workedHours(line)
-      equipments.push({ equipmentId: eq.id, name: eq.name, responsibleId: line.responsibleId ?? eq.responsibleId, meterStart: line.meterStart, meterEnd: line.meterEnd, hoursTenths, dieselCl: line.dieselCl, dieselCents, fuelMovementId })
+      const hoursTenths = seconds !== null ? Math.round(seconds / 360) : workedHours(line)
+      equipments.push({
+        equipmentId: eq.id,
+        name: eq.name,
+        responsibleId: line.responsibleId ?? eq.responsibleId,
+        meterStart: line.meterStart,
+        meterEnd: line.meterEnd,
+        hoursTenths,
+        dieselCl: line.dieselCl,
+        dieselCents,
+        fuelMovementId,
+        sessionId: line.sessionId ?? null,
+        sessionSeconds: seconds,
+      })
     }
 
     const seedsCents = products.filter((p) => p.category === 'semente').reduce((a, p) => a + p.costCents, 0)
@@ -220,9 +270,11 @@ export async function createOperation(
         farmId,
         number,
         type: input.type,
+        customType: (input.customType ?? '').trim().slice(0, 60),
         date: input.date,
-        pastureId: pasture.id,
-        pastureAreaCentiHa: pasture.areaHa === null ? null : Math.round(pasture.areaHa * 100),
+        pastureId: pasture?.id ?? '',
+        location: pasture ? '' : (input.location ?? '').trim().slice(0, 80),
+        pastureAreaCentiHa: pasture?.areaHa == null ? null : Math.round(pasture.areaHa * 100),
         workedAreaCentiHa: input.workedAreaCentiHa,
         responsibleId: input.responsibleId || null,
         products,

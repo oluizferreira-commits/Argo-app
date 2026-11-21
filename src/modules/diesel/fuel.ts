@@ -2,7 +2,7 @@ import { nowIso } from '../../core/ids'
 import { parseDecimal } from '../../core/money'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { Equipment, FuelMovement } from '../../db/types'
+import type { Equipment, EquipmentStatus, FuelMovement } from '../../db/types'
 import { todayLocal } from '../rebanho/herd'
 
 export class FuelError extends Error {
@@ -115,14 +115,37 @@ export interface EquipmentInput {
   identification: string
   responsibleId: string | null
   meter: Equipment['meter']
+  /** cadastro completo de máquinas (opcional: o Diesel continua funcionando sem) */
+  brand?: string
+  model?: string
+  year?: number | null
+  acquiredAt?: string | null
+  notes?: string
+  status?: EquipmentStatus
+  /** horímetro inicial em centésimos de hora (só no cadastro; depois, ajuste autorizado) */
+  meterInitial?: number | null
 }
 
-function cleanEquipment(i: EquipmentInput): EquipmentInput {
+function cleanEquipment(i: EquipmentInput): Partial<Equipment> {
   const name = i.name.trim().replace(/\s+/g, ' ')
   if (!name) throw new FuelError('Informe o nome do equipamento.')
   if (name.length > 60) throw new FuelError('Nome muito longo (máx. 60 caracteres).')
   if (!['horimetro', 'km', 'nenhum'].includes(i.meter)) throw new FuelError('Escolha o medidor.')
-  return { name, type: i.type.trim().slice(0, 40), identification: i.identification.trim().slice(0, 40), responsibleId: i.responsibleId || null, meter: i.meter }
+  const year = i.year ?? null
+  if (year !== null && (!Number.isInteger(year) || year < 1900 || year > new Date().getFullYear() + 1)) throw new FuelError('Ano de fabricação inválido.')
+  if (i.acquiredAt && !/^\d{4}-\d{2}-\d{2}$/.test(i.acquiredAt)) throw new FuelError('Data de aquisição inválida.')
+  if (i.meterInitial != null && (!Number.isInteger(i.meterInitial) || i.meterInitial < 0)) throw new FuelError('Horímetro inicial inválido.')
+  const out: Partial<Equipment> = { name, type: i.type.trim().slice(0, 40), identification: i.identification.trim().slice(0, 40), responsibleId: i.responsibleId || null, meter: i.meter }
+  if (i.brand !== undefined) out.brand = i.brand.trim().slice(0, 40)
+  if (i.model !== undefined) out.model = i.model.trim().slice(0, 40)
+  if (i.year !== undefined) out.year = year
+  if (i.acquiredAt !== undefined) out.acquiredAt = i.acquiredAt || null
+  if (i.notes !== undefined) out.notes = i.notes.trim().slice(0, 1000)
+  if (i.status !== undefined) {
+    out.status = i.status
+    out.active = i.status !== 'inativo'
+  }
+  return out
 }
 
 async function assertUniqueEquipment(db: ArgoDatabase, farmId: string, name: string, exceptId?: string) {
@@ -140,22 +163,32 @@ export async function createEquipment(db: ArgoDatabase, farmId: string, input: E
       const existing = await db.equipments.get(key)
       if (existing) return existing
     }
-    await assertUniqueEquipment(db, farmId, data.name)
-    return new Repository(db, 'equipments').create({ ...data, farmId, active: true }, key)
+    await assertUniqueEquipment(db, farmId, data.name!)
+    const meterInitial = input.meterInitial ?? null
+    return new Repository(db, 'equipments').create(
+      { ...(data as EquipmentInput), farmId, active: data.active ?? true, meterInitial, meterInitialAt: meterInitial !== null ? nowIso() : null },
+      key,
+    )
   })
 }
 
 export async function updateEquipment(db: ArgoDatabase, e: Equipment, input: EquipmentInput): Promise<Equipment> {
   const data = cleanEquipment(input)
-  return db.transaction('rw', [db.equipments, db.auditLog, db.outbox, db.meta], async () => {
-    await assertUniqueEquipment(db, e.farmId, data.name, e.id)
+  return db.transaction('rw', [db.equipments, db.machineSessions, db.fuelMovements, db.auditLog, db.outbox, db.meta], async () => {
+    await assertUniqueEquipment(db, e.farmId, data.name!, e.id)
+    if (input.meterInitial !== undefined && (input.meterInitial ?? null) !== (e.meterInitial ?? null)) {
+      const used = (await db.machineSessions.where('equipmentId').equals(e.id).count()) + (await db.fuelMovements.where('equipmentId').equals(e.id).count())
+      if (used > 0 && e.meterInitial != null) throw new FuelError('O horímetro inicial só muda antes do primeiro uso. Use "Ajustar horímetro" (com motivo).')
+      data.meterInitial = input.meterInitial ?? null
+      data.meterInitialAt = input.meterInitial != null ? nowIso() : null
+    }
     return new Repository(db, 'equipments').update(e.id, data)
   })
 }
 
 /** Equipamentos não são apagados (o histórico de abastecimentos aponta para eles): são desativados. */
 export async function setEquipmentActive(db: ArgoDatabase, id: string, active: boolean): Promise<Equipment> {
-  return new Repository(db, 'equipments').update(id, { active })
+  return new Repository(db, 'equipments').update(id, { active, status: active ? 'ativo' : 'inativo' })
 }
 
 /** Última leitura do medidor de um equipamento (abastecimentos ativos). */
@@ -185,6 +218,8 @@ export interface FuelMovementInput {
   pastureId?: string | null
   /** correção de operação: as leituras já foram conferidas no lançamento original */
   skipMeterCheck?: boolean
+  /** leitura calculada pelo horímetro digital (não conta como leitura digitada) */
+  meterFromSession?: boolean
 }
 
 export async function recordFuelMovement(
@@ -255,6 +290,7 @@ export async function recordFuelMovement(
         meterReading,
         operationId: input.operationId ?? null,
         pastureId: input.type === 'consumo' ? (input.pastureId ?? null) : null,
+        meterFromSession: Boolean(input.meterFromSession),
         notes: authorized ? `${notes ? `${notes} · ` : ''}Estoque negativo autorizado: ${authorize!.reason.trim()}` : notes,
         authorizedNegative: authorized,
         status: 'ativo',

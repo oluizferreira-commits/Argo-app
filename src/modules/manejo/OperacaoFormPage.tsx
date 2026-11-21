@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { formatMoney, parseDecimal, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
-import type { FieldOperation, FieldOperationType } from '../../db/types'
+import type { FieldOperation, FieldOperationType, MachineSession } from '../../db/types'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Icon } from '../../components/Icon'
 import { NegativeAuthorization } from '../../components/NegativeAuthorization'
 import { FuelNegativeError, fuelLedger, parseLiters, parseMeter } from '../diesel/fuel'
@@ -11,7 +12,8 @@ import { useFarm } from '../fazendas/FarmContext'
 import { verifyPin } from '../fazendas/farms'
 import { categoryOf, formatQty, isMixture, NegativeStockError, parseQty, supplyLedger, supplyStock, UNIT_LABEL, unitOf } from '../insumos/supplies'
 import { todayLocal } from '../rebanho/herd'
-import { createOperation, formatHa, OPERATION_TYPES, OperationError, type OperationInput } from './operations'
+import { createOperation, formatHa, OPERATION_TYPES, OperationError, PASTURE_OPTIONAL, type OperationInput } from './operations'
+import { formatHoursMinutes, sessionSeconds } from '../maquinas/machines'
 import { useManejo, type ManejoData } from './useManejo'
 
 interface ProductLine {
@@ -22,6 +24,9 @@ interface ProductLine {
 }
 interface EquipLine {
   key: string
+  /** horímetro digital: horas da sessão (não editáveis aqui) */
+  sessionId?: string
+  sessionSeconds?: number
   equipmentId: string
   responsibleId: string
   meterStart: string
@@ -35,6 +40,11 @@ interface CostLine {
   value: string
 }
 
+/** data local (AAAA-MM-DD) de um horário ISO */
+const localDate = (iso: string) => {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 const dec = (scaled: number, places: number) => (scaled / 10 ** places).toLocaleString('pt-BR', { maximumFractionDigits: places }).replace(/\./g, '')
 const tryOr = <T,>(fn: () => T, fallback: T): T => {
   try {
@@ -47,13 +57,28 @@ const tryOr = <T,>(fn: () => T, fallback: T): T => {
 export function OperacaoFormPage() {
   const data = useManejo()
   const [params] = useSearchParams()
-  if (!data) return null
+  const serviceId = params.get('servico')
+  const sessions = useLiveQuery(async () => (serviceId ? db.machineSessions.where('serviceId').equals(serviceId).toArray() : []), [serviceId])
+  if (!data || !sessions) return null
   const fix = data.operations.find((o) => o.id === params.get('corrigir') && o.status === 'concluida')
-  const type = (OPERATION_TYPES.find((t) => t.id === params.get('tipo'))?.id ?? fix?.type ?? 'herbicida') as FieldOperationType
-  return <Form key={fix?.id ?? type} data={data} initialType={type} initialPasture={params.get('pasto') ?? ''} fix={fix} />
+  const service = sessions.filter((x) => x.status === 'encerrada' && !x.operationId && x.deletedAt === null)
+  const type = (OPERATION_TYPES.find((t) => t.id === params.get('tipo'))?.id ?? fix?.type ?? service[0]?.serviceType ?? 'herbicida') as FieldOperationType
+  return <Form key={fix?.id ?? serviceId ?? type} data={data} initialType={type} initialPasture={params.get('pasto') ?? service[0]?.pastureId ?? ''} fix={fix} service={service} />
 }
 
-function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; initialType: FieldOperationType; initialPasture: string; fix: FieldOperation | undefined }) {
+function Form({
+  data,
+  initialType,
+  initialPasture,
+  fix,
+  service,
+}: {
+  data: ManejoData
+  initialType: FieldOperationType
+  initialPasture: string
+  fix: FieldOperation | undefined
+  service: MachineSession[]
+}) {
   const { farm } = useFarm()
   const navigate = useNavigate()
   const [key] = useState(newId)
@@ -61,7 +86,9 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
   const equipments = data.equipments.filter((e) => e.deletedAt === null && (e.active || fix?.equipments.some((x) => x.equipmentId === e.id)))
   const people = data.responsibles.filter((r) => r.deletedAt === null && r.active)
   const [type, setType] = useState<FieldOperationType>(initialType)
-  const [date, setDate] = useState(fix?.date ?? todayLocal())
+  const [date, setDate] = useState(fix?.date ?? (service[0] ? localDate(service[0].startedAt) : todayLocal()))
+  const [customType, setCustomType] = useState(fix?.customType ?? service[0]?.customType ?? '')
+  const [location, setLocation] = useState(fix?.location ?? service[0]?.location ?? '')
   const [pastureId, setPastureId] = useState(fix?.pastureId ?? initialPasture)
   const areaOf = (id: string) => data.pastureById.get(id)?.areaHa ?? null
   const [area, setArea] = useState(fix ? dec(fix.workedAreaCentiHa, 2) : initialPasture && areaOf(initialPasture) !== null ? dec(Math.round(areaOf(initialPasture)! * 100), 2) : '')
@@ -71,9 +98,23 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
     fix ? fix.products.map((p) => ({ key: newId(), supplyId: p.supplyId, qty: p.unit === 'saco' ? dec(p.qty * 50, 2) : dec(p.qty, 3), lot: p.lot ?? '' })) : [{ key: newId(), supplyId: '', qty: '', lot: '' }],
   )
   const [equips, setEquips] = useState<EquipLine[]>(
-    fix
+    service.length
+      ? service.map((x) => ({
+          key: newId(),
+          sessionId: x.id,
+          sessionSeconds: sessionSeconds(x),
+          equipmentId: x.equipmentId,
+          responsibleId: x.responsibleId ?? '',
+          meterStart: '',
+          meterEnd: '',
+          hours: '',
+          diesel: '',
+        }))
+      : fix
       ? fix.equipments.map((e) => ({
           key: newId(),
+          sessionId: e.sessionId ?? undefined,
+          sessionSeconds: e.sessionSeconds ?? undefined,
           equipmentId: e.equipmentId,
           responsibleId: e.responsibleId ?? '',
           meterStart: e.meterStart === null ? '' : dec(e.meterStart, 1),
@@ -131,10 +172,12 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
   }
 
   function buildInput(): OperationInput {
-    const centi = parseDecimal(area, 2)
-    if (!centi) throw new OperationError('Informe a área trabalhada (ha).')
+    const centi = parseDecimal(area, 2) ?? 0
+    if (pastureId && !centi) throw new OperationError('Informe a área trabalhada (ha).')
     return {
       type,
+      customType,
+      location,
       date,
       pastureId,
       workedAreaCentiHa: centi,
@@ -149,10 +192,11 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
       equipments: equips.map((l) => ({
         equipmentId: l.equipmentId,
         responsibleId: l.responsibleId || null,
-        meterStart: parseMeter(l.meterStart),
-        meterEnd: parseMeter(l.meterEnd),
-        hoursTenths: l.hours.trim() ? (parseDecimal(l.hours, 1) ?? NaN) : null,
+        meterStart: l.sessionId ? null : parseMeter(l.meterStart),
+        meterEnd: l.sessionId ? null : parseMeter(l.meterEnd),
+        hoursTenths: l.sessionId ? null : l.hours.trim() ? (parseDecimal(l.hours, 1) ?? NaN) : null,
         dieselCl: l.diesel.trim() ? parseLiters(l.diesel) : 0,
+        sessionId: l.sessionId ?? null,
       })),
       otherCosts: costs.filter((c) => c.description.trim() || c.value.trim()).map((c) => ({ description: c.description, costCents: parseMoney(c.value) ?? 0 })),
       notes,
@@ -237,7 +281,7 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
             Pasto
           </label>
           <select id="op-pasture" className="input" value={pastureId} onChange={(e) => choosePasture(e.target.value)}>
-            <option value="">Escolha o pasto</option>
+            <option value="">{PASTURE_OPTIONAL.includes(type) ? 'Fora de pasto (informar o local)' : 'Escolha o pasto'}</option>
             {pastures.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -252,6 +296,12 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
             </p>
           )}
         </div>
+        {!pastureId && PASTURE_OPTIONAL.includes(type) && (
+          <input className="input" aria-label="Local do serviço" placeholder="Local (ex.: sede → Redenção)" maxLength={80} value={location} onChange={(e) => setLocation(e.target.value)} />
+        )}
+        {type === 'outra' && (
+          <input className="input" aria-label="Qual serviço" placeholder="Qual serviço? Ex.: conserto de cerca" maxLength={60} value={customType} onChange={(e) => setCustomType(e.target.value)} />
+        )}
         <div className="field" style={{ margin: 0 }}>
           <label className="label" htmlFor="op-resp">
             Responsável pela operação
@@ -351,6 +401,7 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
                   <select
                     id={`op-e${i}`}
                     className="input"
+                    disabled={Boolean(l.sessionId)}
                     value={l.equipmentId}
                     onChange={(e) => upd(equips, setEquips, l.key, { equipmentId: e.target.value, responsibleId: data.equipmentById.get(e.target.value)?.responsibleId ?? l.responsibleId })}
                   >
@@ -362,7 +413,7 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
                     ))}
                   </select>
                 </div>
-                <button type="button" className="btn btn-outline btn-icon" aria-label={`Remover equipamento ${i + 1}`} onClick={() => setEquips(equips.filter((x) => x.key !== l.key))}>
+                <button type="button" className="btn btn-outline btn-icon" disabled={Boolean(l.sessionId)} aria-label={`Remover equipamento ${i + 1}`} onClick={() => setEquips(equips.filter((x) => x.key !== l.key))}>
                   <Icon name="trash" size={18} />
                 </button>
               </div>
@@ -379,7 +430,12 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
                   ))}
                 </select>
               </div>
-              {meter !== 'nenhum' && (
+              {l.sessionId && l.sessionSeconds != null && (
+                <p className="notice notice-ok" style={{ margin: '8px 0 0' }} data-testid={`op-session-${i}`}>
+                  <Icon name="clock" /> <span>Horímetro digital: {formatHoursMinutes(l.sessionSeconds)} (calculado pelo início, pausas e fim do serviço)</span>
+                </p>
+              )}
+              {meter !== 'nenhum' && !l.sessionId && (
                 <div className="row" style={{ alignItems: 'flex-start', marginTop: 8 }}>
                   <div className="field" style={{ flex: 1, margin: 0 }}>
                     <label className="label" htmlFor={`op-ms${i}`}>
@@ -396,6 +452,7 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
                 </div>
               )}
               <div className="row" style={{ alignItems: 'flex-start', marginTop: 8 }}>
+                {!l.sessionId && (
                 <div className="field" style={{ flex: 1, margin: 0 }}>
                   <label className="label" htmlFor={`op-h${i}`}>
                     Horas trabalhadas
@@ -406,6 +463,7 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
                     <input id={`op-h${i}`} className="input" inputMode="decimal" value={l.hours} onChange={(e) => upd(equips, setEquips, l.key, { hours: e.target.value })} />
                   )}
                 </div>
+                )}
                 <div className="field" style={{ flex: 1, margin: 0 }}>
                   <label className="label" htmlFor={`op-d${i}`}>
                     Diesel (litros)
@@ -528,7 +586,7 @@ function Form({ data, initialType, initialPasture, fix }: { data: ManejoData; in
       {negative ? (
         <NegativeAuthorization message={negative} onCancel={() => setNegative(null)} onAuthorize={(reason) => void save(reason)} />
       ) : (
-        <button type="submit" className="btn btn-primary btn-block" disabled={saving || !pastureId} data-testid="save-operation">
+        <button type="submit" className="btn btn-primary btn-block" disabled={saving || (!pastureId && !PASTURE_OPTIONAL.includes(type))} data-testid="save-operation">
           <Icon name="check" /> {fix ? 'Salvar correção' : 'Concluir operação'}
         </button>
       )}

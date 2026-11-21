@@ -675,8 +675,8 @@ export function manejoReport(d: ReportData, p: Period | null, extra: Partial<Man
         rows: ops.map((o) => [
           formatDay(o.date),
           String(o.number).padStart(4, '0'),
-          typeLabel(o.type),
-          pastures.get(o.pastureId) ?? '-',
+          typeLabel(o.type, o.customType),
+          (o.pastureId ? pastures.get(o.pastureId) : o.location) || '-',
           formatHa(o.workedAreaCentiHa),
           (o.responsibleId && people.get(o.responsibleId)) || '-',
           o.products.map((x) => `${x.name} ${formatQty(x.qty, x.unit)}`).join(' + ') || '-',
