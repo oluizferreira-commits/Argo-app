@@ -92,6 +92,15 @@ src/
 - Venda com recebimento ativo não pode ser cancelada (estornar os recebimentos antes).
 - O QR Code Pix do comprovante cobra só o que falta da parcela; parcela paga não gera QR.
 
+## Reserva financeira (35%)
+
+- `src/modules/reserva/reserve.ts`: a reserva é 35% do valor de cada venda, separada conforme o dinheiro é recebido
+  (35% de cada recebimento ativo). A conta da reserva é separada: o usuário confirma cada transferência (depósito).
+- Saldo = depósitos − retiradas. Falta separar = 35% do recebido − depositado. Meta = 35% das vendas ativas.
+- Depósitos ligados a um recebimento abatem o dele; depósitos avulsos abatem os pendentes do mais antigo ao mais novo.
+- Retirada exige motivo e não pode passar do saldo. Lançamentos errados são estornados (estorno de depósito não pode
+  deixar o saldo negativo). Percentual fixo em `RESERVE_PERCENT`.
+
 ## Como chegar à fazenda (mapa e rotas)
 
 - Tela `/acesso` (app) e página pública `acesso.html` (sem login), gerada como segunda entrada do Vite.
@@ -119,6 +128,7 @@ src/
 | v4 | clients (clientes), sales (vendas) |
 | v5 | landmarks (pontos de referência), routeCache (cópia local das rotas — não entra no backup) |
 | v6 | payments (recebimentos das vendas) |
+| v7 | reserveEntries (depósitos e retiradas da reserva financeira) |
 
 ## Migrações (preservação de dados)
 

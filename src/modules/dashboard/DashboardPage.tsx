@@ -12,6 +12,7 @@ import { totalsByCategory } from '../rebanho/herd'
 import { useFarm } from '../fazendas/FarmContext'
 import { SpecificationAlerts } from '../rebanho/SpecificationAlerts'
 import { useReceivables } from '../receber/useReceivables'
+import { useReserve } from '../reserva/useReserve'
 import { formatMoney } from '../../core/money'
 import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 
@@ -34,6 +35,7 @@ export function DashboardPage() {
   const { balances } = useBalances()
   const { farm } = useFarm()
   const receivables = useReceivables()
+  const reserve = useReserve()
   const pendingMap = usePendingTasks()
   const pendingTasks = pendingMap ? [...pendingMap.values()].reduce((a, b) => a + b, 0) : 0
   const herdTotal = pastures
@@ -65,6 +67,15 @@ export function DashboardPage() {
 
       <SpecificationAlerts />
 
+      {reserve && reserve.summary.pendingCents > 0 && (
+        <Link to="/reserva" className="notice notice-warn" style={{ textDecoration: 'none' }} data-testid="dash-reserve-alert">
+          <Icon name="vault" />
+          <div>
+            <strong>Reserva financeira:</strong> separe {formatMoney(reserve.summary.pendingCents)} (35% do que foi recebido). Toque para registrar.
+          </div>
+        </Link>
+      )}
+
       <h2 className="section-title">Fazenda</h2>
       {pastures && pastures.length === 0 ? (
         <Link to="/pastos/novo" className="card list-link" style={{ padding: 18 }}>
@@ -94,6 +105,16 @@ export function DashboardPage() {
                 label="A receber"
                 detail={receivables.overdueCents ? `Vencido: ${formatMoney(receivables.overdueCents)}` : 'Nada vencido'}
                 badge={<span className={`badge ${receivables.overdueCents ? 'badge-warn' : 'badge-ok'}`} data-testid="dash-receber">{formatMoney(receivables.openCents)}</span>}
+              />
+            </Link>
+          )}
+          {reserve && (reserve.summary.depositedCents > 0 || reserve.summary.dueCents > 0) && (
+            <Link to="/reserva" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <StatusItem
+                icon="vault"
+                label="Reserva financeira"
+                detail={reserve.summary.pendingCents ? `Falta separar ${formatMoney(reserve.summary.pendingCents)}` : 'Em dia'}
+                badge={<span className="badge badge-ok" data-testid="dash-reserve">{formatMoney(reserve.summary.balanceCents)}</span>}
               />
             </Link>
           )}

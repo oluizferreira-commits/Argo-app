@@ -1,3 +1,4 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type FormEvent } from 'react'
 import { newId } from '../../core/ids'
 import { formatMoney, parseMoney } from '../../core/money'
@@ -7,6 +8,7 @@ import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { formatDay, todayLocal } from '../rebanho/herd'
 import { METHOD_LABELS, PaymentError, recordPayment, reversePayment, saleBalance, STATUS_BADGE, STATUS_LABEL } from './receivables'
+import { RESERVE_PERCENT, recordReserveEntry, reservePendingByPayment, reserveShare } from '../reserva/reserve'
 
 
 /** Recebimentos da venda: saldo, parcelas, registrar e estornar. */
@@ -21,6 +23,26 @@ export function PaymentsSection({ sale, payments }: { sale: Sale; payments: Paym
   const [notes, setNotes] = useState('')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const reserveData = useLiveQuery(async () => {
+    const [entries, allPayments] = await Promise.all([
+      db.reserveEntries.where('farmId').equals(farm.id).toArray(),
+      db.payments.where('farmId').equals(farm.id).toArray(),
+    ])
+    return reservePendingByPayment(allPayments, entries)
+  }, [farm.id, payments])
+  const reserveEntries = reserveData
+  const reserveOf = (p: Payment) => reserveData?.get(p.id) ?? 0
+
+  async function separate(p: Payment) {
+    const cents = reserveOf(p)
+    if (!cents) return
+    try {
+      await recordReserveEntry(db, farm.id, { type: 'deposito', date: todayLocal(), amountCents: cents, paymentId: p.id, notes: 'Transferência dos 35%' })
+      setMsg({ kind: 'ok', text: `Transferência de ${formatMoney(cents)} para a reserva registrada.` })
+    } catch (err) {
+      setMsg({ kind: 'error', text: (err as Error).message })
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -34,7 +56,10 @@ export function PaymentsSection({ sale, payments }: { sale: Sale; payments: Paym
       setAmount('')
       setNotes('')
       setOpen(false)
-      setMsg({ kind: 'ok', text: `Recebimento de ${formatMoney(cents)} registrado.` })
+      setMsg({
+        kind: 'ok',
+        text: `Recebimento de ${formatMoney(cents)} registrado. Separe ${formatMoney(reserveShare(cents))} (${RESERVE_PERCENT}%) para a reserva.`,
+      })
     } catch (err) {
       setMsg({ kind: 'error', text: err instanceof PaymentError ? err.message : (err as Error).message })
     } finally {
@@ -172,6 +197,17 @@ export function PaymentsSection({ sale, payments }: { sale: Sale; payments: Paym
                     {p.notes && ` · ${p.notes}`}
                     {p.status === 'estornado' && p.reverseReason && ` · estorno: ${p.reverseReason}`}
                   </div>
+                  {p.status === 'ativo' && reserveEntries && (
+                    reserveOf(p) > 0 ? (
+                      <button type="button" className="btn btn-gold" style={{ minHeight: 40, marginTop: 6, fontSize: 14 }} onClick={() => separate(p)} data-testid="separate">
+                        Já transferi {formatMoney(reserveOf(p))} para a reserva
+                      </button>
+                    ) : (
+                      <div className="status-detail" style={{ color: 'var(--ok)' }}>
+                        ✓ {RESERVE_PERCENT}% separado na reserva
+                      </div>
+                    )
+                  )}
                 </div>
                 {p.status === 'ativo' && (
                   <button className="btn btn-danger btn-icon" aria-label={`Estornar recebimento de ${formatMoney(p.amountCents)}`} onClick={() => reverse(p)}>

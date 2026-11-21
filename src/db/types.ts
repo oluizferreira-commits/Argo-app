@@ -131,6 +131,24 @@ export interface Payment extends BaseRecord {
   reverseReason: string
 }
 
+/**
+ * Movimento da conta da reserva financeira (conta separada).
+ * Depósito: dinheiro transferido para a reserva (normalmente 35% de um recebimento).
+ * Retirada: dinheiro tirado da reserva (motivo obrigatório).
+ */
+export interface ReserveEntry extends BaseRecord {
+  farmId: string
+  type: 'deposito' | 'retirada'
+  date: string
+  amountCents: number
+  /** Depósito ligado a um recebimento (opcional). */
+  paymentId: string | null
+  notes: string
+  status: 'ativo' | 'estornado'
+  reversedAt: string | null
+  reverseReason: string
+}
+
 /** Pasto da fazenda. */
 export interface Pasture extends BaseRecord {
   farmId: string
@@ -259,6 +277,7 @@ export interface EntityMap {
   sales: Sale
   landmarks: Landmark
   payments: Payment
+  reserveEntries: ReserveEntry
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -266,7 +285,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

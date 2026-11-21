@@ -60,6 +60,11 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     payments: 'id, farmId, saleId, clientId, date, createdAt, updatedAt',
   })
 
+  // v7 — Etapa 5: reserva financeira (depósitos e retiradas da conta separada).
+  db.version(7).stores({
+    reserveEntries: 'id, farmId, date, paymentId, createdAt, updatedAt',
+  })
+
   return db
 }
 

@@ -11,8 +11,8 @@
 | 4.1 | Bezerros a especificar e grupo "A especificar" nas telas | **concluída** (v0.6.1) |
 | 4.2 | Observação nos serviços dos pastos (na hora de anotar ou depois, com histórico) | **concluída** (v0.6.2) |
 | 4 | Contas a receber e pagamentos parciais: recebimentos por venda, parcelas pagas/parciais/vencidas, estorno, venda à vista já recebida, Pix pelo saldo | **concluída** (v0.6.0) |
-| 5 | Reserva financeira de 35% | próxima |
-| 6 | Relatórios (rebanho e financeiro) | planejada |
+| 5 | Reserva financeira de 35%: separar 35% de cada recebimento, conta separada (depósitos e retiradas com motivo), saldo e alerta | **concluída** (v0.7.0) |
+| 6 | Relatórios (rebanho e financeiro) | próxima |
 | 7 | Sincronização em nuvem (Supabase) e login entre aparelhos | planejada |
 
 Observação: os itens "Controle de pastos" e "Nascimentos e mortes" do plano original foram incorporados à Etapa 2,
