@@ -2,31 +2,53 @@ import { createHashRouter, type RouteObject } from 'react-router'
 import { Layout } from '../components/Layout'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
 import { HubPage } from '../modules/hub/HubPage'
+import { PastoFormPage } from '../modules/pastos/PastoFormPage'
+import { PastoPage } from '../modules/pastos/PastoPage'
+import { PastosPage } from '../modules/pastos/PastosPage'
 import { PlannedModulePage } from '../modules/planned/PlannedModulePage'
+import { HistoricoPage } from '../modules/rebanho/HistoricoPage'
+import { MovimentacaoPage } from '../modules/rebanho/MovimentacaoPage'
+import { MovimentarPage, MovimentarTipoPage } from '../modules/rebanho/MovimentarPage'
+import { RebanhoPage } from '../modules/rebanho/RebanhoPage'
 import { SettingsPage } from '../modules/settings/SettingsPage'
 import { MODULES } from './modules'
 import { FINANCE_MODULE_IDS } from './navigation'
 
-/** Páginas já implementadas. Módulos fora desta lista usam a página "planejado". */
-const IMPLEMENTED: Record<string, RouteObject['element']> = {
-  dashboard: <DashboardPage />,
-  configuracoes: <SettingsPage />,
+/** `handle.title` = título exibido no cabeçalho. */
+export interface RouteHandle {
+  title: string
 }
 
-const moduleRoutes: RouteObject[] = MODULES.map((m) => ({
+const t = (title: string): RouteHandle => ({ title })
+
+/** Páginas implementadas. */
+const implemented: RouteObject[] = [
+  { path: '/', element: <DashboardPage />, handle: t('ARGO') },
+  { path: '/rebanho', element: <RebanhoPage />, handle: t('Rebanho') },
+  { path: '/rebanho/movimentar', element: <MovimentarPage />, handle: t('Nova movimentação') },
+  { path: '/rebanho/movimentar/:tipo', element: <MovimentarTipoPage />, handle: t('Nova movimentação') },
+  { path: '/rebanho/historico', element: <HistoricoPage />, handle: t('Histórico do rebanho') },
+  { path: '/rebanho/movimentacao/:id', element: <MovimentacaoPage />, handle: t('Movimentação') },
+  { path: '/pastos', element: <PastosPage />, handle: t('Pastos') },
+  { path: '/pastos/novo', element: <PastoFormPage />, handle: t('Novo pasto') },
+  { path: '/pastos/:id', element: <PastoPage />, handle: t('Pasto') },
+  { path: '/pastos/:id/editar', element: <PastoFormPage />, handle: t('Editar pasto') },
+  { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
+  { path: '/financeiro', element: <HubPage ids={FINANCE_MODULE_IDS} intro="Vendas, clientes, recebimentos e reserva financeira." />, handle: t('Financeiro') },
+  { path: '/mais', element: <HubPage intro="Todos os módulos do ARGO." />, handle: t('Módulos') },
+]
+
+/** Módulos ainda não desenvolvidos: página "Módulo planejado". */
+const planned: RouteObject[] = MODULES.filter((m) => m.status === 'planejado').map((m) => ({
   path: m.path,
-  element: IMPLEMENTED[m.id] ?? <PlannedModulePage module={m} />,
+  element: <PlannedModulePage module={m} />,
+  handle: t(m.title),
 }))
 
 // HashRouter (#/rota): funciona em qualquer hospedagem estática e offline, sem configurar o servidor.
 export const router = createHashRouter([
   {
     element: <Layout />,
-    children: [
-      ...moduleRoutes,
-      { path: '/financeiro', element: <HubPage ids={FINANCE_MODULE_IDS} intro="Vendas, clientes, recebimentos e reserva financeira." /> },
-      { path: '/mais', element: <HubPage intro="Todos os módulos do ARGO." /> },
-      { path: '*', element: <DashboardPage /> },
-    ],
+    children: [...implemented, ...planned, { path: '*', element: <DashboardPage />, handle: t('ARGO') }],
   },
 ])

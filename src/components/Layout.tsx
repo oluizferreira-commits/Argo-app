@@ -1,11 +1,8 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { MODULES } from '../app/modules'
+import { NavLink, Outlet, useLocation, useMatches, useNavigate } from 'react-router'
 import { TABS } from '../app/navigation'
 import { useOnline } from '../hooks/useOnline'
 import { Icon } from './Icon'
 import { UpdatePrompt } from './UpdatePrompt'
-
-const EXTRA_TITLES: Record<string, string> = { '/financeiro': 'Financeiro', '/mais': 'Módulos' }
 
 export function Layout() {
   const { pathname } = useLocation()
@@ -13,7 +10,8 @@ export function Layout() {
   const online = useOnline()
   const isHome = pathname === '/'
   const isTab = TABS.some((t) => t.path === pathname)
-  const title = EXTRA_TITLES[pathname] ?? MODULES.find((m) => m.path === pathname)?.title ?? 'ARGO'
+  const matches = useMatches()
+  const title = (matches.at(-1)?.handle as { title?: string } | undefined)?.title ?? 'ARGO'
 
   return (
     <div className="app">

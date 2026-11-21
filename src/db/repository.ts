@@ -116,8 +116,10 @@ export class Repository<E extends EntityName> {
   }
 
   /** Histórico completo de um registro, do mais antigo ao mais recente. */
-  history(id: string): Promise<AuditEntry[]> {
-    return this.db.auditLog.where('[entity+entityId]').equals([this.entity, id]).sortBy('at')
+  async history(id: string): Promise<AuditEntry[]> {
+    const list = await this.db.auditLog.where('[entity+entityId]').equals([this.entity, id]).toArray()
+    // Ordena pela revisão (nunca empata); a hora pode empatar no mesmo milissegundo.
+    return list.sort((a, b) => a.rev - b.rev || a.at.localeCompare(b.at))
   }
 
   private async setDeleted(id: string, deleted: boolean): Promise<EntityMap[E]> {

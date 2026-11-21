@@ -1,3 +1,6 @@
+import type { CategoryId } from '../domain/categories'
+import type { CountReason, MovementType } from '../domain/movements'
+
 /**
  * Campos obrigatórios de todo registro de negócio do ARGO.
  * Garantem rastreabilidade, histórico e sincronização futura.
@@ -57,17 +60,63 @@ export interface DiagnosticRecord extends BaseRecord {
   note: string
 }
 
+/** Pasto da fazenda. */
+export interface Pasture extends BaseRecord {
+  name: string
+  /** Área em hectares (null = não informada). */
+  areaHa: number | null
+  notes: string
+}
+
+/** Serviço/pendência de um pasto (ex.: "cerca a ser feita"). */
+export interface PastureTask extends BaseRecord {
+  pastureId: string
+  description: string
+  done: boolean
+  doneAt: string | null
+}
+
+/** Uma linha de movimentação: soma (+) ou tira (−) animais de uma categoria num pasto. */
+export interface MovementEntry {
+  pastureId: string
+  category: CategoryId
+  delta: number
+  reason?: CountReason
+}
+
+/**
+ * Movimentação do rebanho. O saldo de cada pasto/categoria é a SOMA de todas as
+ * movimentações — nunca é digitado diretamente. Movimentações não são editadas:
+ * corrige-se com um estorno (que também fica registrado).
+ */
+export interface Movement extends BaseRecord {
+  type: MovementType
+  /** Data em que o fato aconteceu (AAAA-MM-DD). */
+  date: string
+  entries: MovementEntry[]
+  /** Pastos envolvidos (índice para busca). */
+  pastureIds: string[]
+  notes: string
+  /** Se for estorno: id da movimentação estornada. */
+  reversalOf: string | null
+  /** Se foi estornada: id do estorno. */
+  reversedBy: string | null
+}
+
 /**
  * Mapa de entidades de negócio sincronizáveis.
  * Novos módulos (animais, pastos, vendas...) entram aqui.
  */
 export interface EntityMap {
   diagnostics: DiagnosticRecord
+  pastures: Pasture
+  pastureTasks: PastureTask
+  movements: Movement
 }
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'pastures', 'pastureTasks', 'movements']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

@@ -20,7 +20,8 @@ então tudo funciona offline.
 
 ```
 src/
-  app/          modules.ts (registro dos 12 módulos), navigation.ts (abas), routes.tsx (rotas)
+  app/          modules.ts (registro dos 12 módulos), navigation.ts (abas), routes.tsx (rotas + títulos)
+  domain/       categories.ts (categorias e sequência), movements.ts (tipos de movimentação, motivos)
   components/   Layout, Icon, StatusItem, UpdatePrompt
   core/         ids (UUID, datas ISO), format (pt-BR)
   db/           database.ts (esquema Dexie), types.ts (modelos), repository.ts (gravação), device.ts
@@ -28,7 +29,7 @@ src/
   backup/       backup.ts (exportar, validar, restaurar com mesclagem)
   platform/     storage.ts (armazenamento persistente), files.ts (salvar/compartilhar arquivo no iPhone)
   hooks/        useOnline, useStorageStatus
-  modules/      uma pasta por módulo (dashboard, settings, …)
+  modules/      uma pasta por módulo: dashboard, rebanho (herd.ts = regras), pastos (pastures.ts), settings…
   styles/       global.css (tokens da identidade visual)
 ```
 
@@ -44,10 +45,26 @@ src/
    - **Idempotência**: cada formulário gera um `id` ao abrir. Toque duplo ou reenvio grava o mesmo registro.
    - **Índices únicos** (`&campo` no Dexie) para chaves de negócio. Exemplo: brinco do animal.
    - **Backup e sincronização** mesclam por `id`. Vence a maior `rev`; em empate, o `updatedAt` mais recente.
-5. **Movimentação de animais** (etapas futuras) será uma tabela própria de eventos (entrada, transferência de pasto,
-   nascimento, morte, venda). A situação atual do animal é derivada desses eventos, o que garante rastreabilidade completa.
+5. **Rebanho por contagem (sem identificação individual).** Os animais não têm brinco; o controle é por
+   **pasto × categoria**. O saldo NUNCA é digitado: é a soma das linhas (`entries`) de todas as movimentações
+   (`movements`). Tipos: nascimento, compra, transferência, mudança de categoria, morte, venda, contagem e estorno.
+   - Regras validadas em `src/modules/rebanho/herd.ts`, numa única transação: nenhum saldo pode ficar negativo;
+     nascimento só soma bezerro/bezerra; mudança de categoria só avança no mesmo sexo
+     (Bezerro → Desmama macho → Garrote → Boi; Bezerra → Desmama fêmea → Novilha → Vaca).
+   - **Contagem** compara o contado com o saldo e grava a diferença com um motivo
+     (saldo inicial, nascimentos/mortes não registrados, correção, outro).
+   - Movimentações não são editadas nem apagadas: corrige-se com **estorno** (lançamento inverso, ligado ao original).
+     O estorno é recusado se os animais já foram movimentados depois.
+   - Categorias ficam em `src/domain/categories.ts`. Os ids são gravados no banco: nunca renomear um id.
 6. **Valores financeiros** serão gravados em **centavos (inteiros)** para evitar erros de arredondamento.
    Pagamentos parciais serão registros próprios ligados à conta a receber. O saldo é calculado e nunca sobrescrito.
+
+## Esquema do banco
+
+| Versão | Tabelas adicionadas |
+|---|---|
+| v1 | meta, auditLog, outbox, diagnostics |
+| v2 | pastures (pastos), pastureTasks (serviços dos pastos), movements (movimentações do rebanho) |
 
 ## Migrações (preservação de dados)
 

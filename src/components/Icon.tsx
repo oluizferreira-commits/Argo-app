@@ -26,6 +26,16 @@ const PATHS = {
   chevronLeft: 'M15 5l-7 7 7 7',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3 2',
   refresh: 'M20 11a8 8 0 0 0-14.8-3.5M4 4v4h4M4 13a8 8 0 0 0 14.8 3.5M20 20v-4h-4',
+  arrows: 'M4 8h15l-4-4M20 16H5l4 4',
+  trendUp: 'M3 17l6-6 4 4 8-8M15 7h6v6',
+  minusCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM8 12h8',
+  clipboard: 'M9 3h6v4H9zM9 5H5v16h14V5h-4M8.5 13l2.5 2.5 4.5-4.5',
+  undo: 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
+  plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
+  edit: 'M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4',
+  archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4',
+  list: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
 } as const
 
 export type IconName = keyof typeof PATHS

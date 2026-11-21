@@ -1,5 +1,5 @@
 import { newId, nowIso } from '../core/ids'
-import type { ArgoDatabase } from '../db/database'
+import { entityTable, type ArgoDatabase } from '../db/database'
 import { getMeta, setMeta } from '../db/device'
 import { ENTITY_NAMES, type EntityName } from '../db/types'
 import type { AnyRecord, PushItem, SyncAdapter } from './types'
@@ -91,5 +91,5 @@ export function remoteWins(local: AnyRecord, remote: AnyRecord): boolean {
 }
 
 function table(db: ArgoDatabase, entity: EntityName) {
-  return db[entity]
+  return entityTable(db, entity)
 }

@@ -1,5 +1,5 @@
-import Dexie, { type EntityTable } from 'dexie'
-import type { AuditEntry, EntityMap, MetaEntry, OutboxEntry } from './types'
+import Dexie, { type EntityTable, type Table } from 'dexie'
+import type { AuditEntry, EntityMap, EntityName, MetaEntry, OutboxEntry } from './types'
 
 export type ArgoDatabase = Dexie & {
   meta: EntityTable<MetaEntry, 'key'>
@@ -26,7 +26,22 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     diagnostics: 'id, createdAt, updatedAt',
   })
 
+  // v2 — Etapa 2: pastos, serviços dos pastos e movimentações do rebanho.
+  db.version(2).stores({
+    pastures: 'id, createdAt, updatedAt, name',
+    pastureTasks: 'id, pastureId, createdAt, updatedAt',
+    movements: 'id, createdAt, updatedAt, date, type, *pastureIds',
+  })
+
   return db
 }
 
 export const db = createDatabase()
+
+/**
+ * Acesso genérico a uma tabela de entidade (backup, sincronização).
+ * Todas as entidades estendem BaseRecord, então a tabela é tratada como de BaseRecord.
+ */
+export function entityTable(db: ArgoDatabase, entity: EntityName): Table<EntityMap[EntityName], string> {
+  return db[entity] as unknown as Table<EntityMap[EntityName], string>
+}

@@ -25,7 +25,14 @@ export function UpdatePrompt() {
       <button className="btn btn-outline" onClick={() => setNeedRefresh(false)}>
         Depois
       </button>
-      <button className="btn btn-gold" onClick={() => updateServiceWorker(true)}>
+      <button
+        className="btn btn-gold"
+        onClick={() => {
+          void updateServiceWorker(true)
+          // Garantia: se a tela não recarregar sozinha (ex.: primeira abertura), recarrega.
+          setTimeout(() => window.location.reload(), 1500)
+        }}
+      >
         Atualizar
       </button>
     </div>

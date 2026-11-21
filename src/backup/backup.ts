@@ -1,5 +1,5 @@
 import { newId, nowIso } from '../core/ids'
-import type { ArgoDatabase } from '../db/database'
+import { entityTable, type ArgoDatabase } from '../db/database'
 import { getDeviceId, setMeta } from '../db/device'
 import { ENTITY_NAMES, type AuditEntry, type EntityName } from '../db/types'
 import { remoteWins } from '../sync/engine'
@@ -40,7 +40,7 @@ export class BackupError extends Error {
 /** Gera o backup completo (inclui registros excluídos e todo o histórico). */
 export async function createBackup(db: ArgoDatabase, appVersion: string): Promise<BackupFile> {
   const entities: BackupFile['data']['entities'] = {}
-  for (const e of ENTITY_NAMES) entities[e] = await db[e].toArray()
+  for (const e of ENTITY_NAMES) entities[e] = await entityTable(db, e).toArray()
   const auditLog = await db.auditLog.toArray()
   const data = { entities, auditLog }
   return {
@@ -94,7 +94,7 @@ export async function parseBackup(text: string, db: ArgoDatabase): Promise<Backu
 export async function importBackup(db: ArgoDatabase, backup: BackupFile): Promise<ImportSummary> {
   const deviceId = await getDeviceId(db)
   const summary: ImportSummary = { added: 0, updated: 0, skipped: 0, auditAdded: 0 }
-  const tables = ENTITY_NAMES.map((e) => db[e])
+  const tables = ENTITY_NAMES.map((e) => entityTable(db, e))
 
   await db.transaction('rw', [db.auditLog, db.outbox, db.meta, ...tables], async () => {
     const existingAudit = new Set(await db.auditLog.toCollection().primaryKeys())
@@ -110,13 +110,13 @@ export async function importBackup(db: ArgoDatabase, backup: BackupFile): Promis
           summary.skipped++
           continue
         }
-        const local = await db[entity].get(incoming.id)
+        const local = await entityTable(db, entity).get(incoming.id)
         if (local && !remoteWins(local, incoming)) {
           summary.skipped++
           continue
         }
         const record = { ...incoming, syncStatus: 'pending' as const }
-        await db[entity].put(record)
+        await entityTable(db, entity).put(record)
         await db.auditLog.add({
           id: newId(),
           entity,

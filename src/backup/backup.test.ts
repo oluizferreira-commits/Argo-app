@@ -53,3 +53,21 @@ describe('backup', () => {
     await expect(parseBackup(JSON.stringify(b), d)).rejects.toThrow(/integridade/)
   })
 })
+
+describe('backup do rebanho', () => {
+  it('inclui pastos, serviços e movimentações e restaura os saldos', async () => {
+    const { createPasture, addTask } = await import('../modules/pastos/pastures')
+    const { recordMovement, entriesIn, computeBalances, balanceOf, todayLocal } = await import('../modules/rebanho/herd')
+    const src = fresh()
+    const p = await createPasture(src, { name: 'Pasto A', areaHa: 10, notes: '' })
+    await addTask(src, p.id, 'cerca a ser feita')
+    await recordMovement(src, { type: 'compra', date: todayLocal(), notes: '', entries: entriesIn(p.id, { vaca: 7 }) })
+    const text = JSON.stringify(await createBackup(src, 'test'))
+
+    const dst = fresh()
+    const s = await importBackup(dst, await parseBackup(text, dst))
+    expect(s.added).toBe(3)
+    expect(await dst.pastureTasks.count()).toBe(1)
+    expect(balanceOf(computeBalances(await dst.movements.toArray()), p.id, 'vaca')).toBe(7)
+  })
+})

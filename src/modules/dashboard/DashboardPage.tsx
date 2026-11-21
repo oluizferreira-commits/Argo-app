@@ -8,8 +8,10 @@ import { StatusItem } from '../../components/StatusItem'
 import { useOnline } from '../../hooks/useOnline'
 import { useStorageStatus } from '../../hooks/useStorageStatus'
 import { isStandalone } from '../../platform/storage'
+import { totalsByCategory } from '../rebanho/herd'
+import { useBalances, usePastures } from '../rebanho/useHerd'
 
-const SHORTCUTS = ['rebanho', 'pastos', 'nascimentos-mortes', 'vendas-arroba', 'contas-receber', 'relatorios']
+const SHORTCUTS = ['rebanho', 'pastos', 'vendas-arroba', 'contas-receber', 'reserva', 'relatorios']
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -24,6 +26,16 @@ export function DashboardPage() {
   const lastBackupAt = useLiveQuery(async () => (await db.meta.get('lastBackupAt'))?.value as string | undefined)
   const pending = useLiveQuery(() => db.outbox.count(), [], 0)
   const standalone = isStandalone()
+  const pastures = usePastures()
+  const { balances } = useBalances()
+  const pendingTasks = useLiveQuery(
+    async () => (await db.pastureTasks.toArray()).filter((t) => t.deletedAt === null && !t.done).length,
+    [],
+    0,
+  )
+  const herdTotal = pastures
+    ? [...totalsByCategory(balances, pastures.map((p) => p.id)).values()].reduce((a, b) => a + b, 0)
+    : 0
 
   return (
     <>
@@ -42,6 +54,39 @@ export function DashboardPage() {
             <strong>Instale o ARGO no iPhone.</strong> No Safari, toque em <strong>Compartilhar</strong> e depois em{' '}
             <strong>Adicionar à Tela de Início</strong>. Instalado, o app abre em tela cheia e os dados ficam mais protegidos.
           </div>
+        </div>
+      )}
+
+      <h2 className="section-title">Fazenda</h2>
+      {pastures && pastures.length === 0 ? (
+        <Link to="/pastos/novo" className="card list-link" style={{ padding: 18 }}>
+          <div className="status-icon">
+            <Icon name="pasture" />
+          </div>
+          <div className="status-body">
+            <div className="status-label">Comece cadastrando seus pastos</div>
+            <div className="status-detail">Depois, faça a contagem inicial de cada um.</div>
+          </div>
+          <Icon name="chevronRight" size={20} className="muted" />
+        </Link>
+      ) : (
+        <div className="card status-list">
+          <Link to="/rebanho" style={{ color: 'inherit', textDecoration: 'none' }}>
+            <StatusItem
+              icon="herd"
+              label="Rebanho"
+              detail={`${pastures?.length ?? 0} pasto(s)`}
+              badge={<span className="big-number" style={{ fontSize: 30 }} data-testid="dash-total">{herdTotal.toLocaleString('pt-BR')}</span>}
+            />
+          </Link>
+          <Link to="/pastos" style={{ color: 'inherit', textDecoration: 'none' }}>
+            <StatusItem
+              icon="clipboard"
+              label="Serviços nos pastos"
+              detail={pendingTasks ? `${pendingTasks} pendente(s)` : 'Nada pendente'}
+              badge={pendingTasks ? <span className="badge badge-warn">{pendingTasks}</span> : <span className="badge badge-ok">OK</span>}
+            />
+          </Link>
         </div>
       )}
 
