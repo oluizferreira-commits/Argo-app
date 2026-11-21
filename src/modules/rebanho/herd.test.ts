@@ -71,6 +71,22 @@ describe('rebanho por contagem', () => {
     await expect(bad('bezerro')).rejects.toBeInstanceOf(HerdError)
   })
 
+  it('garrote pode virar boi (sugestão) ou reprodutor; reprodutor é adulto', async () => {
+    const { nextCategory, laterCategories } = await import('../../domain/categories')
+    expect(nextCategory('garrote')).toBe('boi')
+    expect(laterCategories('garrote').map((c) => c.id)).toEqual(['boi', 'reprodutor'])
+    expect(nextCategory('reprodutor')).toBeNull()
+    const { a, today, balances } = await setup()
+    await recordMovement(db, { type: 'compra', date: today, notes: '', entries: entriesIn(a.id, { garrote: 3 }) })
+    await recordMovement(db, {
+      type: 'mudanca-categoria',
+      date: today,
+      notes: '',
+      entries: entriesCategoryChange(a.id, a.id, [{ from: 'garrote', to: 'reprodutor', quantity: 1 }]),
+    })
+    expect(balanceOf(await balances(), a.id, 'reprodutor')).toBe(1)
+  })
+
   it('recusa tirar mais animais do que o pasto tem', async () => {
     const { a, b, today } = await setup()
     await recordMovement(db, { type: 'compra', date: today, notes: '', entries: entriesIn(a.id, { vaca: 30 }) })

@@ -1,12 +1,12 @@
 /**
  * Categorias do rebanho, conforme o manejo da fazenda:
- *   Bezerro → Desmama macho → Garrote → Boi
+ *   Bezerro → Desmama macho → Garrote → Boi (ou Reprodutor)
  *   Bezerra → Desmama fêmea → Novilha → Vaca
  * Os ids são gravados no banco: NUNCA renomeie um id existente (só o `label`).
  */
 export type Sex = 'M' | 'F'
 
-export const CATEGORY_IDS = ['bezerro', 'bezerra', 'desmama-macho', 'desmama-femea', 'garrote', 'novilha', 'boi', 'vaca'] as const
+export const CATEGORY_IDS = ['bezerro', 'bezerra', 'desmama-macho', 'desmama-femea', 'garrote', 'novilha', 'boi', 'vaca', 'reprodutor'] as const
 
 export type CategoryId = (typeof CATEGORY_IDS)[number]
 
@@ -24,6 +24,7 @@ export const CATEGORIES: readonly Category[] = [
   { id: 'desmama-macho', label: 'Desmama macho', plural: 'Desmama macho', sex: 'M', stage: 1 },
   { id: 'garrote', label: 'Garrote', plural: 'Garrotes', sex: 'M', stage: 2 },
   { id: 'boi', label: 'Boi', plural: 'Bois', sex: 'M', stage: 3 },
+  { id: 'reprodutor', label: 'Reprodutor', plural: 'Reprodutores', sex: 'M', stage: 3 },
   { id: 'bezerra', label: 'Bezerra', plural: 'Bezerras', sex: 'F', stage: 0 },
   { id: 'desmama-femea', label: 'Desmama fêmea', plural: 'Desmama fêmea', sex: 'F', stage: 1 },
   { id: 'novilha', label: 'Novilha', plural: 'Novilhas', sex: 'F', stage: 2 },

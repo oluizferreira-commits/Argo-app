@@ -50,7 +50,7 @@ src/
    (`movements`). Tipos: nascimento, compra, transferência, mudança de categoria, morte, venda, contagem e estorno.
    - Regras validadas em `src/modules/rebanho/herd.ts`, numa única transação: nenhum saldo pode ficar negativo;
      nascimento só soma bezerro/bezerra; mudança de categoria só avança no mesmo sexo
-     (Bezerro → Desmama macho → Garrote → Boi; Bezerra → Desmama fêmea → Novilha → Vaca).
+     (Bezerro → Desmama macho → Garrote → Boi ou Reprodutor; Bezerra → Desmama fêmea → Novilha → Vaca).
    - **Contagem** compara o contado com o saldo e grava a diferença com um motivo
      (saldo inicial, nascimentos/mortes não registrados, correção, outro).
    - Movimentações não são editadas nem apagadas: corrige-se com **estorno** (lançamento inverso, ligado ao original).
