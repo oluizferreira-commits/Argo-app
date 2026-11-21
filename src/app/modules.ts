@@ -32,6 +32,8 @@ export const MODULES: readonly ModuleDef[] = [
   { id: 'reserva', title: 'Reserva financeira', description: 'Percentual de cada venda, em conta separada', path: '/reserva', icon: 'vault', status: 'disponivel' },
   { id: 'acesso', title: 'Como chegar à fazenda', description: 'Mapa, rotas e guia de acesso', path: '/acesso', icon: 'map', status: 'disponivel' },
   { id: 'relatorios', title: 'Relatórios', description: 'Mês a mês ou por ano, em PDF', path: '/relatorios', icon: 'chart', status: 'disponivel' },
+  { id: 'insumos', title: 'Insumos', description: 'Sal e outros produtos em sacos, consumo no cocho', path: '/insumos', icon: 'sack', status: 'disponivel' },
+  { id: 'responsaveis', title: 'Responsáveis', description: 'Quem opera máquinas e aplica vacinas', path: '/responsaveis', icon: 'user', status: 'disponivel' },
   { id: 'configuracoes', title: 'Configurações', description: 'Backup, armazenamento e sistema', path: '/configuracoes', icon: 'gear', status: 'disponivel' },
 ]
 

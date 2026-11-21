@@ -15,6 +15,10 @@
 | 5.1 | Conferência do saldo da reserva com o Mercado Pago (digitado), com ajuste e histórico | **concluída** (v0.8.1) |
 | 5.2 | Percentual da reserva definido pelo responsável de cada fazenda (padrão 35%), com histórico | **concluída** (v0.8.2) |
 | 6 | Relatórios mês a mês e por ano, na tela e em PDF: vendas, arrobas, recebimentos, inadimplência, reserva, nascimentos e mortes, rebanho por pasto e categoria | **concluída** (v0.8.0) |
+| 7.1 | Responsáveis + estoque de insumos em sacos (meio saco), consumo no cocho por pasto, estoque negativo só com autorização | **concluída** (v0.9.0) |
+| 7.2 | Diesel: compras, equipamentos, consumo, custo médio ponderado | planejada |
+| 7.3 | Relatórios de combustível (semana, mês, equipamento, responsável, L/h) | planejada |
+| 7.4 | Vacinação com cobertura parcial e várias aplicações por campanha | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
 
 Observação: os itens "Controle de pastos" e "Nascimentos e mortes" do plano original foram incorporados à Etapa 2,

@@ -130,6 +130,14 @@ src/
 - **Privacidade:** nenhuma coordenada real fica no código (repositório público). A localização da porteira só sai do aparelho
   dentro do link público gerado pelo usuário (codificado na parte `#` da URL, que não é enviada ao servidor do GitHub Pages).
 
+## Insumos e responsáveis
+
+- **Responsáveis** (`responsibles`): nome e função; nunca são apagados, só desativados (o histórico continua apontando para eles).
+- **Insumos** (`supplies`): Sal branco e Sal mineral são criados na primeira abertura do módulo (uma vez por fazenda, chave fixa); outros produtos podem ser cadastrados. Peso do saco em gramas (`gramsPerSack`, opcional) → equivalência em kg.
+- **Movimentos** (`supplyMovements`): quantidade em **meios sacos** (inteiro, com sinal: + entrada, − saída). Compra (valor pago em centavos + fornecedor), consumo no cocho (sempre com pasto) e ajuste (entrada/saída com motivo). Só sacos inteiros ou meio saco, inclusive em correções.
+- Estoque = soma dos movimentos ativos. Saída que deixaria o estoque negativo é recusada (`NegativeStockError`) até haver autorização explícita: motivo + confirmação + PIN da fazenda (se houver). O lançamento fica marcado `authorizedNegative`.
+- Correção = estorno (fica no histórico). Estornar uma entrada não pode deixar o estoque negativo.
+
 ## Esquema do banco
 
 | Versão | Tabelas adicionadas |
@@ -142,6 +150,7 @@ src/
 | v6 | payments (recebimentos das vendas) |
 | v7 | reserveEntries (depósitos e retiradas da reserva financeira) |
 | v8 | reserveChecks (conferências do saldo da reserva com o banco) |
+| v9 | responsibles, supplies, supplyMovements (insumos em meios sacos), equipments, fuelMovements (diesel em centilitros), vaccinations, vaccinationApplications |
 
 ## Migrações (preservação de dados)
 

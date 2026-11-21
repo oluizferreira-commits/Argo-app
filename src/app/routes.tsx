@@ -22,6 +22,9 @@ import { HistoricoPage } from '../modules/rebanho/HistoricoPage'
 import { MovimentacaoPage } from '../modules/rebanho/MovimentacaoPage'
 import { MovimentarPage, MovimentarTipoPage } from '../modules/rebanho/MovimentarPage'
 import { RebanhoPage } from '../modules/rebanho/RebanhoPage'
+import { InsumoPage } from '../modules/insumos/InsumoPage'
+import { InsumosPage } from '../modules/insumos/InsumosPage'
+import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
 import { SettingsPage } from '../modules/settings/SettingsPage'
 import { MODULES } from './modules'
 import { FINANCE_MODULE_IDS } from './navigation'
@@ -59,6 +62,9 @@ const implemented: RouteObject[] = [
   { path: '/clientes/novo', element: <ClienteFormPage />, handle: t('Novo cliente') },
   { path: '/clientes/:id', element: <ClientePage />, handle: t('Cliente') },
   { path: '/clientes/:id/editar', element: <ClienteFormPage />, handle: t('Editar cliente') },
+  { path: '/insumos', element: <InsumosPage />, handle: t('Insumos') },
+  { path: '/insumos/:id', element: <InsumoPage />, handle: t('Insumo') },
+  { path: '/responsaveis', element: <ResponsaveisPage />, handle: t('Responsáveis') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <HubPage ids={FINANCE_MODULE_IDS} intro="Vendas, clientes, recebimentos e reserva financeira." />, handle: t('Financeiro') },
   { path: '/mais', element: <HubPage intro="Todos os módulos do ARGO." />, handle: t('Módulos') },

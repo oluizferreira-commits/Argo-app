@@ -70,6 +70,17 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     reserveChecks: 'id, farmId, date, createdAt, updatedAt',
   })
 
+  // v9 — insumos (sacos), diesel (compras, equipamentos, consumo), responsáveis e vacinação.
+  db.version(9).stores({
+    responsibles: 'id, farmId, createdAt, updatedAt',
+    supplies: 'id, farmId, createdAt, updatedAt',
+    supplyMovements: 'id, farmId, supplyId, date, createdAt, updatedAt',
+    equipments: 'id, farmId, createdAt, updatedAt',
+    fuelMovements: 'id, farmId, date, equipmentId, responsibleId, createdAt, updatedAt',
+    vaccinations: 'id, farmId, pastureId, createdAt, updatedAt',
+    vaccinationApplications: 'id, farmId, vaccinationId, date, createdAt, updatedAt',
+  })
+
   return db
 }
 

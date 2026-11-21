@@ -170,6 +170,106 @@ export interface ReserveCheck extends BaseRecord {
   notes: string
 }
 
+/** Responsável (pessoa) para combustível, vacinação etc. Nunca é apagado: é desativado. */
+export interface Responsible extends BaseRecord {
+  farmId: string
+  name: string
+  role: string
+  active: boolean
+}
+
+/** Insumo controlado em SACOS (ex.: sal branco, sal mineral). */
+export interface Supply extends BaseRecord {
+  farmId: string
+  name: string
+  /** Peso de um saco, em gramas (null = ainda não informado). */
+  gramsPerSack: number | null
+  active: boolean
+}
+
+/**
+ * Movimento do estoque de insumos. Quantidade em MEIOS SACOS (inteiro com sinal):
+ * 1 saco = 2; meio saco = 1. Entrada (+), saída (−).
+ */
+export interface SupplyMovement extends BaseRecord {
+  farmId: string
+  supplyId: string
+  type: 'compra' | 'consumo' | 'ajuste'
+  date: string
+  halfSacks: number
+  /** Compra: valor pago (centavos). */
+  costCents: number | null
+  supplier: string
+  /** Consumo no cocho: pasto. */
+  pastureId: string | null
+  notes: string
+  /** Saída que deixou o estoque negativo com autorização explícita. */
+  authorizedNegative: boolean
+  status: 'ativo' | 'estornado'
+  reversedAt: string | null
+  reverseReason: string
+}
+
+/** Equipamento que consome diesel. */
+export interface Equipment extends BaseRecord {
+  farmId: string
+  name: string
+  type: string
+  identification: string
+  responsibleId: string | null
+  meter: 'horimetro' | 'km' | 'nenhum'
+  active: boolean
+}
+
+/**
+ * Movimento do diesel. Litros em CENTILITROS (inteiro com sinal): compra (+), consumo (−), ajuste (±).
+ */
+export interface FuelMovement extends BaseRecord {
+  farmId: string
+  type: 'compra' | 'consumo' | 'ajuste'
+  date: string
+  centiliters: number
+  /** Compra: valor total pago (centavos). */
+  totalCents: number | null
+  station: string
+  equipmentId: string | null
+  responsibleId: string | null
+  /** Leitura do horímetro (horas × 10) ou do hodômetro (km × 10). */
+  meterReading: number | null
+  notes: string
+  authorizedNegative: boolean
+  status: 'ativo' | 'estornado'
+  reversedAt: string | null
+  reverseReason: string
+}
+
+/** Campanha de vacinação de um lote (cobertura pode ser parcial). */
+export interface Vaccination extends BaseRecord {
+  farmId: string
+  pastureId: string
+  lot: string
+  vaccine: string
+  product: string
+  plannedQty: number
+  responsibleId: string | null
+  /** Próxima vacinação (opcional — nem toda vacina tem reforço). */
+  nextDate: string | null
+  notes: string
+}
+
+/** Aplicação (parcial ou total) de uma campanha de vacinação. */
+export interface VaccinationApplication extends BaseRecord {
+  farmId: string
+  vaccinationId: string
+  date: string
+  quantity: number
+  responsibleId: string | null
+  notes: string
+  status: 'ativo' | 'estornado'
+  reversedAt: string | null
+  reverseReason: string
+}
+
 /** Pasto da fazenda. */
 export interface Pasture extends BaseRecord {
   farmId: string
@@ -300,6 +400,13 @@ export interface EntityMap {
   payments: Payment
   reserveEntries: ReserveEntry
   reserveChecks: ReserveCheck
+  responsibles: Responsible
+  supplies: Supply
+  supplyMovements: SupplyMovement
+  equipments: Equipment
+  fuelMovements: FuelMovement
+  vaccinations: Vaccination
+  vaccinationApplications: VaccinationApplication
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -307,7 +414,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>
