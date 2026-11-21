@@ -21,6 +21,7 @@
 | 7.2 | Diesel: compras, equipamentos, consumo, custo médio ponderado | **concluída** (v0.10.0) |
 | 7.2.1 | Financeiro com dados do responsável (CPF) e ajustes visuais da reserva | **concluída** (v0.10.1) |
 | 7.3 | Relatórios de combustível (semana, mês, equipamento, responsável, L/h), na tela e em PDF | **concluída** (v0.11.0) |
+| 7.3.1 | Painel operacional: indicadores, Central de Pendências, Novo lançamento, Agenda, Atividades recentes; sistema e backup em Configurações | **concluída** (v0.12.0) |
 | 7.4 | Vacinação com cobertura parcial e várias aplicações por campanha | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
 

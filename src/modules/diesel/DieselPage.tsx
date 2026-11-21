@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { formatMoney, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
@@ -33,7 +33,10 @@ export function DieselPage() {
   const movements = useFuelMovements()
   const equipments = useEquipments()
   const responsibles = useResponsibles()
-  const [form, setForm] = useState<FormType | null>(null)
+  // ?novo=compra|consumo: atalho do Painel abre o formulário direto
+  const [params] = useSearchParams()
+  const novo = params.get('novo')
+  const [form, setForm] = useState<FormType | null>(novo === 'compra' || novo === 'consumo' ? novo : null)
   const [msg, setMsg] = useState<string | null>(null)
   const ledger = useMemo(() => fuelLedger(movements ?? []), [movements])
   if (!movements || !equipments || !responsibles) return null
@@ -80,7 +83,7 @@ export function DieselPage() {
         </div>
       )}
 
-      {form ? (
+      {form && !(form === 'consumo' && activeEquip.length === 0) ? (
         <FuelForm key={form} type={form} equipments={activeEquip} movements={movements} onClose={() => setForm(null)} />
       ) : (
         <div className="stack" style={{ gap: 10 }}>

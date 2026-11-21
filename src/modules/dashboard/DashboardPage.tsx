@@ -1,19 +1,10 @@
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router'
-import { formatDateTime } from '../../core/format'
-import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
-import { StatusItem } from '../../components/StatusItem'
-import { useOnline } from '../../hooks/useOnline'
-import { useStorageStatus } from '../../hooks/useStorageStatus'
 import { isStandalone } from '../../platform/storage'
-import { totalsByCategory } from '../rebanho/herd'
 import { useFarm } from '../fazendas/FarmContext'
-import { SpecificationAlerts } from '../rebanho/SpecificationAlerts'
-import { useReceivables } from '../receber/useReceivables'
-import { useReserve } from '../reserva/useReserve'
-import { formatMoney } from '../../core/money'
-import { useBalances, usePastures, usePendingTaskList } from '../rebanho/useHerd'
+import { AgendaSection, IndicatorsSection, PendingCenter, RecentActivity } from './DashboardSections'
+import { QuickLaunch } from './QuickLaunch'
+import { useDashboardData } from './useDashboardData'
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -22,38 +13,38 @@ function greeting(): string {
   return 'Boa noite'
 }
 
+/**
+ * Painel: boas-vindas compacto → indicadores → Central de Pendências → Novo lançamento →
+ * Agenda Operacional → Atividades recentes. Situação do sistema e backup ficam em Configurações.
+ */
 export function DashboardPage() {
-  const online = useOnline()
-  const { status } = useStorageStatus()
-  const lastBackupAt = useLiveQuery(async () => (await db.meta.get('lastBackupAt'))?.value as string | undefined)
-  const pending = useLiveQuery(() => db.outbox.count(), [], 0)
-  const standalone = isStandalone()
-  const pastures = usePastures()
-  const { balances } = useBalances()
   const { farm } = useFarm()
-  const receivables = useReceivables()
-  const reserve = useReserve()
-  const pendingList = usePendingTaskList()
-  // serviços pendentes agrupados por pasto (na ordem alfabética dos pastos)
-  const pendingByPasture = (pastures ?? [])
-    .map((p) => ({ pasture: p, tasks: (pendingList ?? []).filter((t) => t.pastureId === p.id) }))
-    .filter((g) => g.tasks.length > 0)
-  const herdTotal = pastures
-    ? [...totalsByCategory(balances, pastures.map((p) => p.id)).values()].reduce((a, b) => a + b, 0)
-    : 0
+  const d = useDashboardData()
+  const standalone = isStandalone()
+  const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
 
   return (
     <>
-      <section className="hero">
+      <section className="hero hero-compact" data-testid="welcome">
         <div className="gold-rule" />
         <h1>{greeting()}.</h1>
-        <p>
-          {new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
-        </p>
-              <Link to="/fazenda" className="farm-chip">
-          <Icon name="pasture" size={16} /> {farm.name}
-        </Link>
+        <div className="hero-line">
+          <p>{today}</p>
+          <Link to="/fazenda" className="farm-chip">
+            <Icon name="pasture" size={16} /> {farm.name}
+          </Link>
+        </div>
       </section>
+
+      {d && (
+        <>
+          <IndicatorsSection ind={d.indicators} today={d.today} />
+          <PendingCenter items={d.pendencies} />
+          <QuickLaunch />
+          <AgendaSection items={d.agenda} today={d.today} />
+          <RecentActivity items={d.activities} />
+        </>
+      )}
 
       {!standalone && (
         <div className="notice notice-warn">
@@ -65,126 +56,8 @@ export function DashboardPage() {
         </div>
       )}
 
-      <SpecificationAlerts />
-
-      {reserve && reserve.summary.pendingCents > 0 && (
-        <Link to="/reserva" className="notice notice-warn" style={{ textDecoration: 'none' }} data-testid="dash-reserve-alert">
-          <Icon name="vault" />
-          <div>
-            <strong>Reserva financeira:</strong> separe {formatMoney(reserve.summary.pendingCents)} do que foi recebido. Toque para registrar.
-          </div>
-        </Link>
-      )}
-
-      <h2 className="section-title">Fazenda</h2>
-      {pastures && pastures.length === 0 ? (
-        <Link to="/pastos/novo" className="card list-link" style={{ padding: 18 }}>
-          <div className="status-icon">
-            <Icon name="pasture" />
-          </div>
-          <div className="status-body">
-            <div className="status-label">Comece cadastrando seus pastos</div>
-            <div className="status-detail">Depois, faça a contagem inicial de cada um.</div>
-          </div>
-          <Icon name="chevronRight" size={20} className="muted" />
-        </Link>
-      ) : (
-        <div className="card status-list">
-          <Link to="/rebanho" style={{ color: 'inherit', textDecoration: 'none' }}>
-            <StatusItem
-              icon="herd"
-              label="Rebanho"
-              detail={`${pastures?.length ?? 0} pasto(s)`}
-              badge={<span className="big-number" style={{ fontSize: 30 }} data-testid="dash-total">{herdTotal.toLocaleString('pt-BR')}</span>}
-            />
-          </Link>
-          {receivables && (receivables.openCents > 0 || receivables.payments.length > 0) && (
-            <Link to="/receber" style={{ color: 'inherit', textDecoration: 'none' }}>
-              <StatusItem
-                icon="receipt"
-                label="A receber"
-                detail={receivables.overdueCents ? `Vencido: ${formatMoney(receivables.overdueCents)}` : 'Nada vencido'}
-                badge={<span className={`badge ${receivables.overdueCents ? 'badge-warn' : 'badge-ok'}`} data-testid="dash-receber">{formatMoney(receivables.openCents)}</span>}
-              />
-            </Link>
-          )}
-          {reserve && (reserve.summary.depositedCents > 0 || reserve.summary.dueCents > 0) && (
-            <Link to="/reserva" style={{ color: 'inherit', textDecoration: 'none' }}>
-              <StatusItem
-                icon="vault"
-                label="Reserva financeira"
-                detail={reserve.summary.pendingCents ? `Falta separar ${formatMoney(reserve.summary.pendingCents)}` : 'Em dia'}
-                badge={<span className="badge badge-ok" data-testid="dash-reserve">{formatMoney(reserve.summary.balanceCents)}</span>}
-              />
-            </Link>
-          )}
-        </div>
-      )}
-
-      {pendingByPasture.length > 0 && (
-        <>
-          <h2 className="section-title">Serviços pendentes</h2>
-          <div className="card pending-list" data-testid="dash-pending">
-            {pendingByPasture.map(({ pasture, tasks }) => (
-              <Link key={pasture.id} to={`/pastos/${pasture.id}`} className="pending-row">
-                <Icon name="clipboard" size={20} className="pending-icon" />
-                <div className="pending-body">
-                  <div className="pending-pasture">{pasture.name}</div>
-                  <div className="pending-tasks">
-                    {tasks[0].description}
-                    {tasks.length > 1 && <span className="muted"> · +{tasks.length - 1}</span>}
-                  </div>
-                </div>
-                <span className="badge badge-warn">{tasks.length}</span>
-                <Icon name="chevronRight" size={18} className="muted" />
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
-
-      <h2 className="section-title">Situação do sistema</h2>
-      <div className="card status-list">
-        <StatusItem
-          icon="database"
-          label="Dados locais"
-          detail={
-            status === null
-              ? 'Verificando…'
-              : status.persisted
-                ? 'Armazenamento persistente ativo'
-                : 'Armazenamento padrão do navegador'
-          }
-          badge={
-            status?.persisted ? (
-              <span className="badge badge-ok">Protegido</span>
-            ) : (
-              <span className="badge badge-neutral">Local</span>
-            )
-          }
-        />
-        <StatusItem
-          icon={online ? 'cloud' : 'cloudOff'}
-          label="Conexão"
-          detail={online ? 'Conectado à internet' : 'Sem internet — tudo continua funcionando'}
-          badge={<span className={`badge ${online ? 'badge-ok' : 'badge-gold'}`}>{online ? 'Online' : 'Offline'}</span>}
-        />
-        <StatusItem
-          icon="shield"
-          label="Último backup"
-          detail={lastBackupAt ? formatDateTime(lastBackupAt) : 'Nenhum backup exportado ainda'}
-          badge={lastBackupAt ? <span className="badge badge-ok">OK</span> : <span className="badge badge-warn">Pendente</span>}
-        />
-        <StatusItem
-          icon="refresh"
-          label="Sincronização em nuvem"
-          detail={`Não configurada — dados apenas neste aparelho${pending ? ` · ${pending} alteração(ões) aguardando` : ''}`}
-          badge={<span className="badge badge-neutral">Local</span>}
-        />
-      </div>
-
       <Link to="/configuracoes" className="btn btn-outline btn-block">
-        <Icon name="gear" /> Configurações e backup
+        <Icon name="gear" /> Configurações, segurança e backup
       </Link>
 
       <p className="app-credit">

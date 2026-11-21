@@ -71,6 +71,17 @@ src/
 - Dados lançados antes do cadastro de fazendas são adotados pela primeira fazenda cadastrada.
 - O backup inclui todas as fazendas do aparelho.
 
+## Painel (tela inicial)
+
+Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendências → Novo lançamento → Agenda Operacional → Atividades recentes. Cálculos em `src/modules/dashboard/dashboard.ts` (funções puras, testadas); dados numa única consulta reativa (`useDashboardData`), que se atualiza a cada lançamento.
+
+- **Indicadores** (só dados reais): animais; pastos ocupados/cadastrados; a receber (parcelas em aberto, descontados os recebimentos parciais) e vencido; receitas do mês = dinheiro efetivamente recebido no mês; despesas do mês = compras de diesel e de insumos lançadas no mês; reserva (saldo da conta separada, sem somar o que está a receber). **Não há "saldo disponível"**: o ARGO ainda não tem caixa/conta bancária nem despesas gerais.
+- **Central de Pendências**: conta vencida (uma por venda), estoque negativo (insumo ou diesel), contagem a especificar (uma por pasto: fêmeas/machos sem categoria, bezerros sem sexo) e reserva a separar. Chave estável por situação (sem duplicar), prioridade Alta/Média/Baixa; some sozinha quando resolvida.
+- **Novo lançamento**: atalhos para os formulários existentes (`/diesel?novo=compra|consumo` abre o formulário direto). Despesa, vacinação, pesagem e manutenção aparecem "Em breve" (não há formulário falso).
+- **Agenda Operacional**: parcelas atrasadas, de hoje e dos próximos 15 dias (com valor em aberto) e serviços dos pastos (sem data; concluir/desfazer direto no Painel). Nada é criado automaticamente.
+- **Atividades recentes**: últimas criações do histórico (`auditLog`, só as 80 mais recentes, filtradas pela fazenda); a mistura aparece uma vez só.
+- Situação do sistema, backup e sincronização ficam em **Configurações → Sistema, segurança e backup**.
+
 ## Financeiro e dados do responsável
 
 - A aba Financeiro mostra no topo os **dados do responsável** (nome, CPF mascarado e se há chave Pix) e os módulos em grupos: Vendas, Recebimentos e Reserva.

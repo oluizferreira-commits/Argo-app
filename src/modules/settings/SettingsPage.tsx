@@ -8,6 +8,7 @@ import { db } from '../../db/database'
 import { Repository } from '../../db/repository'
 import { Icon } from '../../components/Icon'
 import { StatusItem } from '../../components/StatusItem'
+import { useOnline } from '../../hooks/useOnline'
 import { useStorageStatus } from '../../hooks/useStorageStatus'
 import { readFileText, saveFile } from '../../platform/files'
 import { isStandalone, requestPersistentStorage } from '../../platform/storage'
@@ -31,9 +32,9 @@ export function SettingsPage() {
   return (
     <>
       <FarmSection />
+      <SystemSection />
       <StorageSection />
       <BackupSection />
-      <SyncSection />
       <StorageTestSection />
       <AboutSection />
     </>
@@ -159,7 +160,9 @@ function BackupSection() {
 
   return (
     <>
-      <h2 className="section-title">Backup</h2>
+      <h2 className="section-title" id="backup">
+        Backup
+      </h2>
       <div className="card stack">
         <StatusItem
           icon="clock"
@@ -188,19 +191,47 @@ function BackupSection() {
   )
 }
 
-function SyncSection() {
+/**
+ * Sistema, segurança e backup: a situação que antes ficava no Painel. Só mostra o que é verdade:
+ * backup "OK" apenas se um backup foi realmente exportado; nuvem "não configurada" (não existe ainda).
+ */
+function SystemSection() {
+  const online = useOnline()
+  const { status } = useStorageStatus()
+  const lastBackupAt = useLiveQuery(async () => (await db.meta.get('lastBackupAt'))?.value as string | undefined)
   const pending = useLiveQuery(() => db.outbox.count(), [], 0)
   return (
     <>
-      <h2 className="section-title">Sincronização</h2>
-      <div className="card status-list">
+      <h2 className="section-title">Sistema, segurança e backup</h2>
+      <div className="card status-list" data-testid="system-section">
+        <StatusItem
+          icon="database"
+          label="Dados locais"
+          detail={status === null ? 'Verificando…' : status.persisted ? 'Armazenamento persistente ativo' : 'Armazenamento padrão do navegador'}
+          badge={status?.persisted ? <span className="badge badge-ok">Protegido</span> : <span className="badge badge-neutral">Local</span>}
+        />
+        <StatusItem
+          icon={online ? 'cloud' : 'cloudOff'}
+          label="Conexão"
+          detail={online ? 'Conectado à internet' : 'Sem internet — tudo continua funcionando'}
+          badge={<span className={`badge ${online ? 'badge-ok' : 'badge-gold'}`}>{online ? 'Online' : 'Offline'}</span>}
+        />
+        {/* rola até a seção de backup (não usar href="#…": as rotas do app usam #) */}
+        <button type="button" className="status-link" onClick={() => document.getElementById('backup')?.scrollIntoView({ behavior: 'smooth' })}>
+          <StatusItem
+            icon="shield"
+            label="Último backup"
+            detail={lastBackupAt ? formatDateTime(lastBackupAt) : 'Nenhum backup exportado ainda'}
+            badge={lastBackupAt ? <span className="badge badge-ok">Feito</span> : <span className="badge badge-warn">Pendente</span>}
+          />
+        </button>
         <StatusItem
           icon="cloudOff"
-          label="Nuvem"
+          label="Sincronização em nuvem"
           detail="Não configurada. Os dados ficam somente neste aparelho."
           badge={<span className="badge badge-neutral">Local</span>}
         />
-        <StatusItem icon="refresh" label="Alterações aguardando envio" detail={`${pending} registro(s)`} />
+        <StatusItem icon="refresh" label="Alterações aguardando sincronização" detail={`${pending} registro(s) guardados para enviar quando a nuvem existir`} />
       </div>
     </>
   )

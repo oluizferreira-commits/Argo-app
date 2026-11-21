@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo } from 'react'
 import { db } from '../../db/database'
-import type { Movement, Pasture, PastureTask } from '../../db/types'
+import type { Movement, Pasture } from '../../db/types'
 import { useFarm } from '../fazendas/FarmContext'
 import { computeBalances } from './herd'
 
@@ -31,15 +31,6 @@ export function usePendingTasks(): Map<string, number> | undefined {
     for (const t of await db.pastureTasks.where('farmId').equals(farm.id).toArray())
       if (t.deletedAt === null && !t.done) map.set(t.pastureId, (map.get(t.pastureId) ?? 0) + 1)
     return map
-  }, [farm.id])
-}
-
-/** Serviços pendentes da fazenda aberta (mais antigos primeiro). */
-export function usePendingTaskList(): PastureTask[] | undefined {
-  const { farm } = useFarm()
-  return useLiveQuery(async () => {
-    const all = await db.pastureTasks.where('farmId').equals(farm.id).toArray()
-    return all.filter((t) => t.deletedAt === null && !t.done).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   }, [farm.id])
 }
 
