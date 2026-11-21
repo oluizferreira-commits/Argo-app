@@ -103,6 +103,18 @@ export function maskCnpj(value: string): string {
   return `${d.slice(0, 2)}.***.***/****-${d.slice(-2)}`
 }
 
+/**
+ * Telefone mascarado para o comprovante: "(34) *****-**34".
+ * Sem DDD reconhecível, mostra só os 2 últimos dígitos.
+ */
+export function maskPhone(value: string): string {
+  let d = digits(value)
+  if (d.startsWith('55') && d.length >= 12) d = d.slice(2)
+  if (!d) return ''
+  if (d.length >= 10) return `(${d.slice(0, 2)}) *****-**${d.slice(-2)}`
+  return `****-**${d.slice(-2)}`
+}
+
 /** Documento do cliente (CPF ou CNPJ) mascarado; vazio se não informado. */
 export function maskDocument(value: string): string {
   const d = digits(value)

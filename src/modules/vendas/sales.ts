@@ -99,7 +99,11 @@ function cleanClient(input: ClientInput): ClientInput {
   const doc = input.document.replace(/\D/g, '')
   if (doc && !(doc.length === 11 ? isValidCpf(doc) : doc.length === 14 ? isValidCnpj(doc) : false))
     throw new SaleError('CPF/CNPJ do cliente inválido.')
-  return { name, phone: input.phone.trim(), city: input.city.trim(), document: doc }
+  const phone = input.phone.trim()
+  const phoneDigits = phone.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '')
+  if (phone && phoneDigits.length !== 10 && phoneDigits.length !== 11)
+    throw new SaleError('Telefone do cliente deve ter DDD + número, ex.: (34) 99999-1234.')
+  return { name, phone, city: input.city.trim(), document: doc }
 }
 
 export async function createClient(db: ArgoDatabase, farmId: string, input: ClientInput, idempotencyKey?: string): Promise<Client> {

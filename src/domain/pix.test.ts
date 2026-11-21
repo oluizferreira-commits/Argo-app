@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPixPayload, crc16, isValidCnpj, isValidCpf, maskCpf, maskDocument, maskPixKey, normalizePixKey, PixError, pixText } from './pix'
+import { buildPixPayload, crc16, isValidCnpj, isValidCpf, maskCpf, maskDocument, maskPhone, maskPixKey, normalizePixKey, PixError, pixText } from './pix'
 
 describe('pix', () => {
   it('CRC16-CCITT confere com o valor de referência', () => {
@@ -42,6 +42,9 @@ describe('pix', () => {
     expect(maskPixKey('email', 'luiz@exemplo.com')).toBe('lu***@exemplo.com')
     expect(maskDocument('11222333000181')).toBe('11.***.***/****-81')
     expect(maskDocument('')).toBe('')
+    expect(maskPhone('(34) 99999-1234')).toBe('(34) *****-**34')
+    expect(maskPhone('+55 34 3333-1234')).toBe('(34) *****-**34')
+    expect(maskPhone('')).toBe('')
     expect(pixText('José da Silva Ção', 25)).toBe('JOSE DA SILVA CAO')
   })
 })

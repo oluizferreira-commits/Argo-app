@@ -196,6 +196,13 @@ describe('venda e rebanho', () => {
     expect(balanceOf(await bal(), p.id, 'boi')).toBe(28)
   })
 
+  it('cliente: telefone completo salvo, exige DDD', async () => {
+    const { farm } = await setup()
+    const c = await createClient(db, farm.id, { name: 'Com Telefone', phone: '(34) 99999-1234', city: '', document: '' })
+    expect(c.phone).toBe('(34) 99999-1234')
+    await expect(createClient(db, farm.id, { name: 'Sem DDD', phone: '9999-1234', city: '', document: '' })).rejects.toThrow(/DDD/)
+  })
+
   it('cliente: CPF inválido recusado, nome único por fazenda', async () => {
     const { farm } = await setup()
     await expect(createClient(db, farm.id, { name: 'X', phone: '', city: '', document: '123.456.789-00' })).rejects.toThrow(/inválido/)

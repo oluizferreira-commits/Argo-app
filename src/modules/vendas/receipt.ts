@@ -3,7 +3,7 @@ import { formatDateTime } from '../../core/format'
 import { formatDecimal, formatMoney } from '../../core/money'
 import type { Client, Farm, Pasture, Sale } from '../../db/types'
 import { category } from '../../domain/categories'
-import { buildPixPayload, maskDocument, maskPixKey, PIX_KEY_LABELS } from '../../domain/pix'
+import { buildPixPayload, maskPhone, maskPixKey, PIX_KEY_LABELS } from '../../domain/pix'
 import { formatDay } from '../rebanho/herd'
 import { formatSaleNumber } from './sales'
 
@@ -102,8 +102,9 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
   text('COMPRADOR', col2, y, 20, 700, C.gold)
   y += 42
   const left = [farm.name, farm.responsible && `Responsável: ${farm.responsible}`, farm.city].filter(Boolean) as string[]
-  const doc = maskDocument(client.document)
-  const right = [client.name, doc && `${client.document.length === 14 ? 'CNPJ' : 'CPF'}: ${doc}`, client.city].filter(Boolean) as string[]
+  // Comprador: nome, telefone MASCARADO e cidade (CPF do cliente não é usado).
+  const phone = maskPhone(client.phone)
+  const right = [client.name, phone && `Telefone: ${phone}`, client.city].filter(Boolean) as string[]
   const half = W / 2 - M - 32
   for (let i = 0; i < Math.max(left.length, right.length); i++) {
     const size = i === 0 ? 32 : 26

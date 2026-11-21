@@ -2,7 +2,6 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useParams } from 'react-router'
 import { formatMoney } from '../../core/money'
 import { db } from '../../db/database'
-import { maskDocument } from '../../domain/pix'
 import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { SaleRow } from '../vendas/SaleRow'
@@ -22,7 +21,7 @@ export function ClientePage() {
       <section className="hero">
         <div className="gold-rule" />
         <h1 style={{ fontSize: 24 }}>{client.name}</h1>
-        <p>{[client.city, client.phone, maskDocument(client.document)].filter(Boolean).join(' · ') || 'Sem dados de contato'}</p>
+        <p>{[client.city, client.phone].filter(Boolean).join(' · ') || 'Sem dados de contato'}</p>
         <p style={{ marginTop: 12 }}>
           {active.length} compra(s) · <strong style={{ color: 'var(--gold-300)' }}>{formatMoney(total)}</strong>
         </p>
