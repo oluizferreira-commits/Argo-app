@@ -139,6 +139,13 @@ src/
 - Correção = estorno (fica no histórico). Estornar uma entrada não pode deixar o estoque negativo.
 - **Mistura de sal**: produto com `recipe` (ingredientes de UMA mistura, em meios sacos) e `yieldHalves` (quanto rende). Criada uma vez por fazenda com 3 sacos de sal branco + 1 de mineral → 6 sacos; a receita é definida pelo responsável e vale para as próximas misturas. "Mistura feita" grava, com o mesmo `batchId`, uma saída de cada ingrediente e a entrada da mistura (tipo `mistura`); o estorno desfaz o grupo todo e é recusado se a mistura já foi para o cocho. Ingrediente de mistura ativa não tem consumo direto no cocho; mistura não tem compra. Campos novos sem índice: não exigiram nova versão do banco.
 
+## Diesel
+
+- **Equipamentos** (`equipments`): nome (único), tipo, identificação, responsável e medidor (horímetro, hodômetro em km ou nenhum). Desativados, nunca apagados.
+- **Lançamentos** (`fuelMovements`): litros em **centilitros** com sinal. Compra (+, posto e valor total em centavos; preço por litro calculado), abastecimento (−, equipamento, responsável — sugerido pelo equipamento —, leitura do medidor ×10, que não pode ser menor que a anterior) e ajuste (±, com motivo).
+- **Custo médio ponderado** (`fuelLedger`): em ordem de data; cada compra recalcula (valor em estoque + valor pago) ÷ (litros em estoque + litros comprados); cada saída sai pelo custo médio do momento. Com estoque zerado ou negativo, o custo passa a ser o preço da compra.
+- Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
+
 ## Esquema do banco
 
 | Versão | Tabelas adicionadas |

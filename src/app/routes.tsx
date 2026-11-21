@@ -22,6 +22,8 @@ import { HistoricoPage } from '../modules/rebanho/HistoricoPage'
 import { MovimentacaoPage } from '../modules/rebanho/MovimentacaoPage'
 import { MovimentarPage, MovimentarTipoPage } from '../modules/rebanho/MovimentarPage'
 import { RebanhoPage } from '../modules/rebanho/RebanhoPage'
+import { DieselPage } from '../modules/diesel/DieselPage'
+import { EquipamentosPage } from '../modules/diesel/EquipamentosPage'
 import { InsumoPage } from '../modules/insumos/InsumoPage'
 import { InsumosPage } from '../modules/insumos/InsumosPage'
 import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
@@ -64,6 +66,8 @@ const implemented: RouteObject[] = [
   { path: '/clientes/:id/editar', element: <ClienteFormPage />, handle: t('Editar cliente') },
   { path: '/insumos', element: <InsumosPage />, handle: t('Insumos') },
   { path: '/insumos/:id', element: <InsumoPage />, handle: t('Insumo') },
+  { path: '/diesel', element: <DieselPage />, handle: t('Diesel') },
+  { path: '/diesel/equipamentos', element: <EquipamentosPage />, handle: t('Equipamentos') },
   { path: '/responsaveis', element: <ResponsaveisPage />, handle: t('Responsáveis') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <HubPage ids={FINANCE_MODULE_IDS} intro="Vendas, clientes, recebimentos e reserva financeira." />, handle: t('Financeiro') },

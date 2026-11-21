@@ -17,7 +17,8 @@
 | 6 | Relatórios mês a mês e por ano, na tela e em PDF: vendas, arrobas, recebimentos, inadimplência, reserva, nascimentos e mortes, rebanho por pasto e categoria | **concluída** (v0.8.0) |
 | 7.1 | Responsáveis + estoque de insumos em sacos (meio saco), consumo no cocho por pasto, estoque negativo só com autorização | **concluída** (v0.9.0) |
 | 7.1.1 | Mistura de sal (receita do responsável; "Mistura feita" desconta branco e mineral; cocho em sacos de mistura) | **concluída** (v0.9.1) |
-| 7.2 | Diesel: compras, equipamentos, consumo, custo médio ponderado | planejada |
+| 7.1.2 | Painel com serviços pendentes por pasto; contagem parte do saldo do sistema | **concluída** (v0.9.2–0.9.3) |
+| 7.2 | Diesel: compras, equipamentos, consumo, custo médio ponderado | **concluída** (v0.10.0) |
 | 7.3 | Relatórios de combustível (semana, mês, equipamento, responsável, L/h) | planejada |
 | 7.4 | Vacinação com cobertura parcial e várias aplicações por campanha | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
