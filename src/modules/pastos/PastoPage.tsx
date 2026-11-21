@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { db } from '../../db/database'
-import { CATEGORIES } from '../../domain/categories'
+import { CATEGORY_GROUPS } from '../../domain/categories'
 import { Icon } from '../../components/Icon'
 import { balanceOf, pastureTotal } from '../rebanho/herd'
 import { PastureSpecificationNotice } from '../rebanho/SpecificationAlerts'
@@ -79,6 +79,7 @@ export function PastoPage() {
         pastureId={id}
         females={balanceOf(balances, id, 'femea-a-especificar')}
         males={balanceOf(balances, id, 'macho-a-especificar')}
+        calves={balanceOf(balances, id, 'bezerro-a-especificar')}
       />
 
       <div className="row">
@@ -96,10 +97,10 @@ export function PastoPage() {
           <p className="muted">Nenhum animal neste pasto.</p>
         ) : (
           <div className="cat-grid">
-            {(['M', 'F'] as const).map((sex) => (
-              <div key={sex}>
-                <div className="group-title">{sex === 'M' ? 'Machos' : 'Fêmeas'}</div>
-                {CATEGORIES.filter((c) => c.sex === sex && (!c.unspecified || balanceOf(balances, id, c.id) > 0)).map((c) => (
+            {CATEGORY_GROUPS.filter((g) => g.title !== 'A especificar' || g.list.some((c) => balanceOf(balances, id, c.id) > 0)).map((g) => (
+              <div key={g.title}>
+                <div className="group-title">{g.title}</div>
+                {g.list.filter((c) => !c.unspecified || balanceOf(balances, id, c.id) > 0).map((c) => (
                   <div className="cat-line" key={c.id}>
                     <span>{c.label}</span>
                     <span className="num">{balanceOf(balances, id, c.id)}</span>

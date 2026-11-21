@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { newId } from '../../core/ids'
 import { createDatabase, type ArgoDatabase } from '../../db/database'
-import { laterCategories, nextCategory } from '../../domain/categories'
+import { CATEGORY_GROUPS, laterCategories, nextCategory } from '../../domain/categories'
 import { createFarm } from '../fazendas/farms'
 import { createPasture } from '../pastos/pastures'
 import {
@@ -41,7 +41,7 @@ describe('fêmeas/machos a especificar', () => {
     const { p, bal } = await setup()
     const b = await bal()
     expect(balanceOf(b, p.id, 'femea-a-especificar')).toBe(140)
-    expect(pendingSpecification(b, [p.id])).toEqual([{ pastureId: p.id, females: 140, males: 0 }])
+    expect(pendingSpecification(b, [p.id])).toEqual([{ pastureId: p.id, females: 140, males: 0, calves: 0 }])
   })
 
   it('especificar 40 novilhas + 100 vacas zera a pendência e mantém o total', async () => {
@@ -126,4 +126,67 @@ describe('fêmeas/machos a especificar', () => {
     expect(balanceOf(b, p.id, 'femea-a-especificar')).toBe(140)
     expect(balanceOf(b, p.id, 'vaca')).toBe(0)
   })
+
+  it('grupos: Machos, Fêmeas e A especificar (fêmeas, machos e bezerros)', () => {
+    expect(CATEGORY_GROUPS.map((g) => g.title)).toEqual(['Machos', 'Fêmeas', 'A especificar'])
+    expect(CATEGORY_GROUPS[2].list.map((c) => c.id)).toEqual(['macho-a-especificar', 'femea-a-especificar', 'bezerro-a-especificar'])
+    expect(CATEGORY_GROUPS[0].list.some((c) => c.unspecified)).toBe(false)
+  })
 })
+
+describe('bezerros a especificar (sem separar macho e fêmea)', () => {
+  async function withCalves() {
+    const ctx = await setup()
+    await recordMovement(db, {
+      type: 'contagem',
+      date: todayLocal(),
+      notes: '',
+      entries: entriesCount(ctx.p.id, { 'bezerro-a-especificar': 30 }, await ctx.bal(), { 'bezerro-a-especificar': 'nascimento-nao-registrado' }),
+    })
+    return ctx
+  }
+
+  it('contagem de 30 bezerros a especificar gera pendência', async () => {
+    const { p, bal } = await withCalves()
+    expect(pendingSpecification(await bal(), [p.id])).toEqual([{ pastureId: p.id, females: 140, males: 0, calves: 30 }])
+  })
+
+  it('especificar em 12 bezerros + 18 bezerras', async () => {
+    const { p, bal } = await withCalves()
+    const { entries, difference } = entriesSpecify(p.id, 'B', { bezerro: 12, bezerra: 18 }, await bal())
+    expect(difference).toBe(0)
+    await recordMovement(db, { type: 'especificacao', date: todayLocal(), notes: '', entries })
+    const b = await bal()
+    expect([balanceOf(b, p.id, 'bezerro'), balanceOf(b, p.id, 'bezerra'), balanceOf(b, p.id, 'bezerro-a-especificar')]).toEqual([12, 18, 0])
+    // as fêmeas a especificar continuam pendentes (são outra coisa)
+    expect(pendingSpecification(b, [p.id])).toEqual([{ pastureId: p.id, females: 140, males: 0, calves: 0 }])
+  })
+
+  it('bezerros só viram bezerro ou bezerra', async () => {
+    const { p } = await withCalves()
+    await expect(
+      recordMovement(db, {
+        type: 'especificacao',
+        date: todayLocal(),
+        notes: '',
+        entries: [
+          { pastureId: p.id, category: 'bezerro-a-especificar', delta: -30, reason: 'especificacao' },
+          { pastureId: p.id, category: 'desmama-macho', delta: 30, reason: 'especificacao' },
+        ],
+      }),
+    ).rejects.toThrow(/bezerros e bezerras/)
+  })
+
+  it('diferença no total com motivo "nascimentos não registrados"', async () => {
+    const { p, bal } = await withCalves()
+    const { entries, difference } = entriesSpecify(p.id, 'B', { bezerro: 15, bezerra: 18 }, await bal())
+    expect(difference).toBe(3)
+    const m = await recordMovement(db, { type: 'especificacao', date: todayLocal(), notes: '', entries, differenceReason: 'nascimento-nao-registrado' })
+    expect(m.difference).toBe(3)
+  })
+
+  it('não muda de categoria pela "mudança de categoria"', async () => {
+    expect(laterCategories('bezerro-a-especificar')).toEqual([])
+  })
+})
+

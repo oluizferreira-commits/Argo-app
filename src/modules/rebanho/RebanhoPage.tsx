@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { CATEGORIES } from '../../domain/categories'
+import { CATEGORY_GROUPS } from '../../domain/categories'
 import { Icon } from '../../components/Icon'
 import { pastureTotal, totalsByCategory } from './herd'
 import { sortMovements } from './describe'
@@ -56,10 +56,10 @@ export function RebanhoPage() {
       <h2 className="section-title">Por categoria</h2>
       <div className="card">
         <div className="cat-grid">
-          {(['M', 'F'] as const).map((sex) => (
-            <div key={sex}>
-              <div className="group-title">{sex === 'M' ? 'Machos' : 'Fêmeas'}</div>
-              {CATEGORIES.filter((c) => c.sex === sex && (!c.unspecified || (byCat.get(c.id) ?? 0) > 0)).map((c) => (
+          {CATEGORY_GROUPS.filter((g) => g.title !== 'A especificar' || g.list.some((c) => (byCat.get(c.id) ?? 0) > 0)).map((g) => (
+            <div key={g.title}>
+              <div className="group-title">{g.title}</div>
+              {g.list.filter((c) => !c.unspecified || (byCat.get(c.id) ?? 0) > 0).map((c) => (
                 <div className="cat-line" key={c.id}>
                   <span>{c.label}</span>
                   <span className="num">{(byCat.get(c.id) ?? 0).toLocaleString('pt-BR')}</span>

@@ -36,7 +36,7 @@ export function PastosPage() {
                   <div className="status-detail">
                     {formatArea(p.areaHa)}
                     {n > 0 && <span className="badge badge-warn" style={{ marginLeft: 8 }}>{n} serviço(s)</span>}
-                    {balanceOf(balances, p.id, 'femea-a-especificar') + balanceOf(balances, p.id, 'macho-a-especificar') > 0 && (
+                    {balanceOf(balances, p.id, 'femea-a-especificar') + balanceOf(balances, p.id, 'macho-a-especificar') + balanceOf(balances, p.id, 'bezerro-a-especificar') > 0 && (
                       <span className="badge badge-warn" style={{ marginLeft: 8 }}>Especificar</span>
                     )}
                   </div>

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { db } from '../../db/database'
 import type { MovementEntry } from '../../db/types'
-import { CATEGORIES, category, laterCategories, nextCategory, NEWBORN_CATEGORIES, UNSPECIFIED, type CategoryId, type Sex } from '../../domain/categories'
+import { CATEGORIES, CATEGORY_GROUPS, category, laterCategories, nextCategory, NEWBORN_CATEGORIES, SPEC_KIND_WORD, SPEC_TARGETS, UNSPECIFIED, type CategoryId, type SpecKind } from '../../domain/categories'
 import { COUNT_REASONS, MOVEMENT_INFO, type CountReason } from '../../domain/movements'
 import { CategoryQuantities } from '../../components/CategoryQuantities'
 import { sumQty, toQuantities, type QtyText } from '../../components/quantities'
@@ -69,10 +69,14 @@ export function MovementForm({ type }: { type: FormType }) {
   })
 
   // Especificação (fêmeas/machos contados sem categoria).
-  const pendingF = from ? balanceOf(balances, from, UNSPECIFIED.F) : 0
-  const pendingM = from ? balanceOf(balances, from, UNSPECIFIED.M) : 0
-  const [sexChoice, setSexChoice] = useState<Sex | null>(null)
-  const specSex: Sex | null = sexChoice && (sexChoice === 'F' ? pendingF : pendingM) > 0 ? sexChoice : pendingF > 0 ? 'F' : pendingM > 0 ? 'M' : null
+  const pending: Record<SpecKind, number> = {
+    F: from ? balanceOf(balances, from, UNSPECIFIED.F) : 0,
+    M: from ? balanceOf(balances, from, UNSPECIFIED.M) : 0,
+    B: from ? balanceOf(balances, from, UNSPECIFIED.B) : 0,
+  }
+  const [sexChoice, setSexChoice] = useState<SpecKind | null>(null)
+  const specSex: SpecKind | null =
+    sexChoice && pending[sexChoice] > 0 ? sexChoice : ((['F', 'M', 'B'] as const).find((k) => pending[k] > 0) ?? null)
   const [diffReason, setDiffReason] = useState<CountReason | ''>('')
   const spec =
     type === 'especificacao' && from && specSex
@@ -227,8 +231,7 @@ export function MovementForm({ type }: { type: FormType }) {
                 setQty({})
                 setDiffReason('')
               }}
-              pendingF={pendingF}
-              pendingM={pendingM}
+              pending={pending}
               expected={avail}
               qty={qty}
               setQty={setQty}
@@ -351,7 +354,7 @@ function CategoryChangeFields(props: {
 function reasonOptions(e: MovementEntry): CountReason[] {
   if (e.delta > 0) {
     const opts: CountReason[] = ['saldo-inicial']
-    if (NEWBORN_CATEGORIES.includes(e.category)) opts.push('nascimento-nao-registrado')
+    if ([...NEWBORN_CATEGORIES, UNSPECIFIED.B].includes(e.category)) opts.push('nascimento-nao-registrado')
     return [...opts, 'erro-contagem', 'outro']
   }
   return ['morte-nao-registrada', 'erro-contagem', 'outro']
@@ -381,17 +384,19 @@ function CountFields(props: {
         <div className="label">Quantos você contou?</div>
         <p className="muted">Deixe em branco (—) a categoria que não foi contada. Use 0 se contou e não havia nenhum.</p>
       </div>
-      {(['M', 'F'] as const).map((sex) => (
-        <div key={sex}>
-          <div className="group-title">{sex === 'M' ? 'Machos' : 'Fêmeas'}</div>
-          {CATEGORIES.filter((c) => c.sex === sex).map((c) => (
+      {CATEGORY_GROUPS.map((g) => (
+        <div key={g.title}>
+          <div className="group-title">{g.title}</div>
+          {g.title === 'A especificar' && (
+            <p className="muted" style={{ fontSize: 14, margin: '2px 0 4px' }}>
+              Use quando contou sem separar: fêmeas ou machos sem categoria, ou bezerros sem separar macho e fêmea.
+            </p>
+          )}
+          {g.list.map((c) => (
             <div className="qty-row" key={c.id}>
               <div className="qty-label">
                 <div className="status-label">{c.label}</div>
-                <div className="status-detail">
-                  No sistema: {props.expected(c.id)}
-                  {c.unspecified && ' · use se contou sem separar por categoria'}
-                </div>
+                <div className="status-detail">No sistema: {props.expected(c.id)}</div>
               </div>
               <Stepper label={c.label} placeholder="—" value={props.qty[c.id] ?? ''} onChange={(v) => setCount({ ...props.qty, [c.id]: v })} />
             </div>
@@ -433,10 +438,9 @@ function CountFields(props: {
 }
 
 function SpecifyFields(props: {
-  sex: Sex | null
-  setSex: (s: Sex) => void
-  pendingF: number
-  pendingM: number
+  sex: SpecKind | null
+  setSex: (s: SpecKind) => void
+  pending: Record<SpecKind, number>
   expected: (c: CategoryId) => number
   qty: QtyText
   setQty: (v: QtyText) => void
@@ -446,20 +450,20 @@ function SpecifyFields(props: {
   setReason: (r: CountReason | '') => void
 }) {
   if (!props.sex) return <p className="muted">Este pasto não tem gado a especificar.</p>
-  const pending = props.sex === 'F' ? props.pendingF : props.pendingM
-  const word = props.sex === 'F' ? 'fêmeas' : 'machos'
+  const pending = props.pending[props.sex]
+  const word = SPEC_KIND_WORD[props.sex].many
+  const kinds = (['F', 'M', 'B'] as const).filter((k) => props.pending[k] > 0)
   const options: CountReason[] =
     props.difference > 0 ? ['nascimento-nao-registrado', 'erro-contagem', 'outro'] : ['morte-nao-registrada', 'erro-contagem', 'outro']
   return (
     <div className="stack">
-      {props.pendingF > 0 && props.pendingM > 0 && (
+      {kinds.length > 1 && (
         <div className="chips">
-          <button type="button" className={`chip${props.sex === 'F' ? ' active' : ''}`} onClick={() => props.setSex('F')}>
-            Fêmeas ({props.pendingF})
-          </button>
-          <button type="button" className={`chip${props.sex === 'M' ? ' active' : ''}`} onClick={() => props.setSex('M')}>
-            Machos ({props.pendingM})
-          </button>
+          {kinds.map((k) => (
+            <button type="button" key={k} className={`chip${props.sex === k ? ' active' : ''}`} onClick={() => props.setSex(k)}>
+              {SPEC_KIND_WORD[k].many.charAt(0).toUpperCase() + SPEC_KIND_WORD[k].many.slice(1)} ({props.pending[k]})
+            </button>
+          ))}
         </div>
       )}
       <div className="notice notice-warn">
@@ -468,10 +472,12 @@ function SpecifyFields(props: {
           <strong>
             {pending} {word} a especificar.
           </strong>{' '}
-          Digite quantos você contou de cada categoria. Deixe em branco (—) a categoria que não foi contada.
+          {props.sex === 'B'
+            ? 'Digite quantos são machos (bezerros) e quantas são fêmeas (bezerras).'
+            : 'Digite quantos você contou de cada categoria. Deixe em branco (—) a categoria que não foi contada.'}
         </div>
       </div>
-      {CATEGORIES.filter((c) => c.sex === props.sex && !c.unspecified).map((c) => (
+      {SPEC_TARGETS[props.sex].map((id) => category(id)).map((c) => (
         <div className="qty-row" key={c.id}>
           <div className="qty-label">
             <div className="status-label">{c.label}</div>

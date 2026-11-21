@@ -1,7 +1,7 @@
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
 import type { Movement, MovementEntry } from '../../db/types'
-import { CATEGORIES, category, isCategoryId, isUnspecified, laterCategories, NEWBORN_CATEGORIES, UNSPECIFIED, type CategoryId, type Sex } from '../../domain/categories'
+import { category, isCategoryId, isUnspecified, laterCategories, NEWBORN_CATEGORIES, SPEC_TARGETS, UNSPECIFIED, type CategoryId, type SpecKind } from '../../domain/categories'
 import { COUNT_REASONS, type CountReason, type MovementType } from '../../domain/movements'
 
 export class HerdError extends Error {
@@ -109,41 +109,42 @@ export function entriesCount(
 }
 
 /**
- * Especificação: o gado de um sexo foi contado como "a especificar" e agora foi contado por categoria.
+ * Especificação: o gado foi contado como "a especificar" (fêmeas, machos ou bezerros sem sexo)
+ * e agora foi contado por categoria. Bezerros só podem virar bezerro ou bezerra.
  * - categorias contadas passam a ter o valor contado;
  * - categorias em branco (undefined) não mudam;
- * - o "a especificar" daquele sexo vai a zero.
+ * - o "a especificar" daquele tipo vai a zero.
  * Retorna as linhas e a diferença (total contado − total que havia nas categorias envolvidas).
  */
 export function entriesSpecify(
   pastureId: string,
-  sex: Sex,
+  kind: SpecKind,
   counted: Quantities,
   balances: Map<string, number>,
 ): { entries: MovementEntry[]; difference: number } {
   const entries: MovementEntry[] = []
-  const unspec = UNSPECIFIED[sex]
+  const unspec = UNSPECIFIED[kind]
   const pending = balanceOf(balances, pastureId, unspec)
   if (pending > 0) entries.push({ pastureId, category: unspec, delta: -pending, reason: 'especificacao' })
   let difference = -pending
-  for (const c of CATEGORIES) {
-    if (c.sex !== sex || c.unspecified) continue
-    const n = counted[c.id]
+  for (const id of SPEC_TARGETS[kind]) {
+    const n = counted[id]
     if (n === undefined || n < 0) continue
-    const delta = n - balanceOf(balances, pastureId, c.id)
+    const delta = n - balanceOf(balances, pastureId, id)
     difference += delta
-    if (delta !== 0) entries.push({ pastureId, category: c.id, delta, reason: 'especificacao' })
+    if (delta !== 0) entries.push({ pastureId, category: id, delta, reason: 'especificacao' })
   }
   return { entries, difference }
 }
 
 /** Quantidade "a especificar" por pasto (só pastos com pendência). */
 export function pendingSpecification(balances: Map<string, number>, pastureIds: readonly string[]) {
-  const out: { pastureId: string; females: number; males: number }[] = []
+  const out: { pastureId: string; females: number; males: number; calves: number }[] = []
   for (const id of pastureIds) {
     const females = balanceOf(balances, id, UNSPECIFIED.F)
     const males = balanceOf(balances, id, UNSPECIFIED.M)
-    if (females > 0 || males > 0) out.push({ pastureId: id, females, males })
+    const calves = balanceOf(balances, id, UNSPECIFIED.B)
+    if (females > 0 || males > 0 || calves > 0) out.push({ pastureId: id, females, males, calves })
   }
   return out
 }
@@ -207,11 +208,17 @@ function validateShape(input: MovementInput): void {
     }
     case 'especificacao': {
       if (pastures.size !== 1) throw new HerdError('A especificação é feita em um pasto por vez.')
-      const sexes = new Set(entries.map((e) => category(e.category).sex))
-      if (sexes.size !== 1) throw new HerdError('Especifique fêmeas e machos separadamente.')
-      const out = entries.find((e) => isUnspecified(e.category))
+      const unspecEntries = entries.filter((e) => isUnspecified(e.category))
+      if (unspecEntries.length > 1) throw new HerdError('Especifique fêmeas, machos e bezerros separadamente.')
+      const out = unspecEntries[0]
       if (!out || out.delta >= 0) throw new HerdError('Não há gado a especificar neste pasto.')
-      if (entries.some((e) => isUnspecified(e.category) && e !== out)) throw new HerdError('Especificação inconsistente.')
+      const kind = category(out.category).specKind!
+      if (entries.some((e) => e !== out && !SPEC_TARGETS[kind].includes(e.category)))
+        throw new HerdError(
+          kind === 'B'
+            ? 'Bezerros a especificar só podem ser separados em bezerros e bezerras.'
+            : 'Especifique fêmeas, machos e bezerros separadamente.',
+        )
       if (entries.some((e) => e.reason !== 'especificacao')) throw new HerdError('Especificação inconsistente.')
       if (!entries.some((e) => !isUnspecified(e.category) && e.delta > 0)) throw new HerdError('Informe quantos animais há em cada categoria.')
       const net = entries.reduce((a, e) => a + e.delta, 0)
@@ -228,7 +235,7 @@ function validateShape(input: MovementInput): void {
       if (entries.some((e) => e.reason === 'especificacao')) throw new HerdError('Use "Especificar contagem" para separar o gado a especificar.')
       if (pastures.size !== 1) throw new HerdError('A contagem é feita em um pasto por vez.')
       if (entries.some((e) => !e.reason || !(e.reason in COUNT_REASONS))) throw new HerdError('Informe o motivo de cada diferença.')
-      if (entries.some((e) => e.reason === 'nascimento-nao-registrado' && (e.delta < 0 || !NEWBORN_CATEGORIES.includes(e.category))))
+      if (entries.some((e) => e.reason === 'nascimento-nao-registrado' && (e.delta < 0 || ![...NEWBORN_CATEGORIES, UNSPECIFIED.B].includes(e.category))))
         throw new HerdError('"Nascimentos não registrados" vale só para aumento de bezerros/bezerras.')
       if (entries.some((e) => e.reason === 'morte-nao-registrada' && e.delta > 0))
         throw new HerdError('"Mortes não registradas" vale só para diminuição.')

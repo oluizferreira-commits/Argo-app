@@ -1,4 +1,4 @@
-import { FEMALE_CATEGORIES, MALE_CATEGORIES, type Category, type CategoryId } from '../domain/categories'
+import { CATEGORY_GROUPS, type Category, type CategoryId } from '../domain/categories'
 import type { QtyText } from './quantities'
 import { Stepper } from './Stepper'
 
@@ -21,10 +21,7 @@ export function CategoryQuantities(props: {
         (!props.hideEmpty || !props.available || props.available(c.id) > 0) &&
         (!c.unspecified || (props.available !== undefined && props.available(c.id) > 0)),
     )
-  const groups = [
-    { title: 'Machos', list: filter(MALE_CATEGORIES) },
-    { title: 'Fêmeas', list: filter(FEMALE_CATEGORIES) },
-  ].filter((g) => g.list.length > 0)
+  const groups = CATEGORY_GROUPS.map((g) => ({ title: g.title, list: filter(g.list) })).filter((g) => g.list.length > 0)
 
   if (groups.length === 0) return <p className="muted">Não há animais neste pasto.</p>
 

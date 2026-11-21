@@ -28,7 +28,7 @@ export const MOVEMENT_INFO: Record<MovementType, MovementTypeInfo> = {
   morte: { label: 'Morte', description: 'Animais mortos', icon: 'minusCircle' },
   venda: { label: 'Venda', description: 'Por arroba ou por cabeça, com comprovante', icon: 'tag' },
   contagem: { label: 'Contagem', description: 'Conferir um pasto e acertar diferenças', icon: 'clipboard' },
-  especificacao: { label: 'Especificar contagem', description: 'Separar fêmeas/machos contados sem categoria', icon: 'list' },
+  especificacao: { label: 'Especificar contagem', description: 'Separar fêmeas, machos e bezerros contados sem categoria', icon: 'list' },
   estorno: { label: 'Estorno', description: 'Correção de lançamento', icon: 'undo' },
 }
 
