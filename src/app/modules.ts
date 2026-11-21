@@ -29,7 +29,7 @@ export const MODULES: readonly ModuleDef[] = [
   { id: 'clientes', title: 'Clientes', description: 'Compradores e contatos', path: '/clientes', icon: 'people', status: 'disponivel' },
   { id: 'contas-receber', title: 'Contas a receber', description: 'Parcelas em aberto e vencidas', path: '/receber', icon: 'receipt', status: 'disponivel' },
   { id: 'pagamentos', title: 'Pagamentos parciais', description: 'Histórico de recebimentos', path: '/pagamentos', icon: 'cash', status: 'disponivel' },
-  { id: 'reserva', title: 'Reserva financeira', description: '35% de cada venda, em conta separada', path: '/reserva', icon: 'vault', status: 'disponivel' },
+  { id: 'reserva', title: 'Reserva financeira', description: 'Percentual de cada venda, em conta separada', path: '/reserva', icon: 'vault', status: 'disponivel' },
   { id: 'acesso', title: 'Como chegar à fazenda', description: 'Mapa, rotas e guia de acesso', path: '/acesso', icon: 'map', status: 'disponivel' },
   { id: 'relatorios', title: 'Relatórios', description: 'Mês a mês ou por ano, em PDF', path: '/relatorios', icon: 'chart', status: 'disponivel' },
   { id: 'configuracoes', title: 'Configurações', description: 'Backup, armazenamento e sistema', path: '/configuracoes', icon: 'gear', status: 'disponivel' },

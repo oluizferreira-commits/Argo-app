@@ -91,6 +91,7 @@ describe('reserva financeira (35%)', () => {
   it('depósito geral (sem ligar a um recebimento) abate os pendentes do mais antigo ao mais novo', async () => {
     const { farm, summary, pay } = await setup()
     const p1 = await pay(50000) // separar 175
+    await new Promise((r) => setTimeout(r, 5)) // lançados em momentos diferentes, como no uso real
     const p2 = await pay(150000) // separar 525
     await recordReserveEntry(db, farm.id, { type: 'deposito', date: todayLocal(), amountCents: 30000, notes: 'Transferência dos 35%' })
     let map = reservePendingByPayment(await db.payments.toArray(), await db.reserveEntries.toArray())
@@ -126,5 +127,59 @@ describe('conferência de saldo (Mercado Pago)', () => {
     expect(daysSinceCheck(await db.reserveChecks.toArray())).toBe(0)
     expect(daysSinceCheck([])).toBeNull()
     await expect(recordReserveCheck(db, farm.id, { informedCents: -1, date: todayLocal() })).rejects.toThrow(/saldo/)
+  })
+})
+
+describe('percentual da reserva definido pelo responsável', () => {
+  it('padrão 35%, mudança vale a partir da data e cada fazenda tem o seu', async () => {
+    const { rateOn, setReserveRate, currentRate, formatPercent } = await import('./reserve')
+    const { farm, summary, pay } = await setup()
+    expect(currentRate(farm)).toBe(35)
+    // recebimento de ontem (35%)
+    const ontem = addDays(todayLocal(), -1)
+    // venda de 5 dias atrás, recebida ontem
+    const pasture = (await db.pastures.toArray())[0]
+    const client = (await db.clients.toArray())[0]
+    const antiga = await createSale(db, farm.id, {
+      date: addDays(todayLocal(), -5),
+      clientId: client.id,
+      mode: 'cabeca',
+      items: [{ pastureId: pasture.id, category: 'boi', quantity: 1 }],
+      weighing: null,
+      animals: [],
+      pricePerArrobaCents: null,
+      pricePerHeadCents: { boi: 100000 },
+      paymentKind: 'prazo',
+      installments: buildInstallments('prazo', addDays(todayLocal(), -5), 100000, { days: 30 }),
+      notes: '',
+    })
+    await recordPayment(db, farm.id, { saleId: antiga.id, date: ontem, amountCents: 100000, method: 'pix', notes: '' })
+    const f30 = await setReserveRate(db, farm, 30, todayLocal())
+    expect(rateOn(f30, ontem)).toBe(35)
+    expect(currentRate(f30)).toBe(30)
+    await pay(100000) // hoje (30%)
+    const s = reserveSummary(
+      await db.sales.toArray(),
+      await db.payments.toArray(),
+      await db.reserveEntries.toArray(),
+      f30,
+    )
+    expect(s.dueCents).toBe(35000 + 30000)
+    // sem informar a fazenda, continua 35% (compatível)
+    expect((await summary()).dueCents).toBe(70000)
+    const f325 = await setReserveRate(db, f30, 32.5, todayLocal())
+    expect(currentRate(f325)).toBe(32.5)
+    expect(formatPercent(32.5)).toBe('32,5%')
+    expect(reserveShare(100000, 32.5)).toBe(32500)
+    await expect(setReserveRate(db, farm, 0, todayLocal())).rejects.toThrow(/maior que 0/)
+    await expect(setReserveRate(db, farm, 150, todayLocal())).rejects.toThrow(/no máximo 100/)
+    await expect(setReserveRate(db, farm, 10.555, todayLocal())).rejects.toThrow(/duas casas/)
+    await expect(setReserveRate(db, farm, 20, addDays(todayLocal(), 1))).rejects.toThrow(/futuro/)
+    const other = await createFarm(db, { name: 'Fazenda do Irmão', responsible: '', city: '' }, '')
+    const o20 = await setReserveRate(db, other, 20, todayLocal())
+    expect(currentRate(o20)).toBe(20)
+    expect(currentRate((await db.farms.get(farm.id))!)).toBe(32.5)
+    const hist = await db.auditLog.where('[entity+entityId]').equals(['farms', farm.id]).toArray()
+    expect(hist.filter((h) => h.action === 'update').length).toBeGreaterThanOrEqual(2)
   })
 })

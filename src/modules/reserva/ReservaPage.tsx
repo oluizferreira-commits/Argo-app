@@ -7,7 +7,8 @@ import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { formatDay, todayLocal } from '../rebanho/herd'
 import { formatSaleNumber } from '../vendas/sales'
-import { RESERVE_PERCENT, recordReserveEntry, ReserveError, reverseReserveEntry } from './reserve'
+import { currentRate, formatPercent, recordReserveEntry, ReserveError, reserveRates, reverseReserveEntry, setReserveRate } from './reserve'
+import { parseDecimal } from '../../core/money'
 import { BalanceCheck } from './BalanceCheck'
 import { useReserve } from './useReserve'
 
@@ -20,6 +21,7 @@ export function ReservaPage() {
   const [form, setForm] = useState<'retirada' | 'deposito' | null>(null)
   if (!r) return null
   const s = r.summary
+  const pct = formatPercent(currentRate(farm))
 
   async function deposit(amountCents: number, paymentId: string | null, notes: string) {
     setMsg(null)
@@ -50,7 +52,7 @@ export function ReservaPage() {
           {formatMoney(s.balanceCents)}
         </div>
         <p>
-          {RESERVE_PERCENT}% de cada venda, separado conforme o dinheiro é recebido.
+          {pct} de cada venda, separado conforme o dinheiro é recebido.
         </p>
       </section>
 
@@ -59,12 +61,12 @@ export function ReservaPage() {
           <Icon name="alert" />
           <div className="stack" style={{ gap: 10, flex: 1 }}>
             <div>
-              <strong>Separe {formatMoney(s.pendingCents)} para a reserva</strong> ({RESERVE_PERCENT}% do que já foi recebido e ainda não foi transferido).
+              <strong>Separe {formatMoney(s.pendingCents)} para a reserva</strong> (percentual da reserva sobre o que já foi recebido e ainda não foi transferido).
             </div>
             <button
               className="btn btn-gold btn-block"
               data-testid="deposit-all"
-              onClick={() => window.confirm(`Confirmar que transferiu ${formatMoney(s.pendingCents)} para a conta da reserva?`) && deposit(s.pendingCents, null, 'Transferência dos 35%')}
+              onClick={() => window.confirm(`Confirmar que transferiu ${formatMoney(s.pendingCents)} para a conta da reserva?`) && deposit(s.pendingCents, null, 'Transferência para a reserva')}
             >
               <Icon name="check" /> Já transferi {formatMoney(s.pendingCents)}
             </button>
@@ -84,13 +86,15 @@ export function ReservaPage() {
         </div>
       )}
 
+      <RateSetting />
+
       <BalanceCheck checks={r.checks} balanceCents={s.balanceCents} />
 
       <div className="card">
         <dl className="kv" data-testid="reserve-kv">
-          <dt>Meta ({RESERVE_PERCENT}% das vendas)</dt>
+          <dt>Meta (reserva sobre as vendas)</dt>
           <dd>{formatMoney(s.targetCents)}</dd>
-          <dt>{RESERVE_PERCENT}% do que já foi recebido</dt>
+          <dt>Reserva sobre o que já foi recebido</dt>
           <dd>{formatMoney(s.dueCents)}</dd>
           <dt>Transferido para a reserva</dt>
           <dd>{formatMoney(s.depositedCents)}</dd>
@@ -100,7 +104,7 @@ export function ReservaPage() {
           <dd style={{ color: s.pendingCents ? 'var(--warn)' : 'var(--ok)' }}>{formatMoney(s.pendingCents)}</dd>
           {s.surplusCents > 0 && (
             <>
-              <dt>Além dos 35% (depósitos avulsos)</dt>
+              <dt>Além do percentual (depósitos avulsos)</dt>
               <dd>{formatMoney(s.surplusCents)}</dd>
             </>
           )}
@@ -124,7 +128,7 @@ export function ReservaPage() {
                       {sale ? ` · venda nº ${formatSaleNumber(sale.number)}` : ''} · separar {formatMoney(pendingCents)}
                     </div>
                   </div>
-                  <button className="btn btn-outline" style={{ minHeight: 44, padding: '0 12px' }} onClick={() => deposit(pendingCents, p.id, 'Transferência dos 35%')}>
+                  <button className="btn btn-outline" style={{ minHeight: 44, padding: '0 12px' }} onClick={() => deposit(pendingCents, p.id, 'Transferência para a reserva')}>
                     Transferi
                   </button>
                 </div>
@@ -256,5 +260,98 @@ function EntryForm({ type, balance, onClose, onDone }: { type: 'retirada' | 'dep
         </button>
       </div>
     </form>
+  )
+}
+
+function RateSetting() {
+  const { farm } = useFarm()
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState(String(currentRate(farm)).replace('.', ','))
+  const [since, setSince] = useState(todayLocal)
+  const [error, setError] = useState<string | null>(null)
+  const history = reserveRates(farm)
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    const scaled = parseDecimal(value.replace('%', ''), 2)
+    if (scaled === null) return setError('Informe o percentual, ex.: 35 ou 32,5')
+    try {
+      await setReserveRate(db, farm, scaled / 100, since)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof ReserveError ? err.message : (err as Error).message)
+    }
+  }
+
+  return (
+    <div className="card stack" data-testid="rate-setting">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <div>
+          <div className="status-label">Percentual da reserva</div>
+          <div className="status-detail">Definido pelo responsável da fazenda</div>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <span className="num" style={{ fontSize: 22, color: 'var(--green-900)' }} data-testid="current-rate">
+            {formatPercent(currentRate(farm))}
+          </span>
+          {!open && (
+            <button className="btn btn-outline btn-icon" aria-label="Alterar percentual da reserva" onClick={() => setOpen(true)}>
+              <Icon name="edit" size={20} />
+            </button>
+          )}
+        </div>
+      </div>
+      {open && (
+        <form onSubmit={save} className="stack">
+          <div className="row">
+            <div className="field" style={{ flex: 1, margin: 0 }}>
+              <label className="label" htmlFor="rate-value">
+                Novo percentual (%)
+              </label>
+              <input id="rate-value" className="input" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+            <div className="field" style={{ flex: 1, margin: 0 }}>
+              <label className="label" htmlFor="rate-since">
+                Vale a partir de
+              </label>
+              <input id="rate-since" type="date" className="input" value={since} max={todayLocal()} onChange={(e) => setSince(e.target.value)} />
+            </div>
+          </div>
+          <p className="muted" style={{ fontSize: 14 }}>
+            Recebimentos anteriores a essa data continuam com o percentual da época.
+          </p>
+          {error && (
+            <div className="notice notice-error" role="alert">
+              <Icon name="alert" />
+              <div>{error}</div>
+            </div>
+          )}
+          <div className="row">
+            <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setOpen(false)}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+              <Icon name="check" /> Salvar
+            </button>
+          </div>
+        </form>
+      )}
+      {history.length > 0 && (
+        <div>
+          <div className="group-title">Histórico</div>
+          <div className="cat-line">
+            <span>Inicial</span>
+            <span className="num">35%</span>
+          </div>
+          {history.map((h) => (
+            <div className="cat-line" key={h.since}>
+              <span>A partir de {formatDay(h.since)}</span>
+              <span className="num">{formatPercent(h.percent)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

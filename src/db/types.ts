@@ -96,6 +96,11 @@ export interface Farm extends BaseRecord {
   entrance?: GeoPoint | null
   /** Cidades de origem para as rotas de acesso. */
   accessOrigins?: AccessOrigin[]
+  /**
+   * Percentual da reserva financeira, definido pelo responsável. Cada item vale a partir de `since`
+   * (AAAA-MM-DD). Sem itens = 35%. Recebimentos usam o percentual vigente na data deles.
+   */
+  reserveRates?: { since: string; percent: number }[]
 }
 
 export type LandmarkKind = 'referencia' | 'bifurcacao' | 'atencao'
@@ -133,7 +138,7 @@ export interface Payment extends BaseRecord {
 
 /**
  * Movimento da conta da reserva financeira (conta separada).
- * Depósito: dinheiro transferido para a reserva (normalmente 35% de um recebimento).
+ * Depósito: dinheiro transferido para a reserva (normalmente o percentual da reserva de um recebimento).
  * Retirada: dinheiro tirado da reserva (motivo obrigatório).
  */
 export interface ReserveEntry extends BaseRecord {

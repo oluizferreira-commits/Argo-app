@@ -71,7 +71,7 @@ export function DashboardPage() {
         <Link to="/reserva" className="notice notice-warn" style={{ textDecoration: 'none' }} data-testid="dash-reserve-alert">
           <Icon name="vault" />
           <div>
-            <strong>Reserva financeira:</strong> separe {formatMoney(reserve.summary.pendingCents)} (35% do que foi recebido). Toque para registrar.
+            <strong>Reserva financeira:</strong> separe {formatMoney(reserve.summary.pendingCents)} do que foi recebido. Toque para registrar.
           </div>
         </Link>
       )}

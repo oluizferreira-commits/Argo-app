@@ -82,7 +82,7 @@ describe('relatórios', () => {
       expect(sum(ina)['Total vencido']).toBe('R$ 2.250,00') // parcela 1 (R$ 5.250) − R$ 3.000 recebidos
     }
     expect(sum(rec)['Total recebido']).toBe('R$ 3.000,00')
-    expect(sum(rec)['Reserva (35%)']).toBe('R$ 1.050,00')
+    expect(sum(rec)['Parte da reserva']).toBe('R$ 1.050,00')
     expect(sum(res)).toMatchObject({ Depósitos: 'R$ 1.050,00', Retiradas: 'R$ 50,00', 'Saldo final': 'R$ 1.000,00' })
     expect(sum(nm)).toMatchObject({ Nascimentos: '5', Mortes: '1' }) // 2 lançados + 3 na contagem; estornado não entra
     expect(nm.tables[1].rows.some((r) => r[5] === 'Encontrado na contagem')).toBe(true)

@@ -19,8 +19,8 @@ export function useReserve() {
   }, [farm.id])
   return useMemo(() => {
     if (!data) return undefined
-    const summary = reserveSummary(data.sales, data.payments, data.entries)
-    const byPayment = reservePendingByPayment(data.payments, data.entries)
+    const summary = reserveSummary(data.sales, data.payments, data.entries, farm)
+    const byPayment = reservePendingByPayment(data.payments, data.entries, farm)
     const pendingPayments = data.payments
       .map((p) => ({ payment: p, pendingCents: byPayment.get(p.id) ?? 0 }))
       .filter((x) => x.pendingCents > 0)
@@ -33,5 +33,5 @@ export function useReserve() {
       sales: new Map(data.sales.map((s) => [s.id, s])),
       checks: [...data.checks].filter((c) => c.deletedAt === null).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     }
-  }, [data])
+  }, [data, farm])
 }

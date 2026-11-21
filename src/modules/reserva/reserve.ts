@@ -1,11 +1,46 @@
 import { nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { Payment, ReserveCheck, ReserveEntry, Sale } from '../../db/types'
+import type { Farm, Payment, ReserveCheck, ReserveEntry, Sale } from '../../db/types'
 import { todayLocal } from '../rebanho/herd'
 
-/** Percentual da reserva financeira sobre cada venda. */
-export const RESERVE_PERCENT = 35
+/** Percentual padrão da reserva (até o responsável definir outro). */
+export const DEFAULT_RESERVE_PERCENT = 35
+
+type RateFarm = Pick<Farm, 'reserveRates'> | null | undefined
+
+/** Histórico de percentuais da fazenda, do mais antigo ao mais novo. */
+export function reserveRates(farm: RateFarm): { since: string; percent: number }[] {
+  return [...(farm?.reserveRates ?? [])].sort((a, b) => a.since.localeCompare(b.since))
+}
+
+/** Percentual vigente numa data (o último definido até aquela data; antes disso, 35%). */
+export function rateOn(farm: RateFarm, date: string): number {
+  let p = DEFAULT_RESERVE_PERCENT
+  for (const r of reserveRates(farm)) if (r.since <= date) p = r.percent
+  return p
+}
+
+export function currentRate(farm: RateFarm): number {
+  return rateOn(farm, todayLocal())
+}
+
+export function formatPercent(p: number): string {
+  return `${p.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`
+}
+
+/**
+ * Define o percentual da reserva a partir de uma data. Recebimentos anteriores mantêm o percentual
+ * da época. Fica no histórico (auditoria) da fazenda.
+ */
+export async function setReserveRate(db: ArgoDatabase, farm: Farm, percent: number, since: string): Promise<Farm> {
+  if (!Number.isFinite(percent) || percent <= 0 || percent > 100) throw new ReserveError('O percentual deve ser maior que 0 e no máximo 100.')
+  if (Math.round(percent * 100) !== percent * 100) throw new ReserveError('Use no máximo duas casas decimais (ex.: 32,5).')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) throw new ReserveError('Informe a data a partir da qual vale.')
+  if (since > todayLocal()) throw new ReserveError('A data não pode ser no futuro.')
+  const rates = reserveRates(farm).filter((r) => r.since !== since)
+  return new Repository(db, 'farms').update(farm.id, { reserveRates: [...rates, { since, percent }].sort((a, b) => a.since.localeCompare(b.since)) })
+}
 
 export class ReserveError extends Error {
   constructor(message: string) {
@@ -14,15 +49,15 @@ export class ReserveError extends Error {
   }
 }
 
-/** Parte da reserva de um valor recebido (35%, arredondado ao centavo). */
-export function reserveShare(amountCents: number): number {
-  return Math.round((amountCents * RESERVE_PERCENT) / 100)
+/** Parte da reserva de um valor (percentual informado; padrão 35%), arredondada ao centavo. */
+export function reserveShare(amountCents: number, percent = DEFAULT_RESERVE_PERCENT): number {
+  return Math.round((amountCents * Math.round(percent * 100)) / 10000)
 }
 
 export interface ReserveSummary {
-  /** Meta: 35% do total das vendas ativas. */
+  /** Meta: percentual da reserva sobre o total das vendas ativas. */
   targetCents: number
-  /** Devido: 35% de tudo o que já foi recebido (recebimentos ativos). */
+  /** Devido: percentual da reserva sobre tudo o que já foi recebido (recebimentos ativos). */
   dueCents: number
   /** Total transferido para a reserva (depósitos ativos). */
   depositedCents: number
@@ -38,9 +73,14 @@ export interface ReserveSummary {
 
 const active = (e: { status: string; deletedAt: string | null }) => e.status === 'ativo' && e.deletedAt === null
 
-export function reserveSummary(sales: readonly Sale[], payments: readonly Payment[], entries: readonly ReserveEntry[]): ReserveSummary {
-  const targetCents = sales.filter((s) => s.status === 'ativa').reduce((a, s) => a + reserveShare(s.totalCents), 0)
-  const dueCents = payments.filter(active).reduce((a, p) => a + reserveShare(p.amountCents), 0)
+export function reserveSummary(
+  sales: readonly Sale[],
+  payments: readonly Payment[],
+  entries: readonly ReserveEntry[],
+  farm?: RateFarm,
+): ReserveSummary {
+  const targetCents = sales.filter((s) => s.status === 'ativa').reduce((a, s) => a + reserveShare(s.totalCents, rateOn(farm, s.date)), 0)
+  const dueCents = payments.filter(active).reduce((a, p) => a + reserveShare(p.amountCents, rateOn(farm, p.date)), 0)
   const depositedCents = entries.filter((e) => active(e) && e.type === 'deposito').reduce((a, e) => a + e.amountCents, 0)
   const withdrawnCents = entries.filter((e) => active(e) && e.type === 'retirada').reduce((a, e) => a + e.amountCents, 0)
   return {
@@ -59,7 +99,7 @@ export function reserveSummary(sales: readonly Sale[], payments: readonly Paymen
  * depósitos avulsos (e o que sobrar) abatem os recebimentos pendentes do mais antigo para o mais novo.
  * A soma sempre bate com `reserveSummary().pendingCents`.
  */
-export function reservePendingByPayment(payments: readonly Payment[], entries: readonly ReserveEntry[]): Map<string, number> {
+export function reservePendingByPayment(payments: readonly Payment[], entries: readonly ReserveEntry[], farm?: RateFarm): Map<string, number> {
   const list = payments.filter(active).sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
   const deposits = entries.filter((e) => active(e) && e.type === 'deposito')
   const linked = new Map<string, number>()
@@ -71,7 +111,7 @@ export function reservePendingByPayment(payments: readonly Payment[], entries: r
   }
   const remaining = new Map<string, number>()
   for (const p of list) {
-    const due = reserveShare(p.amountCents)
+    const due = reserveShare(p.amountCents, rateOn(farm, p.date))
     const l = linked.get(p.id) ?? 0
     if (l > due) pool += l - due
     remaining.set(p.id, Math.max(0, due - l))
@@ -86,8 +126,13 @@ export function reservePendingByPayment(payments: readonly Payment[], entries: r
 }
 
 /** Quanto ainda falta separar referente a um recebimento. */
-export function pendingForPayment(payment: Payment, entries: readonly ReserveEntry[], allPayments: readonly Payment[] = [payment]): number {
-  return reservePendingByPayment(allPayments, entries).get(payment.id) ?? 0
+export function pendingForPayment(
+  payment: Payment,
+  entries: readonly ReserveEntry[],
+  allPayments: readonly Payment[] = [payment],
+  farm?: RateFarm,
+): number {
+  return reservePendingByPayment(allPayments, entries, farm).get(payment.id) ?? 0
 }
 
 export interface ReserveInput {

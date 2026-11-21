@@ -92,14 +92,15 @@ src/
 - Venda com recebimento ativo não pode ser cancelada (estornar os recebimentos antes).
 - O QR Code Pix do comprovante cobra só o que falta da parcela; parcela paga não gera QR.
 
-## Reserva financeira (35%)
+## Reserva financeira (percentual definido pelo responsável)
 
-- `src/modules/reserva/reserve.ts`: a reserva é 35% do valor de cada venda, separada conforme o dinheiro é recebido
-  (35% de cada recebimento ativo). A conta da reserva é separada: o usuário confirma cada transferência (depósito).
+- `src/modules/reserva/reserve.ts`: a reserva é um percentual do valor de cada venda (padrão 35%, definido pelo
+  responsável de cada fazenda em `farm.reserveRates`, com data de início), separado conforme o dinheiro é recebido.
+  Cada recebimento usa o percentual vigente na data dele; mudar o percentual não altera recebimentos anteriores. A conta da reserva é separada: o usuário confirma cada transferência (depósito).
 - Saldo = depósitos − retiradas. Falta separar = 35% do recebido − depositado. Meta = 35% das vendas ativas.
 - Depósitos ligados a um recebimento abatem o dele; depósitos avulsos abatem os pendentes do mais antigo ao mais novo.
 - Retirada exige motivo e não pode passar do saldo. Lançamentos errados são estornados (estorno de depósito não pode
-  deixar o saldo negativo). Percentual fixo em `RESERVE_PERCENT`.
+  deixar o saldo negativo).
 - Conferência de saldo (`reserveChecks`): saldo visto no banco (ex.: Mercado Pago) × saldo do ARGO na hora.
   Diferença pode ser ajustada (retirada ou depósito com motivo; ajuste não duplica). Lembrete após 30 dias.
 
