@@ -1,10 +1,11 @@
 import { newId, nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { Client, Installment, PaymentKind, Sale, SaleItem, WeighedAnimal } from '../../db/types'
+import type { Client, Installment, PaymentKind, PaymentMethod, Sale, SaleItem, WeighedAnimal } from '../../db/types'
 import { category, type CategoryId } from '../../domain/categories'
 import { isValidCnpj, isValidCpf } from '../../domain/pix'
 import { entriesOut, HerdError, recordMovement, reverseMovement, todayLocal } from '../rebanho/herd'
+import { activePayments, PaymentError, recordPayment } from '../receber/receivables'
 
 export class SaleError extends Error {
   constructor(message: string) {
@@ -142,6 +143,8 @@ export interface SaleInput {
   paymentKind: PaymentKind
   installments: Installment[]
   notes: string
+  /** Venda à vista já recebida: registra o recebimento junto com a venda. */
+  receivedNow?: { method: PaymentMethod } | null
 }
 
 function validateSale(input: SaleInput): { items: SaleItem[]; totals: Totals } {
@@ -187,7 +190,7 @@ function validateSale(input: SaleInput): { items: SaleItem[]; totals: Totals } {
 export async function createSale(db: ArgoDatabase, farmId: string, input: SaleInput, idempotencyKey?: string): Promise<Sale> {
   const sales = new Repository(db, 'sales')
   const id = idempotencyKey ?? newId()
-  return db.transaction('rw', [db.sales, db.clients, db.movements, db.pastures, db.auditLog, db.outbox, db.meta], async () => {
+  return db.transaction('rw', [db.sales, db.clients, db.movements, db.pastures, db.payments, db.auditLog, db.outbox, db.meta], async () => {
     const existing = await db.sales.get(id)
     if (existing) return existing
     const { items, totals } = validateSale(input)
@@ -215,7 +218,7 @@ export async function createSale(db: ArgoDatabase, farmId: string, input: SaleIn
       throw e
     }
 
-    return sales.create(
+    const sale = await sales.create(
       {
         farmId,
         number,
@@ -239,16 +242,32 @@ export async function createSale(db: ArgoDatabase, farmId: string, input: SaleIn
       },
       id,
     )
+    if (input.receivedNow && input.paymentKind === 'avista') {
+      try {
+        await recordPayment(
+          db,
+          farmId,
+          { saleId: sale.id, date: input.date, amountCents: sale.totalCents, method: input.receivedNow.method, notes: 'Recebido na venda' },
+          `${sale.id}-avista`,
+        )
+      } catch (e) {
+        if (e instanceof PaymentError) throw new SaleError(e.message)
+        throw e
+      }
+    }
+    return sale
   })
 }
 
 /** Cancela a venda: devolve os animais ao rebanho (estorno) e marca a venda como cancelada. */
 export async function cancelSale(db: ArgoDatabase, id: string, reason: string): Promise<Sale> {
   const sales = new Repository(db, 'sales')
-  return db.transaction('rw', [db.sales, db.movements, db.pastures, db.auditLog, db.outbox, db.meta], async () => {
+  return db.transaction('rw', [db.sales, db.movements, db.pastures, db.payments, db.auditLog, db.outbox, db.meta], async () => {
     const sale = await db.sales.get(id)
     if (!sale) throw new SaleError('Venda não encontrada.')
     if (sale.status === 'cancelada') throw new SaleError('Esta venda já foi cancelada.')
+    if (activePayments(await db.payments.where('saleId').equals(id).toArray()).length > 0)
+      throw new SaleError('Esta venda tem recebimentos. Estorne os recebimentos antes de cancelar a venda.')
     await reverseMovement(db, sale.movementId, `Cancelamento da venda nº ${sale.number}${reason ? ` — ${reason}` : ''}`, {
       fromSale: true,
     })

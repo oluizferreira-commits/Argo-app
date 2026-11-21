@@ -10,6 +10,8 @@ import { formatDay } from '../rebanho/herd'
 import { usePastureMap } from '../rebanho/useHerd'
 import { PAYMENT_LABEL, renderReceipt, salePixPayload } from './receipt'
 import { cancelSale, formatSaleNumber, SaleError } from './sales'
+import { PaymentsSection } from '../receber/PaymentsSection'
+import { saleBalance } from '../receber/receivables'
 
 export function VendaPage() {
   const { id = '' } = useParams()
@@ -19,33 +21,45 @@ export function VendaPage() {
   const sale = useLiveQuery(() => db.sales.get(id), [id])
   const client = useLiveQuery(async () => (sale ? ((await db.clients.get(sale.clientId)) ?? null) : undefined), [sale?.clientId])
   const pastures = usePastureMap()
-  const [installment, setInstallment] = useState(0)
+  const payments = useLiveQuery(() => db.payments.where('saleId').equals(id).toArray(), [id])
+  const [installmentChoice, setInstallment] = useState<number | null>(null)
   const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null)
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+  // a mensagem vale só enquanto os recebimentos não mudam
+  const [renderError, setRenderError] = useState<string | null>(null)
+  const [msgState, setMsgState] = useState<{ kind: 'ok' | 'error'; text: string; at: number } | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // parcela do QR: a escolhida, ou a primeira ainda em aberto
+  const balance = sale && payments ? saleBalance(sale, payments) : null
+  const firstOpen = balance?.installments.find((i) => i.openCents > 0)?.index ?? 0
+  const installment = installmentChoice ?? firstOpen
+
   useEffect(() => {
-    if (!sale || !client) return
+    if (!sale || !client || !payments) return
     let url = ''
     let alive = true
-    renderReceipt({ sale, farm, client, pastures, installmentIndex: installment })
+    renderReceipt({ sale, farm, client, pastures, installmentIndex: installment, payments })
       .then((blob) => {
         if (!alive) return
         url = URL.createObjectURL(blob)
         setImage({ url, blob })
       })
-      .catch((e) => setMsg({ kind: 'error', text: `Falha ao gerar o comprovante: ${(e as Error).message}` }))
+      .catch((e) => setRenderError(`Falha ao gerar o comprovante: ${(e as Error).message}`))
     return () => {
       alive = false
       if (url) URL.revokeObjectURL(url)
     }
-  }, [sale, client, farm, pastures, installment])
+  }, [sale, client, farm, pastures, installment, payments])
 
-  if (sale === undefined || client === undefined) return null
+  const paymentsVersion = (payments ?? []).reduce((a, p) => a + p.rev, 0)
+  const msg = msgState && msgState.at === paymentsVersion ? msgState : null
+  const setMsg = (m: { kind: 'ok' | 'error'; text: string } | null) => setMsgState(m ? { ...m, at: paymentsVersion } : null)
+
+  if (sale === undefined || client === undefined || payments === undefined) return null
   if (!sale || sale.farmId !== farm.id || !client) return <div className="card empty">Venda não encontrada.</div>
 
   const fileName = `argo-venda-${formatSaleNumber(sale.number)}.png`
-  const pix = sale.status === 'ativa' ? salePixPayload(sale, farm, installment) : null
+  const pix = sale.status === 'ativa' ? salePixPayload(sale, farm, installment, payments) : null
 
   async function share() {
     if (!image) return
@@ -100,7 +114,9 @@ export function VendaPage() {
         {sale.status === 'cancelada' && sale.cancelReason && <p className="muted">Motivo do cancelamento: {sale.cancelReason}</p>}
       </div>
 
-      {!farm.pixKey && sale.status === 'ativa' && (
+      {sale.status === 'ativa' && <PaymentsSection sale={sale} payments={payments} />}
+
+      {!farm.pixKey && sale.status === 'ativa' && !balance?.settled && (
         <Link to="/fazenda" className="notice notice-warn" style={{ textDecoration: 'none' }}>
           <Icon name="alert" />
           <div>
@@ -109,17 +125,19 @@ export function VendaPage() {
         </Link>
       )}
 
-      {sale.installments.length > 1 && pix && (
+      {sale.installments.length > 1 && pix && balance!.installments.filter((st) => st.openCents > 0).length > 1 && (
         <div className="card">
           <label className="label" htmlFor="v-inst">
             QR Code Pix da parcela
           </label>
           <select id="v-inst" className="input" value={installment} onChange={(e) => setInstallment(Number(e.target.value))}>
-            {sale.installments.map((p, i) => (
-              <option key={i} value={i}>
-                Parcela {i + 1} · {formatDay(p.due)} · {formatMoney(p.amountCents)}
-              </option>
-            ))}
+            {balance!.installments
+              .filter((st) => st.openCents > 0)
+              .map((st) => (
+                <option key={st.index} value={st.index}>
+                  Parcela {st.index + 1} · {formatDay(st.due)} · falta {formatMoney(st.openCents)}
+                </option>
+              ))}
           </select>
         </div>
       )}
@@ -129,7 +147,7 @@ export function VendaPage() {
           <img src={image.url} alt={`Comprovante da venda nº ${formatSaleNumber(sale.number)}`} style={{ width: '100%', display: 'block', borderRadius: 10 }} data-testid="receipt" />
         ) : (
           <p className="muted" style={{ padding: 20, textAlign: 'center' }}>
-            Gerando comprovante…
+            {renderError ?? 'Gerando comprovante…'}
           </p>
         )}
       </div>

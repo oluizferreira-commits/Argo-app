@@ -3,6 +3,8 @@ import { Layout } from '../components/Layout'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
 import { ComoChegarPage } from '../modules/acesso/ComoChegarPage'
 import { FazendaPage } from '../modules/fazendas/FazendaPage'
+import { PagamentosPage } from '../modules/receber/PagamentosPage'
+import { ReceberPage } from '../modules/receber/ReceberPage'
 import { HubPage } from '../modules/hub/HubPage'
 import { ClienteFormPage } from '../modules/clientes/ClienteFormPage'
 import { ClientePage } from '../modules/clientes/ClientePage'
@@ -44,6 +46,8 @@ const implemented: RouteObject[] = [
   { path: '/fazenda', element: <FazendaPage />, handle: t('Fazenda') },
   { path: '/acesso', element: <ComoChegarPage />, handle: t('Como chegar') },
   { path: '/vendas', element: <VendasPage />, handle: t('Vendas') },
+  { path: '/receber', element: <ReceberPage />, handle: t('Contas a receber') },
+  { path: '/pagamentos', element: <PagamentosPage />, handle: t('Recebimentos') },
   { path: '/vendas/nova', element: <NovaVendaPage />, handle: t('Nova venda') },
   { path: '/vendas/nova/:modo', element: <NovaVendaPage />, handle: t('Nova venda') },
   { path: '/vendas/:id', element: <VendaPage />, handle: t('Venda') },

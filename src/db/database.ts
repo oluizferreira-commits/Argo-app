@@ -55,6 +55,11 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     routeCache: 'id, farmId',
   })
 
+  // v6 — Etapa 4: recebimentos (contas a receber e pagamentos parciais).
+  db.version(6).stores({
+    payments: 'id, farmId, saleId, clientId, date, createdAt, updatedAt',
+  })
+
   return db
 }
 

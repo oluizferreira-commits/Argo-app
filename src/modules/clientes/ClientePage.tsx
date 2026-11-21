@@ -5,16 +5,19 @@ import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { SaleRow } from '../vendas/SaleRow'
+import { saleBalance } from '../receber/receivables'
 
 export function ClientePage() {
   const { id = '' } = useParams()
   const { farm } = useFarm()
   const client = useLiveQuery(() => db.clients.get(id), [id])
+  const payments = useLiveQuery(() => db.payments.where('clientId').equals(id).toArray(), [id])
   const sales = useLiveQuery(async () => (await db.sales.where('clientId').equals(id).toArray()).sort((a, b) => b.number - a.number), [id])
   if (client === undefined || !sales) return null
   if (!client || client.farmId !== farm.id) return <div className="card empty">Cliente não encontrado.</div>
   const active = sales.filter((s) => s.status === 'ativa')
   const total = active.reduce((a, s) => a + s.totalCents, 0)
+  const openCents = active.reduce((a, s) => a + saleBalance(s, (payments ?? []).filter((p) => p.saleId === s.id)).openCents, 0)
 
   return (
     <>
@@ -25,6 +28,7 @@ export function ClientePage() {
         <p style={{ marginTop: 12 }}>
           {active.length} compra(s) · <strong style={{ color: 'var(--gold-300)' }}>{formatMoney(total)}</strong>
         </p>
+        <p data-testid="client-open">Em aberto: {formatMoney(openCents)}</p>
       </section>
       <Link to={`/clientes/${id}/editar`} className="btn btn-outline btn-block">
         <Icon name="edit" /> Editar cliente

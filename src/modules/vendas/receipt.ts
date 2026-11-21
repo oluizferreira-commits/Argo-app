@@ -1,21 +1,27 @@
 import qrcode from 'qrcode-generator'
 import { formatDateTime } from '../../core/format'
 import { formatDecimal, formatMoney } from '../../core/money'
-import type { Client, Farm, Pasture, Sale } from '../../db/types'
+import type { Client, Farm, Pasture, Payment, Sale } from '../../db/types'
+import { saleBalance } from '../receber/receivables'
 import { category } from '../../domain/categories'
 import { buildPixPayload, maskPhone, maskPixKey, PIX_KEY_LABELS } from '../../domain/pix'
 import { formatDay } from '../rebanho/herd'
 import { formatSaleNumber } from './sales'
 
 /** Código Pix (copia e cola) de uma parcela da venda, ou null se a fazenda não tem chave. */
-export function salePixPayload(sale: Sale, farm: Farm, installmentIndex: number): string | null {
+/**
+ * Código Pix (copia e cola) do que FALTA pagar de uma parcela, ou null se a fazenda não tem chave
+ * ou a parcela já está paga.
+ */
+export function salePixPayload(sale: Sale, farm: Farm, installmentIndex: number, payments: readonly Payment[] = []): string | null {
   if (!farm.pixKey || !farm.pixName || !farm.pixCity) return null
-  const inst = sale.installments[installmentIndex] ?? sale.installments[0]
+  const state = saleBalance(sale, payments).installments[installmentIndex] ?? saleBalance(sale, payments).installments[0]
+  if (!state || state.openCents <= 0) return null
   return buildPixPayload({
     key: farm.pixKey,
     name: farm.pixName,
     city: farm.pixCity,
-    amountCents: inst.amountCents,
+    amountCents: state.openCents,
     txid: `ARGO${formatSaleNumber(sale.number)}${sale.installments.length > 1 ? `P${installmentIndex + 1}` : ''}`,
   })
 }
@@ -52,6 +58,7 @@ interface ReceiptData {
   client: Client
   pastures: Map<string, Pasture>
   installmentIndex: number
+  payments: readonly Payment[]
 }
 
 /** Desenha o comprovante e devolve a imagem PNG. */
@@ -164,7 +171,18 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
   y += 150
 
   // ---------- pagamento
+  const bal = saleBalance(sale, d.payments)
   text('PAGAMENTO', M, y, 20, 700, C.gold)
+  if (sale.status === 'ativa')
+    text(
+      bal.settled ? 'QUITADA' : bal.paidCents > 0 ? `RECEBIDO ${formatMoney(bal.paidCents)} · FALTA ${formatMoney(bal.openCents)}` : `EM ABERTO`,
+      W - M,
+      y,
+      20,
+      800,
+      bal.settled ? '#2e7d4f' : C.gold,
+      'right',
+    )
   y += 44
   if (sale.paymentKind === 'avista') {
     text('À vista', M, y, 28, 600)
@@ -172,7 +190,8 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
   } else {
     sale.installments.forEach((p, i) => {
       const label = sale.paymentKind === 'prazo' ? 'A prazo — vencimento' : `Parcela ${i + 1}/${sale.installments.length} — vencimento`
-      text(`${label} ${formatDay(p.due)}`, M, y, 26, 400, C.ink2)
+      const st = bal.installments[i]
+      text(`${label} ${formatDay(p.due)}${st?.status === 'paga' ? '  ✓ paga' : ''}`, M, y, 26, 400, st?.status === 'paga' ? '#2e7d4f' : C.ink2)
       text(formatMoney(p.amountCents), W - M, y, 26, 700, C.ink, 'right')
       y += 42
     })
@@ -180,7 +199,7 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
   y += 16
 
   // ---------- Pix
-  const payload = sale.status === 'ativa' ? salePixPayload(sale, farm, d.installmentIndex) : null
+  const payload = sale.status === 'ativa' ? salePixPayload(sale, farm, d.installmentIndex, d.payments) : null
   if (payload && farm.pixKey && farm.pixKeyType) {
     rule(y)
     y += 40
@@ -198,8 +217,9 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
       for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect(M + (c + 2) * cell, y + (r + 2) * cell, cell, cell)
     const tx = M + qrSize + 40
     const inst = sale.installments[d.installmentIndex] ?? sale.installments[0]
+    const open = bal.installments[d.installmentIndex]?.openCents ?? inst.amountCents
     text('PAGUE COM PIX', tx, y + 50, 24, 800, C.green)
-    text(formatMoney(inst.amountCents), tx, y + 112, 44, 800, C.ink)
+    text(formatMoney(open), tx, y + 112, 44, 800, C.ink)
     if (sale.installments.length > 1) text(`Parcela ${d.installmentIndex + 1} · vence ${formatDay(inst.due)}`, tx, y + 152, 22, 400, C.ink2)
     text(fit(`Recebedor: ${farm.pixName}`, W - M - tx, 22), tx, y + 206, 22, 400, C.ink2)
     text(`Chave (${PIX_KEY_LABELS[farm.pixKeyType]}): ${maskPixKey(farm.pixKeyType, farm.pixKey)}`, tx, y + 244, 22, 400, C.ink2)

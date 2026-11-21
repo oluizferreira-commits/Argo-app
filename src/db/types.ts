@@ -111,6 +111,26 @@ export interface Landmark extends BaseRecord {
   lng: number
 }
 
+export type PaymentMethod = 'pix' | 'dinheiro' | 'transferencia' | 'cheque' | 'outro'
+
+/**
+ * Recebimento de uma venda (pode ser parcial). Abate as parcelas em aberto da mais antiga
+ * para a mais nova. Nunca é apagado: um lançamento errado é estornado e fica no histórico.
+ */
+export interface Payment extends BaseRecord {
+  farmId: string
+  saleId: string
+  clientId: string
+  /** Data do recebimento (AAAA-MM-DD). */
+  date: string
+  amountCents: number
+  method: PaymentMethod
+  notes: string
+  status: 'ativo' | 'estornado'
+  reversedAt: string | null
+  reverseReason: string
+}
+
 /** Pasto da fazenda. */
 export interface Pasture extends BaseRecord {
   farmId: string
@@ -236,6 +256,7 @@ export interface EntityMap {
   clients: Client
   sales: Sale
   landmarks: Landmark
+  payments: Payment
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -243,7 +264,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { formatDecimal, formatMoney, parseDecimal, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
-import type { PaymentKind, SaleItem, WeighedAnimal } from '../../db/types'
+import type { PaymentKind, PaymentMethod, SaleItem, WeighedAnimal } from '../../db/types'
+import { METHOD_LABELS } from '../receber/receivables'
 import { category, type CategoryId } from '../../domain/categories'
 import { CategoryQuantities } from '../../components/CategoryQuantities'
 import { Icon } from '../../components/Icon'
@@ -70,6 +71,8 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
   const [priceArroba, setPriceArroba] = useState('')
   const [priceHead, setPriceHead] = useState<Partial<Record<CategoryId, string>>>({})
   const [paymentKind, setPaymentKind] = useState<PaymentKind>('avista')
+  const [receivedNow, setReceivedNow] = useState(true)
+  const [receivedMethod, setReceivedMethod] = useState<PaymentMethod>('pix')
   const [days, setDays] = useState('30')
   const [count, setCount] = useState('2')
   const [interval, setIntervalDays] = useState('30')
@@ -148,6 +151,7 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
           pricePerHeadCents: mode === 'cabeca' ? priceHeadCents : {},
           paymentKind,
           installments,
+          receivedNow: paymentKind === 'avista' && receivedNow ? { method: receivedMethod } : null,
           notes,
         },
         saleKey,
@@ -325,6 +329,28 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
               </button>
             ))}
           </div>
+          {paymentKind === 'avista' && (
+            <div className="stack">
+              <label className="row" style={{ gap: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={receivedNow}
+                  onChange={(e) => setReceivedNow(e.target.checked)}
+                  style={{ width: 24, height: 24, accentColor: 'var(--green-700)' }}
+                />
+                <span>Já recebi o pagamento</span>
+              </label>
+              {receivedNow && (
+                <select className="input" aria-label="Forma de pagamento recebido" value={receivedMethod} onChange={(e) => setReceivedMethod(e.target.value as PaymentMethod)}>
+                  {(Object.keys(METHOD_LABELS) as PaymentMethod[]).map((m) => (
+                    <option key={m} value={m}>
+                      Recebido em {METHOD_LABELS[m]}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
           {paymentKind === 'prazo' && (
             <div className="row">
               <label className="label" htmlFor="v-days" style={{ margin: 0, flex: 1 }}>

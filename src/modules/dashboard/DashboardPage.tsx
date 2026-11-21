@@ -11,9 +11,11 @@ import { isStandalone } from '../../platform/storage'
 import { totalsByCategory } from '../rebanho/herd'
 import { useFarm } from '../fazendas/FarmContext'
 import { SpecificationAlerts } from '../rebanho/SpecificationAlerts'
+import { useReceivables } from '../receber/useReceivables'
+import { formatMoney } from '../../core/money'
 import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 
-const SHORTCUTS = ['rebanho', 'pastos', 'vendas', 'clientes', 'acesso', 'contas-receber']
+const SHORTCUTS = ['rebanho', 'pastos', 'vendas', 'contas-receber', 'clientes', 'acesso']
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -31,6 +33,7 @@ export function DashboardPage() {
   const pastures = usePastures()
   const { balances } = useBalances()
   const { farm } = useFarm()
+  const receivables = useReceivables()
   const pendingMap = usePendingTasks()
   const pendingTasks = pendingMap ? [...pendingMap.values()].reduce((a, b) => a + b, 0) : 0
   const herdTotal = pastures
@@ -84,6 +87,16 @@ export function DashboardPage() {
               badge={<span className="big-number" style={{ fontSize: 30 }} data-testid="dash-total">{herdTotal.toLocaleString('pt-BR')}</span>}
             />
           </Link>
+          {receivables && (receivables.openCents > 0 || receivables.payments.length > 0) && (
+            <Link to="/receber" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <StatusItem
+                icon="receipt"
+                label="A receber"
+                detail={receivables.overdueCents ? `Vencido: ${formatMoney(receivables.overdueCents)}` : 'Nada vencido'}
+                badge={<span className={`badge ${receivables.overdueCents ? 'badge-warn' : 'badge-ok'}`} data-testid="dash-receber">{formatMoney(receivables.openCents)}</span>}
+              />
+            </Link>
+          )}
           <Link to="/pastos" style={{ color: 'inherit', textDecoration: 'none' }}>
             <StatusItem
               icon="clipboard"

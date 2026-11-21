@@ -82,6 +82,16 @@ src/
   Chaves e documentos aparecem sempre mascarados na tela e no comprovante.
 - `src/modules/vendas/receipt.ts`: comprovante desenhado em imagem PNG (canvas), com QR Code; não é documento fiscal.
 
+## Contas a receber e pagamentos parciais
+
+- `src/modules/receber/receivables.ts`: recebimentos (`payments`) ligados à venda. A situação de cada parcela
+  (paga, parcial, em aberto, vencida) é sempre CALCULADA a partir dos recebimentos ativos, abatendo da parcela mais
+  antiga para a mais nova. Nada é sobrescrito.
+- Não aceita valor acima do saldo, data futura ou anterior à venda. Recebimento errado é estornado (fica no histórico).
+- Venda à vista pode ser registrada já recebida (venda, saída do rebanho e recebimento na mesma transação).
+- Venda com recebimento ativo não pode ser cancelada (estornar os recebimentos antes).
+- O QR Code Pix do comprovante cobra só o que falta da parcela; parcela paga não gera QR.
+
 ## Como chegar à fazenda (mapa e rotas)
 
 - Tela `/acesso` (app) e página pública `acesso.html` (sem login), gerada como segunda entrada do Vite.
@@ -108,6 +118,7 @@ src/
 | v3 | farms (fazendas) + índice `farmId` em pastures, pastureTasks e movements |
 | v4 | clients (clientes), sales (vendas) |
 | v5 | landmarks (pontos de referência), routeCache (cópia local das rotas — não entra no backup) |
+| v6 | payments (recebimentos das vendas) |
 
 ## Migrações (preservação de dados)
 
