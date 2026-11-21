@@ -26,6 +26,9 @@ import { DieselPage } from '../modules/diesel/DieselPage'
 import { EquipamentosPage } from '../modules/diesel/EquipamentosPage'
 import { DadosResponsavelPage } from '../modules/financeiro/DadosResponsavelPage'
 import { FinanceiroPage } from '../modules/financeiro/FinanceiroPage'
+import { NovaVacinacaoPage } from '../modules/vacinacao/NovaVacinacaoPage'
+import { VacinacaoDetailPage } from '../modules/vacinacao/VacinacaoDetailPage'
+import { VacinacaoPage } from '../modules/vacinacao/VacinacaoPage'
 import { InsumoPage } from '../modules/insumos/InsumoPage'
 import { InsumosPage } from '../modules/insumos/InsumosPage'
 import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
@@ -69,6 +72,9 @@ const implemented: RouteObject[] = [
   { path: '/insumos/:id', element: <InsumoPage />, handle: t('Insumo') },
   { path: '/diesel', element: <DieselPage />, handle: t('Diesel') },
   { path: '/diesel/equipamentos', element: <EquipamentosPage />, handle: t('Equipamentos') },
+  { path: '/vacinacao', element: <VacinacaoPage />, handle: t('Vacinação') },
+  { path: '/vacinacao/nova', element: <NovaVacinacaoPage />, handle: t('Nova vacinação') },
+  { path: '/vacinacao/:id', element: <VacinacaoDetailPage />, handle: t('Vacinação') },
   { path: '/responsaveis', element: <ResponsaveisPage />, handle: t('Responsáveis') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <FinanceiroPage />, handle: t('Financeiro') },

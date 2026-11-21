@@ -142,7 +142,7 @@ export function AgendaSection({ items, today }: { items: AgendaItem[]; today: st
       {items.length === 0 ? (
         <div className="card" data-testid="agenda-empty">
           <p className="muted" style={{ margin: 0 }}>
-            Nada na agenda: nenhuma parcela vence nos próximos {AGENDA_DAYS} dias e não há serviços pendentes nos pastos.
+            Nada na agenda: nenhuma parcela ou vacinação nos próximos {AGENDA_DAYS} dias e nenhum serviço pendente nos pastos.
           </p>
         </div>
       ) : (
@@ -166,7 +166,11 @@ export function AgendaSection({ items, today }: { items: AgendaItem[]; today: st
                           <span className={`badge ${cls}`}>{label}</span>
                         </div>
                       </Link>
-                      {it.taskId ? (
+                      {it.kind === 'vacina' ? (
+                        <Link to={it.to} className="btn btn-outline agenda-action" aria-label={`Abrir ${it.title}`}>
+                          <Icon name="syringe" size={20} />
+                        </Link>
+                      ) : it.taskId ? (
                         <button
                           className={`btn ${it.status === 'concluida' ? 'btn-outline' : 'btn-primary'} agenda-action`}
                           disabled={busy === it.id}

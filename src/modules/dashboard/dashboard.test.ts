@@ -8,6 +8,8 @@ import { addTask, createPasture, setTaskDone } from '../pastos/pastures'
 import { entriesIn, recordMovement, todayLocal } from '../rebanho/herd'
 import { recordPayment } from '../receber/receivables'
 import { addDays, buildInstallments, createClient, createSale } from '../vendas/sales'
+import { createResponsible } from '../responsaveis/responsibles'
+import { addApplication, createVaccination } from '../vacinacao/vaccination'
 import { computeAgenda, computeIndicators, computePendencies, recentActivities, type DashboardData } from './dashboard'
 
 let db: ArgoDatabase
@@ -32,6 +34,9 @@ async function load(farmId: string): Promise<DashboardData> {
     equipments: await db.equipments.where('farmId').equals(f).toArray(),
     tasks: await db.pastureTasks.where('farmId').equals(f).toArray(),
     audit: await db.auditLog.orderBy('at').reverse().limit(80).toArray(),
+    vaccinations: await db.vaccinations.where('farmId').equals(f).toArray(),
+    vaccinationApplications: await db.vaccinationApplications.where('farmId').equals(f).toArray(),
+    responsibles: await db.responsibles.where('farmId').equals(f).toArray(),
   }
 }
 
@@ -168,5 +173,26 @@ describe('Atividades recentes', () => {
     expect(texts.filter((t) => t.startsWith('Mistura feita'))).toHaveLength(1)
     expect(texts.some((t) => t.startsWith('Venda nº'))).toBe(true)
     expect(texts.some((t) => t.includes('Pasto da outra'))).toBe(false)
+  })
+})
+
+describe('vacinação no Painel', () => {
+  it('lote incompleto vira pendência; próxima dose entra na agenda com responsável; some quando resolvido', async () => {
+    const { farm, a } = await setup()
+    const ze = await createResponsible(db, farm.id, 'Zé', '')
+    const input = { pastureId: a.id, lot: 'Bezerras', vaccine: 'Brucelose', product: '', plannedQty: 50, responsibleId: ze.id, nextDate: addDays(today, 10), notes: '' }
+    const v = await createVaccination(db, farm.id, input, { date: today, quantity: 30, responsibleId: null, notes: '' })
+    let d = await load(farm.id)
+    const p = computePendencies(d, today).find((x) => x.id === `vacina:${v.id}`)!
+    expect(p.detail).toBe('Pasto A · Bezerras: 20 animais pendentes (60% vacinado)')
+    expect(p.to).toBe(`/vacinacao/${v.id}`)
+    const ag = computeAgenda(d, today).find((x) => x.id === `vacina:${v.id}`)!
+    expect(ag).toMatchObject({ date: addDays(today, 10), responsible: 'Zé', status: 'pendente', group: 'proximos' })
+    await addApplication(db, v.id, { date: today, quantity: 20, responsibleId: null, notes: '' })
+    const v2 = await createVaccination(db, farm.id, { ...input, nextDate: null }, null, undefined, v.id)
+    d = await load(farm.id)
+    expect(computePendencies(d, today).some((x) => x.id === `vacina:${v.id}`)).toBe(false)
+    expect(computeAgenda(d, today).some((x) => x.id === `vacina:${v.id}`)).toBe(false) // próxima já registrada
+    expect(computePendencies(d, today).some((x) => x.id === `vacina:${v2.id}`)).toBe(true) // a nova ainda não aplicada
   })
 })

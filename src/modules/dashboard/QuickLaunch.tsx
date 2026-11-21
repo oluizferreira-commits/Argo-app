@@ -18,7 +18,7 @@ const QUICK_OPTIONS: Option[] = [
   { label: 'Entrada ou saída de estoque', detail: 'Sal, mistura e outros insumos', icon: 'sack', to: '/insumos' },
   { label: 'Compra de combustível', detail: 'Diesel: posto, litros e valor', icon: 'fuel', to: '/diesel?novo=compra' },
   { label: 'Consumo de combustível', detail: 'Abastecimento de equipamento', icon: 'fuel', to: '/diesel?novo=consumo' },
-  { label: 'Registrar vacinação', detail: 'Em breve (próxima etapa)', icon: 'syringe', to: null },
+  { label: 'Registrar vacinação', detail: 'Por pasto e lote, com aplicação parcial', icon: 'syringe', to: '/vacinacao/nova' },
   { label: 'Registrar pesagem', detail: 'Em breve. Hoje a pesagem é feita dentro da venda por arroba', icon: 'scale', to: null },
   { label: 'Registrar manutenção', detail: 'Em breve', icon: 'gear', to: null },
   { label: 'Criar tarefa', detail: 'Escolha o pasto e anote o serviço', icon: 'clipboard', to: '/pastos' },

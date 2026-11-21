@@ -1763,3 +1763,62 @@ input[type='date'].input {
   padding: 0 13px;
   font-size: 15px;
 }
+
+/* ---------------------------------------------------------------- vacinação */
+.vacc-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  color: inherit;
+  text-decoration: none;
+}
+.vacc-item + .vacc-item {
+  border-top: 1px solid var(--line);
+}
+.vacc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.vacc-next {
+  font-size: 13.5px;
+  color: var(--gold-600);
+}
+.coverage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.coverage-compact {
+  gap: 4px;
+  margin-top: 4px;
+}
+.coverage-track {
+  display: block;
+  height: 10px;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+.coverage-compact .coverage-track {
+  height: 7px;
+}
+.coverage-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--gold-500);
+}
+.coverage-fill.done {
+  background: var(--green-700);
+}
+.coverage-text {
+  font-size: 14px;
+  color: var(--ink-2, var(--ink-3));
+}
+.coverage-pending {
+  color: var(--warn);
+  font-weight: 600;
+}

@@ -82,6 +82,14 @@ Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendência
 - **Atividades recentes**: últimas criações do histórico (`auditLog`, só as 80 mais recentes, filtradas pela fazenda); a mistura aparece uma vez só.
 - Situação do sistema, backup e sincronização ficam em **Configurações → Sistema, segurança e backup**.
 
+## Vacinação
+
+- **Campanha** (`vaccinations`): pasto + lote (texto livre; vazio = todo o pasto), vacina, produto, quantidade prevista (sugerida pelo saldo do pasto, editável), responsável, próxima vacinação (opcional) e observações.
+- **Aplicações** (`vaccinationApplications`): data, quantidade, responsável, observação. Várias por campanha; nunca apagadas (correção por estorno, os animais voltam a pendentes).
+- **Cobertura** (`coverage`): vacinados = soma das aplicações ativas; pendentes = previstos − vacinados (nunca contam como vacinados); percentual arredondado para baixo (100% só sem pendentes). Uma aplicação não pode passar dos pendentes; a quantidade prevista não pode ficar abaixo da vacinada.
+- Sem duplicidade: não abre outra campanha do mesmo pasto + lote + vacina enquanto a anterior tiver pendentes; envio repetido não duplica (chave do formulário).
+- **Próxima vacinação**: aparece na Agenda do Painel (com responsável) até ser registrada; "Registrar a próxima vacinação" cria a nova campanha já preenchida e marca a anterior (`followUpId`, campo sem índice — o banco continua na v9). Lote com pendentes aparece na Central de Pendências.
+
 ## Aba Pastos (listagem)
 
 Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem acento), filtros Todos / Com animais / Vazios / Com pendências e lista em grade fixa (ícone | nome e área | cabeças | seta). Pendências reais abaixo do nome, cada uma com link próprio: "Especificar" (gado sem categoria / bezerros sem sexo) abre a especificação do pasto; "serviço pendente" abre o pasto. Cálculos em `src/modules/pastos/pastureList.ts` (só leem os saldos; regras de contagem inalteradas).

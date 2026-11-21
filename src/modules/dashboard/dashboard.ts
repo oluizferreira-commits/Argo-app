@@ -14,9 +14,12 @@ import type {
   PastureTask,
   Payment,
   ReserveEntry,
+  Responsible,
   Sale,
   Supply,
   SupplyMovement,
+  Vaccination,
+  VaccinationApplication,
 } from '../../db/types'
 import { MOVEMENT_INFO } from '../../domain/movements'
 import type { IconName } from '../../components/Icon'
@@ -26,6 +29,7 @@ import { computeBalances, pendingSpecification } from '../rebanho/herd'
 import { saleBalance } from '../receber/receivables'
 import { reserveSummary } from '../reserva/reserve'
 import { formatSaleNumber } from '../vendas/sales'
+import { coverage, lotLabel } from '../vacinacao/vaccination'
 
 export interface DashboardData {
   farm: Farm
@@ -41,6 +45,9 @@ export interface DashboardData {
   equipments: Equipment[]
   tasks: PastureTask[]
   audit: AuditEntry[]
+  vaccinations?: Vaccination[]
+  vaccinationApplications?: VaccinationApplication[]
+  responsibles?: Responsible[]
 }
 
 const alive = <T extends { deletedAt: string | null }>(x: T) => x.deletedAt === null
@@ -187,6 +194,21 @@ export function computePendencies(d: DashboardData, today: string, ind = compute
     })
   }
 
+  // vacinação incompleta (animais previstos ainda sem vacina; uma pendência por campanha)
+  const apps = d.vaccinationApplications ?? []
+  for (const v of (d.vaccinations ?? []).filter(alive)) {
+    const c = coverage(v, apps)
+    if (c.pending <= 0) continue
+    out.push({
+      id: `vacina:${v.id}`,
+      priority: 2,
+      icon: 'syringe',
+      title: `Vacinação incompleta · ${v.vaccine}`,
+      detail: `${lotLabel(pastureName.get(v.pastureId) ?? 'pasto', v.lot)}: ${plural(c.pending, 'animal pendente', 'animais pendentes')} (${c.percent}% vacinado)`,
+      to: `/vacinacao/${v.id}`,
+    })
+  }
+
   // reserva a separar
   if (ind.reservePendingCents > 0)
     out.push({ id: 'reserva', priority: 2, icon: 'vault', title: 'Reserva financeira a separar', detail: `Separe ${formatMoney(ind.reservePendingCents)} do que já foi recebido`, to: '/reserva' })
@@ -208,7 +230,7 @@ export const AGENDA_GROUPS: { id: AgendaGroup; title: string }[] = [
 
 export interface AgendaItem {
   id: string
-  kind: 'parcela' | 'tarefa'
+  kind: 'parcela' | 'tarefa' | 'vacina'
   title: string
   detail: string
   date: string | null
@@ -249,6 +271,23 @@ export function computeAgenda(d: DashboardData, today: string): AgendaItem[] {
     }
   }
   const pastureName = new Map(d.pastures.filter(alive).map((p) => [p.id, p.name]))
+  // próxima vacinação programada (enquanto a próxima não for registrada)
+  const people = new Map((d.responsibles ?? []).map((r) => [r.id, r.name]))
+  for (const v of (d.vaccinations ?? []).filter(alive)) {
+    if (!v.nextDate || v.followUpId || v.nextDate > limit) continue
+    const late = v.nextDate < today
+    out.push({
+      id: `vacina:${v.id}`,
+      kind: 'vacina',
+      title: `Vacinação: ${v.vaccine}`,
+      detail: `${lotLabel(pastureName.get(v.pastureId) ?? 'pasto', v.lot)} · próxima dose`,
+      date: v.nextDate,
+      responsible: v.responsibleId ? (people.get(v.responsibleId) ?? null) : null,
+      status: late ? 'atrasada' : 'pendente',
+      group: late ? 'atrasadas' : v.nextDate === today ? 'hoje' : 'proximos',
+      to: `/vacinacao/${v.id}`,
+    })
+  }
   for (const t of d.tasks.filter(alive)) {
     const pasture = pastureName.get(t.pastureId)
     if (!pasture) continue
@@ -330,6 +369,12 @@ export function recentActivities(audit: readonly AuditEntry[], d: Pick<Dashboard
         }
         case 'pastureTasks':
           act = { icon: 'clipboard', text: `Serviço anotado · ${r.description as string}`, to: `/pastos/${r.pastureId}` }
+          break
+        case 'vaccinations':
+          act = { icon: 'syringe', text: `Vacinação: ${r.vaccine as string} · ${pastures.get(r.pastureId as string) ?? 'pasto'}`, to: `/vacinacao/${r.id}` }
+          break
+        case 'vaccinationApplications':
+          act = { icon: 'syringe', text: `Vacinados: ${r.quantity as number} animal(is)`, to: `/vacinacao/${r.vaccinationId}` }
           break
         case 'pastures':
           act = { icon: 'pasture', text: `Pasto cadastrado · ${r.name as string}`, to: `/pastos/${r.id}` }

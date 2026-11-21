@@ -273,6 +273,8 @@ export interface Vaccination extends BaseRecord {
   /** Próxima vacinação (opcional — nem toda vacina tem reforço). */
   nextDate: string | null
   notes: string
+  /** Campanha criada a partir desta para a próxima vacinação (tira o lembrete da agenda). */
+  followUpId?: string | null
 }
 
 /** Aplicação (parcial ou total) de uma campanha de vacinação. */
