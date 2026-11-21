@@ -82,6 +82,10 @@ Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendência
 - **Atividades recentes**: últimas criações do histórico (`auditLog`, só as 80 mais recentes, filtradas pela fazenda); a mistura aparece uma vez só.
 - Situação do sistema, backup e sincronização ficam em **Configurações → Sistema, segurança e backup**.
 
+## Aba Pastos (listagem)
+
+Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem acento), filtros Todos / Com animais / Vazios / Com pendências e lista em grade fixa (ícone | nome e área | cabeças | seta). Pendências reais abaixo do nome, cada uma com link próprio: "Especificar" (gado sem categoria / bezerros sem sexo) abre a especificação do pasto; "serviço pendente" abre o pasto. Cálculos em `src/modules/pastos/pastureList.ts` (só leem os saldos; regras de contagem inalteradas).
+
 ## Financeiro e dados do responsável
 
 - A aba Financeiro mostra no topo os **dados do responsável** (nome, CPF mascarado e se há chave Pix) e os módulos em grupos: Vendas, Recebimentos e Reserva.
