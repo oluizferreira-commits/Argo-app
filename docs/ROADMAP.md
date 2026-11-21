@@ -9,6 +9,7 @@
 | 3.1 | Como chegar à fazenda: mapa de satélite, rotas por estrada validadas até a porteira, pontos de referência e bifurcações, página pública, navegação e guia em imagem | **concluída** (v0.5.0) |
 | 3.2 | Contagem sem categoria (fêmeas/machos a especificar) com alerta e especificação no curral | **concluída** (v0.5.1) |
 | 4.1 | Bezerros a especificar e grupo "A especificar" nas telas | **concluída** (v0.6.1) |
+| 4.2 | Observação nos serviços dos pastos (na hora de anotar ou depois, com histórico) | **concluída** (v0.6.2) |
 | 4 | Contas a receber e pagamentos parciais: recebimentos por venda, parcelas pagas/parciais/vencidas, estorno, venda à vista já recebida, Pix pelo saldo | **concluída** (v0.6.0) |
 | 5 | Reserva financeira de 35% | próxima |
 | 6 | Relatórios (rebanho e financeiro) | planejada |

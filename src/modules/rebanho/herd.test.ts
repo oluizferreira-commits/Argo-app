@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { newId } from '../../core/ids'
 import { createDatabase, type ArgoDatabase } from '../../db/database'
 import { createFarm } from '../fazendas/farms'
-import { archivePasture, createPasture, parseArea } from '../pastos/pastures'
+import { addTask, archivePasture, createPasture, parseArea, updateTask } from '../pastos/pastures'
 import {
   balanceOf,
   computeBalances,
@@ -187,4 +187,18 @@ describe('pastos', () => {
     await archivePasture(db, a.id)
     expect((await db.pastures.get(a.id))?.deletedAt).not.toBeNull()
   })
+
+  it('serviço com observação: na hora de anotar ou depois, com histórico', async () => {
+    const { a } = await setup()
+    const t = await addTask(db, a.id, 'Arrumar cerca da divisa', undefined, 'Trocar 6 estacas perto da porteira')
+    expect(t.notes).toBe('Trocar 6 estacas perto da porteira')
+    const sem = await addTask(db, a.id, 'Limpar bebedouro')
+    expect(sem.notes).toBe('')
+    const u = await updateTask(db, t.id, 'Arrumar cerca da divisa', 'Trocar 6 estacas\nEsticar o arame de baixo')
+    expect(u.notes).toBe('Trocar 6 estacas\nEsticar o arame de baixo')
+    const hist = await db.auditLog.where('[entity+entityId]').equals(['pastureTasks', t.id]).toArray()
+    expect(hist.map((h) => h.action).sort()).toEqual(['create', 'update'])
+    await expect(updateTask(db, t.id, '  ', '')).rejects.toThrow(/Descreva/)
+  })
 })
+

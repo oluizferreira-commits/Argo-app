@@ -145,6 +145,8 @@ export interface PastureTask extends BaseRecord {
   farmId: string
   pastureId: string
   description: string
+  /** Observação / detalhes do serviço (ex.: o que fazer na cerca). Opcional. */
+  notes?: string
   done: boolean
   doneAt: string | null
 }

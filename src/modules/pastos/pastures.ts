@@ -91,16 +91,36 @@ export async function archivePasture(db: ArgoDatabase, id: string): Promise<Past
 
 // ------------------------------------------------------------------ serviços
 
-export async function addTask(db: ArgoDatabase, pastureId: string, description: string, idempotencyKey?: string): Promise<PastureTask> {
+const TASK_NOTES_MAX = 2000
+
+function cleanTask(description: string, notes: string) {
   const text = description.trim()
   if (!text) throw new PastureError('Descreva o serviço.')
   if (text.length > 200) throw new PastureError('Descrição muito longa (máx. 200 caracteres).')
+  const obs = notes.trim()
+  if (obs.length > TASK_NOTES_MAX) throw new PastureError(`Observação muito longa (máx. ${TASK_NOTES_MAX} caracteres).`)
+  return { description: text, notes: obs }
+}
+
+export async function addTask(
+  db: ArgoDatabase,
+  pastureId: string,
+  description: string,
+  idempotencyKey?: string,
+  notes = '',
+): Promise<PastureTask> {
+  const data = cleanTask(description, notes)
   const pasture = await db.pastures.get(pastureId)
   if (!pasture) throw new PastureError('Pasto não encontrado.')
   return new Repository(db, 'pastureTasks').create(
-    { farmId: pasture.farmId, pastureId, description: text, done: false, doneAt: null },
+    { farmId: pasture.farmId, pastureId, ...data, done: false, doneAt: null },
     idempotencyKey,
   )
+}
+
+/** Edita o serviço (nome e observação). Fica no histórico. */
+export async function updateTask(db: ArgoDatabase, id: string, description: string, notes: string): Promise<PastureTask> {
+  return new Repository(db, 'pastureTasks').update(id, cleanTask(description, notes))
 }
 
 export async function setTaskDone(db: ArgoDatabase, id: string, done: boolean): Promise<PastureTask> {

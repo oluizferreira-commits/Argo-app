@@ -1,7 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { newId } from '../../core/ids'
 import { db } from '../../db/database'
 import { CATEGORY_GROUPS } from '../../domain/categories'
 import { Icon } from '../../components/Icon'
@@ -9,7 +8,8 @@ import { balanceOf, pastureTotal } from '../rebanho/herd'
 import { PastureSpecificationNotice } from '../rebanho/SpecificationAlerts'
 import { useFarm } from '../fazendas/FarmContext'
 import { useBalances } from '../rebanho/useHerd'
-import { addTask, archivePasture, formatArea, PastureError, removeTask, setTaskDone } from './pastures'
+import { archivePasture, formatArea, PastureError } from './pastures'
+import { PastureTasks } from './PastureTasks'
 
 export function PastoPage() {
   const { id = '' } = useParams()
@@ -21,27 +21,12 @@ export function PastoPage() {
     [id],
   )
   const { balances } = useBalances()
-  const [taskText, setTaskText] = useState('')
-  const [taskKey, setTaskKey] = useState(newId)
   const [error, setError] = useState<string | null>(null)
 
   if (pasture === undefined || tasks === undefined) return null
   if (!pasture || pasture.deletedAt !== null || pasture.farmId !== farm.id) return <div className="card empty">Pasto não encontrado ou arquivado.</div>
 
   const total = pastureTotal(balances, id)
-  const sorted = [...tasks].sort((a, b) => Number(a.done) - Number(b.done) || b.createdAt.localeCompare(a.createdAt))
-
-  async function submitTask(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    try {
-      await addTask(db, id, taskText, taskKey)
-      setTaskText('')
-      setTaskKey(newId())
-    } catch (err) {
-      setError((err as Error).message)
-    }
-  }
 
   async function archive() {
     if (!window.confirm(`Arquivar o pasto "${pasture!.name}"? O histórico será mantido.`)) return
@@ -113,50 +98,7 @@ export function PastoPage() {
       </div>
 
       <h2 className="section-title">Serviços</h2>
-      <div className="card stack">
-        <form onSubmit={submitTask} className="row">
-          <input
-            className="input"
-            value={taskText}
-            maxLength={200}
-            placeholder="Ex.: cerca a ser feita"
-            aria-label="Novo serviço"
-            onChange={(e) => setTaskText(e.target.value)}
-          />
-          <button type="submit" className="btn btn-primary btn-icon" style={{ minHeight: 56, width: 56 }} disabled={!taskText.trim()} aria-label="Adicionar serviço">
-            <Icon name="plus" />
-          </button>
-        </form>
-        {sorted.length === 0 ? (
-          <p className="muted">Nenhum serviço anotado.</p>
-        ) : (
-          <div>
-            {sorted.map((t) => (
-              <div key={t.id} className={`task${t.done ? ' done' : ''}`}>
-                <button
-                  className={`task-check${t.done ? ' done' : ''}`}
-                  onClick={() => setTaskDone(db, t.id, !t.done)}
-                  aria-label={t.done ? 'Marcar como não feito' : 'Marcar como feito'}
-                  aria-pressed={t.done}
-                >
-                  {t.done && <Icon name="check" size={22} />}
-                </button>
-                <div className="status-body">
-                  <div className="task-text" style={{ overflowWrap: 'anywhere' }}>{t.description}</div>
-                  <div className="status-detail">{t.done ? 'Feito' : 'A fazer'}</div>
-                </div>
-                <button
-                  className="btn btn-danger btn-icon"
-                  onClick={() => window.confirm('Remover este serviço da lista?') && removeTask(db, t.id)}
-                  aria-label="Remover serviço"
-                >
-                  <Icon name="trash" size={20} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <PastureTasks pastureId={id} tasks={tasks} />
 
       {pasture.notes && (
         <>
