@@ -1,7 +1,7 @@
 import { nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { Payment, ReserveEntry, Sale } from '../../db/types'
+import type { Payment, ReserveCheck, ReserveEntry, Sale } from '../../db/types'
 import { todayLocal } from '../rebanho/herd'
 
 /** Percentual da reserva financeira sobre cada venda. */
@@ -153,4 +153,69 @@ export async function reverseReserveEntry(db: ArgoDatabase, id: string, reason: 
       throw new ReserveError('Não é possível estornar: o saldo da reserva ficaria negativo (já houve retiradas).')
     return repo.update(id, { status: 'estornado', reversedAt: nowIso(), reverseReason: reason.trim() })
   })
+}
+
+// ------------------------------------------------------------------ conferência de saldo
+
+export const DEFAULT_ACCOUNT = 'Mercado Pago'
+/** Depois de tantos dias sem conferir, a tela lembra de conferir o saldo. */
+export const CHECK_REMINDER_DAYS = 30
+
+/** Registra a conferência: saldo visto no banco × saldo calculado pelo ARGO agora. */
+export async function recordReserveCheck(
+  db: ArgoDatabase,
+  farmId: string,
+  input: { informedCents: number; date: string; account?: string; notes?: string },
+  idempotencyKey?: string,
+): Promise<ReserveCheck> {
+  if (!Number.isInteger(input.informedCents) || input.informedCents < 0) throw new ReserveError('Informe o saldo que aparece no banco.')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || input.date > todayLocal()) throw new ReserveError('Data inválida.')
+  const repo = new Repository(db, 'reserveChecks')
+  return db.transaction('rw', [db.reserveChecks, db.reserveEntries, db.auditLog, db.outbox, db.meta], async () => {
+    if (idempotencyKey) {
+      const existing = await db.reserveChecks.get(idempotencyKey)
+      if (existing) return existing
+    }
+    const systemCents = await balanceOf(db, farmId)
+    return repo.create(
+      {
+        farmId,
+        account: (input.account ?? DEFAULT_ACCOUNT).trim() || DEFAULT_ACCOUNT,
+        date: input.date,
+        informedCents: input.informedCents,
+        systemCents,
+        differenceCents: input.informedCents - systemCents,
+        notes: (input.notes ?? '').trim(),
+      },
+      idempotencyKey,
+    )
+  })
+}
+
+/**
+ * Ajusta o ARGO para bater com o banco: diferença negativa vira retirada; positiva vira depósito.
+ * O motivo é obrigatório (ex.: "Tarifa do banco", "Transferência esquecida").
+ */
+export async function adjustFromCheck(db: ArgoDatabase, check: ReserveCheck, reason: string): Promise<ReserveEntry> {
+  const motivo = reason.trim()
+  if (!motivo) throw new ReserveError('Informe o motivo do ajuste.')
+  if (check.differenceCents === 0) throw new ReserveError('O saldo já confere.')
+  return recordReserveEntry(
+    db,
+    check.farmId,
+    {
+      type: check.differenceCents < 0 ? 'retirada' : 'deposito',
+      date: todayLocal(),
+      amountCents: Math.abs(check.differenceCents),
+      notes: `Ajuste da conferência (${check.account}): ${motivo}`,
+    },
+    `${check.id}-ajuste`,
+  )
+}
+
+/** Dias desde a última conferência (null se nunca conferiu). */
+export function daysSinceCheck(checks: readonly ReserveCheck[], today = todayLocal()): number | null {
+  const last = checks.filter((c) => c.deletedAt === null).map((c) => c.date).sort().at(-1)
+  if (!last) return null
+  return Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${last}T00:00:00Z`)) / 86400000)
 }

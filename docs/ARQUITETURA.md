@@ -100,6 +100,8 @@ src/
 - Depósitos ligados a um recebimento abatem o dele; depósitos avulsos abatem os pendentes do mais antigo ao mais novo.
 - Retirada exige motivo e não pode passar do saldo. Lançamentos errados são estornados (estorno de depósito não pode
   deixar o saldo negativo). Percentual fixo em `RESERVE_PERCENT`.
+- Conferência de saldo (`reserveChecks`): saldo visto no banco (ex.: Mercado Pago) × saldo do ARGO na hora.
+  Diferença pode ser ajustada (retirada ou depósito com motivo; ajuste não duplica). Lembrete após 30 dias.
 
 ## Relatórios
 
@@ -138,6 +140,7 @@ src/
 | v5 | landmarks (pontos de referência), routeCache (cópia local das rotas — não entra no backup) |
 | v6 | payments (recebimentos das vendas) |
 | v7 | reserveEntries (depósitos e retiradas da reserva financeira) |
+| v8 | reserveChecks (conferências do saldo da reserva com o banco) |
 
 ## Migrações (preservação de dados)
 

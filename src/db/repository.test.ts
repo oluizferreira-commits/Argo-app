@@ -77,7 +77,7 @@ describe('migração de esquema', () => {
     v1.close()
     db = createDatabase(name)
     await db.open()
-    expect(db.verno).toBe(7)
+    expect(db.verno).toBe(8)
     expect(await db.diagnostics.get('antigo')).toMatchObject({ note: 'registro da v1' })
     expect(await db.pastures.count()).toBe(0)
   })

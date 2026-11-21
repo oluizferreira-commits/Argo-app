@@ -149,6 +149,22 @@ export interface ReserveEntry extends BaseRecord {
   reverseReason: string
 }
 
+/**
+ * Conferência do saldo da reserva: o saldo informado (visto no banco, ex.: Mercado Pago)
+ * comparado com o saldo calculado pelo ARGO naquele momento.
+ */
+export interface ReserveCheck extends BaseRecord {
+  farmId: string
+  /** Onde o saldo foi conferido, ex.: "Mercado Pago". */
+  account: string
+  date: string
+  informedCents: number
+  systemCents: number
+  /** informado − ARGO (negativo = no banco tem menos que no ARGO). */
+  differenceCents: number
+  notes: string
+}
+
 /** Pasto da fazenda. */
 export interface Pasture extends BaseRecord {
   farmId: string
@@ -278,6 +294,7 @@ export interface EntityMap {
   landmarks: Landmark
   payments: Payment
   reserveEntries: ReserveEntry
+  reserveChecks: ReserveCheck
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -285,7 +302,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

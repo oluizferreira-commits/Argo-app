@@ -8,6 +8,7 @@ import { useFarm } from '../fazendas/FarmContext'
 import { formatDay, todayLocal } from '../rebanho/herd'
 import { formatSaleNumber } from '../vendas/sales'
 import { RESERVE_PERCENT, recordReserveEntry, ReserveError, reverseReserveEntry } from './reserve'
+import { BalanceCheck } from './BalanceCheck'
 import { useReserve } from './useReserve'
 
 type Msg = { kind: 'ok' | 'error'; text: string } | null
@@ -83,6 +84,8 @@ export function ReservaPage() {
         </div>
       )}
 
+      <BalanceCheck checks={r.checks} balanceCents={s.balanceCents} />
+
       <div className="card">
         <dl className="kv" data-testid="reserve-kv">
           <dt>Meta ({RESERVE_PERCENT}% das vendas)</dt>
@@ -97,7 +100,7 @@ export function ReservaPage() {
           <dd style={{ color: s.pendingCents ? 'var(--warn)' : 'var(--ok)' }}>{formatMoney(s.pendingCents)}</dd>
           {s.surplusCents > 0 && (
             <>
-              <dt>Transferido a mais</dt>
+              <dt>Além dos 35% (depósitos avulsos)</dt>
               <dd>{formatMoney(s.surplusCents)}</dd>
             </>
           )}

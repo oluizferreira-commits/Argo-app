@@ -65,6 +65,11 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     reserveEntries: 'id, farmId, date, paymentId, createdAt, updatedAt',
   })
 
+  // v8 — conferência do saldo da reserva com o banco (ex.: Mercado Pago).
+  db.version(8).stores({
+    reserveChecks: 'id, farmId, date, createdAt, updatedAt',
+  })
+
   return db
 }
 

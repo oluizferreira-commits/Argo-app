@@ -8,13 +8,14 @@ import { reservePendingByPayment, reserveSummary } from './reserve'
 export function useReserve() {
   const { farm } = useFarm()
   const data = useLiveQuery(async () => {
-    const [sales, payments, entries, clients] = await Promise.all([
+    const [sales, payments, entries, clients, checks] = await Promise.all([
       db.sales.where('farmId').equals(farm.id).toArray(),
       db.payments.where('farmId').equals(farm.id).toArray(),
       db.reserveEntries.where('farmId').equals(farm.id).toArray(),
       db.clients.where('farmId').equals(farm.id).toArray(),
+      db.reserveChecks.where('farmId').equals(farm.id).toArray(),
     ])
-    return { sales, payments, entries, clients }
+    return { sales, payments, entries, clients, checks }
   }, [farm.id])
   return useMemo(() => {
     if (!data) return undefined
@@ -30,6 +31,7 @@ export function useReserve() {
       entries: [...data.entries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)),
       clients: new Map(data.clients.map((c) => [c.id, c])),
       sales: new Map(data.sales.map((s) => [s.id, s])),
+      checks: [...data.checks].filter((c) => c.deletedAt === null).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     }
   }, [data])
 }

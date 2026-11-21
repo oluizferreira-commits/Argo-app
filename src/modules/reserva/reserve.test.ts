@@ -103,3 +103,28 @@ describe('reserva financeira (35%)', () => {
   })
 })
 
+
+describe('conferência de saldo (Mercado Pago)', () => {
+  it('bate, diferença e ajuste com motivo', async () => {
+    const { recordReserveCheck, adjustFromCheck, daysSinceCheck } = await import('./reserve')
+    db = createDatabase(`test-${newId()}`)
+    const farm = await createFarm(db, { name: 'F', responsible: '', city: '' }, '')
+    await recordReserveEntry(db, farm.id, { type: 'deposito', date: todayLocal(), amountCents: 70000, notes: '' })
+    const ok = await recordReserveCheck(db, farm.id, { informedCents: 70000, date: todayLocal() })
+    expect(ok).toMatchObject({ account: 'Mercado Pago', systemCents: 70000, differenceCents: 0 })
+    const off = await recordReserveCheck(db, farm.id, { informedCents: 69000, date: todayLocal() })
+    expect(off.differenceCents).toBe(-1000)
+    await expect(adjustFromCheck(db, off, ' ')).rejects.toThrow(/motivo/)
+    const adj = await adjustFromCheck(db, off, 'Tarifa do banco')
+    expect(adj).toMatchObject({ type: 'retirada', amountCents: 1000 })
+    expect(adj.notes).toContain('Tarifa do banco')
+    // ajuste repetido (toque duplo) não duplica
+    await adjustFromCheck(db, off, 'Tarifa do banco')
+    expect((await db.reserveEntries.toArray()).filter((e) => e.type === 'retirada').length).toBe(1)
+    const again = await recordReserveCheck(db, farm.id, { informedCents: 69000, date: todayLocal() })
+    expect(again.differenceCents).toBe(0)
+    expect(daysSinceCheck(await db.reserveChecks.toArray())).toBe(0)
+    expect(daysSinceCheck([])).toBeNull()
+    await expect(recordReserveCheck(db, farm.id, { informedCents: -1, date: todayLocal() })).rejects.toThrow(/saldo/)
+  })
+})
