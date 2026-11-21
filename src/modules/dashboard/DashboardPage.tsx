@@ -1,6 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router'
-import { MODULES } from '../../app/modules'
 import { formatDateTime } from '../../core/format'
 import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
@@ -14,9 +13,7 @@ import { SpecificationAlerts } from '../rebanho/SpecificationAlerts'
 import { useReceivables } from '../receber/useReceivables'
 import { useReserve } from '../reserva/useReserve'
 import { formatMoney } from '../../core/money'
-import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
-
-const SHORTCUTS = ['rebanho', 'pastos', 'vendas', 'contas-receber', 'clientes', 'acesso']
+import { useBalances, usePastures, usePendingTaskList } from '../rebanho/useHerd'
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -36,8 +33,11 @@ export function DashboardPage() {
   const { farm } = useFarm()
   const receivables = useReceivables()
   const reserve = useReserve()
-  const pendingMap = usePendingTasks()
-  const pendingTasks = pendingMap ? [...pendingMap.values()].reduce((a, b) => a + b, 0) : 0
+  const pendingList = usePendingTaskList()
+  // serviços pendentes agrupados por pasto (na ordem alfabética dos pastos)
+  const pendingByPasture = (pastures ?? [])
+    .map((p) => ({ pasture: p, tasks: (pendingList ?? []).filter((t) => t.pastureId === p.id) }))
+    .filter((g) => g.tasks.length > 0)
   const herdTotal = pastures
     ? [...totalsByCategory(balances, pastures.map((p) => p.id)).values()].reduce((a, b) => a + b, 0)
     : 0
@@ -118,15 +118,29 @@ export function DashboardPage() {
               />
             </Link>
           )}
-          <Link to="/pastos" style={{ color: 'inherit', textDecoration: 'none' }}>
-            <StatusItem
-              icon="clipboard"
-              label="Serviços nos pastos"
-              detail={pendingTasks ? `${pendingTasks} pendente(s)` : 'Nada pendente'}
-              badge={pendingTasks ? <span className="badge badge-warn">{pendingTasks}</span> : <span className="badge badge-ok">OK</span>}
-            />
-          </Link>
         </div>
+      )}
+
+      {pendingByPasture.length > 0 && (
+        <>
+          <h2 className="section-title">Serviços pendentes</h2>
+          <div className="card pending-list" data-testid="dash-pending">
+            {pendingByPasture.map(({ pasture, tasks }) => (
+              <Link key={pasture.id} to={`/pastos/${pasture.id}`} className="pending-row">
+                <Icon name="clipboard" size={20} className="pending-icon" />
+                <div className="pending-body">
+                  <div className="pending-pasture">{pasture.name}</div>
+                  <div className="pending-tasks">
+                    {tasks[0].description}
+                    {tasks.length > 1 && <span className="muted"> · +{tasks.length - 1}</span>}
+                  </div>
+                </div>
+                <span className="badge badge-warn">{tasks.length}</span>
+                <Icon name="chevronRight" size={18} className="muted" />
+              </Link>
+            ))}
+          </div>
+        </>
       )}
 
       <h2 className="section-title">Situação do sistema</h2>
@@ -167,19 +181,6 @@ export function DashboardPage() {
           detail={`Não configurada — dados apenas neste aparelho${pending ? ` · ${pending} alteração(ões) aguardando` : ''}`}
           badge={<span className="badge badge-neutral">Local</span>}
         />
-      </div>
-
-      <h2 className="section-title">Módulos</h2>
-      <div className="module-grid">
-        {SHORTCUTS.map((id) => MODULES.find((m) => m.id === id)!).map((m) => (
-          <Link key={m.id} to={m.path} className={`module-tile${m.status === 'planejado' ? ' planned' : ''}`}>
-            <div className="tile-icon">
-              <Icon name={m.icon} />
-            </div>
-            <div className="tile-title">{m.title}</div>
-            {m.status === 'planejado' && <span className="badge badge-gold" style={{ alignSelf: 'flex-start' }}>Em breve</span>}
-          </Link>
-        ))}
       </div>
 
       <Link to="/configuracoes" className="btn btn-outline btn-block">
