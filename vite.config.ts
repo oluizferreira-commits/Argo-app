@@ -50,6 +50,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // a imagem de prévia do link é só para o WhatsApp: não precisa ficar no aparelho
+        globIgnores: ['**/og-acesso.jpg'],
         navigateFallback: 'index.html',
         // a página pública nunca é trocada pelo app
         navigateFallbackDenylist: [/acesso\.html/],

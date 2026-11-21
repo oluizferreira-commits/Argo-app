@@ -1,4 +1,4 @@
-// Gera public/og-acesso.png (prévia do link "Como chegar" no WhatsApp). Uso: node scripts/generate-og.mjs
+// Gera public/og-acesso.jpg (prévia do link "Como chegar" no WhatsApp). Uso: node scripts/generate-og.mjs
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 const { chromium } = createRequire(import.meta.url)('playwright')
@@ -11,5 +11,5 @@ const html = `<html><body style="margin:0;width:1200px;height:630px;background:r
 <div style="color:#fff;font-size:56px;font-weight:700">Como chegar à fazenda</div>
 <div style="color:rgba(255,255,255,.75);font-size:30px;margin-top:14px">Mapa de satélite · rota · navegação</div></div></body></html>`
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1200, height: 630 } })
-await p.setContent(html); await p.screenshot({ path: new URL('../public/og-acesso.png', import.meta.url).pathname }); await b.close()
-console.log('ok og-acesso.png')
+await p.setContent(html); await p.screenshot({ path: new URL('../public/og-acesso.jpg', import.meta.url).pathname, type: 'jpeg', quality: 86 }); await b.close()
+console.log('ok og-acesso.jpg')
