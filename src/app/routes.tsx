@@ -6,6 +6,7 @@ import { FazendaPage } from '../modules/fazendas/FazendaPage'
 import { PagamentosPage } from '../modules/receber/PagamentosPage'
 import { ReceberPage } from '../modules/receber/ReceberPage'
 import { ReservaPage } from '../modules/reserva/ReservaPage'
+import { RelatoriosPage } from '../modules/relatorios/RelatoriosPage'
 import { HubPage } from '../modules/hub/HubPage'
 import { ClienteFormPage } from '../modules/clientes/ClienteFormPage'
 import { ClientePage } from '../modules/clientes/ClientePage'
@@ -50,6 +51,7 @@ const implemented: RouteObject[] = [
   { path: '/receber', element: <ReceberPage />, handle: t('Contas a receber') },
   { path: '/pagamentos', element: <PagamentosPage />, handle: t('Recebimentos') },
   { path: '/reserva', element: <ReservaPage />, handle: t('Reserva financeira') },
+  { path: '/relatorios', element: <RelatoriosPage />, handle: t('Relatórios') },
   { path: '/vendas/nova', element: <NovaVendaPage />, handle: t('Nova venda') },
   { path: '/vendas/nova/:modo', element: <NovaVendaPage />, handle: t('Nova venda') },
   { path: '/vendas/:id', element: <VendaPage />, handle: t('Venda') },

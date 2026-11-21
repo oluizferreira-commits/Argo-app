@@ -51,7 +51,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         // a imagem de prévia do link é só para o WhatsApp: não precisa ficar no aparelho
-        globIgnores: ['**/og-acesso.jpg'],
+        // og-acesso.jpg: só para a prévia do WhatsApp. html2canvas/purify/canvg (index.es): partes opcionais
+        // do gerador de PDF que o ARGO não usa (HTML/SVG para PDF) — nunca são carregadas.
+        globIgnores: ['**/og-acesso.jpg', '**/html2canvas-*.js', '**/purify.es-*.js', '**/index.es-*.js'],
         navigateFallback: 'index.html',
         // a página pública nunca é trocada pelo app
         navigateFallbackDenylist: [/acesso\.html/],

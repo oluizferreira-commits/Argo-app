@@ -1275,3 +1275,47 @@ input[type='date'].input {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
+
+/* ================= Relatórios ================= */
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.report-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-table th {
+  background: var(--green-900);
+  color: var(--gold-300);
+  font-weight: 700;
+  padding: 7px 8px;
+  white-space: nowrap;
+}
+
+.report-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.report-table tbody tr:nth-child(even) td {
+  background: var(--canvas);
+}
+
+.report-table tfoot td {
+  background: var(--gold-100);
+  font-weight: 700;
+  color: var(--green-900);
+}

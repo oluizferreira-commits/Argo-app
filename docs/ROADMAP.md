@@ -12,8 +12,8 @@
 | 4.2 | Observação nos serviços dos pastos (na hora de anotar ou depois, com histórico) | **concluída** (v0.6.2) |
 | 4 | Contas a receber e pagamentos parciais: recebimentos por venda, parcelas pagas/parciais/vencidas, estorno, venda à vista já recebida, Pix pelo saldo | **concluída** (v0.6.0) |
 | 5 | Reserva financeira de 35%: separar 35% de cada recebimento, conta separada (depósitos e retiradas com motivo), saldo e alerta | **concluída** (v0.7.0) |
-| 6 | Relatórios (rebanho e financeiro) | próxima |
-| 7 | Sincronização em nuvem (Supabase) e login entre aparelhos | planejada |
+| 6 | Relatórios mês a mês e por ano, na tela e em PDF: vendas, arrobas, recebimentos, inadimplência, reserva, nascimentos e mortes, rebanho por pasto e categoria | **concluída** (v0.8.0) |
+| 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
 
 Observação: os itens "Controle de pastos" e "Nascimentos e mortes" do plano original foram incorporados à Etapa 2,
 porque o rebanho é controlado por pasto e por contagem.

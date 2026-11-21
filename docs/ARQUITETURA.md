@@ -101,6 +101,15 @@ src/
 - Retirada exige motivo e não pode passar do saldo. Lançamentos errados são estornados (estorno de depósito não pode
   deixar o saldo negativo). Percentual fixo em `RESERVE_PERCENT`.
 
+## Relatórios
+
+- `src/modules/relatorios/reports.ts`: cálculos puros (mesmos números na tela e no PDF). Período: mês ou ano.
+- Vendas, arrobas, recebimentos, inadimplência (posição no fim do período ou hoje; só pagamentos até essa data),
+  reserva (saldo inicial/final), nascimentos e mortes (inclui os encontrados na contagem), rebanho por pasto e categoria.
+- Lançamentos estornados e o próprio estorno ficam fora (são correções); vendas canceladas não entram nos totais.
+- `pdf.ts`: jsPDF + autotable, carregado só ao gerar o PDF; funciona offline. Fontes padrão: `pdfText` troca caracteres
+  fora do Latin-1. Partes opcionais do jsPDF (html2canvas, canvg, purify) ficam fora do pacote offline.
+
 ## Como chegar à fazenda (mapa e rotas)
 
 - Tela `/acesso` (app) e página pública `acesso.html` (sem login), gerada como segunda entrada do Vite.
