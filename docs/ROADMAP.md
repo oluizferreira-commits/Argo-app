@@ -19,7 +19,8 @@
 | 7.1.1 | Mistura de sal (receita do responsável; "Mistura feita" desconta branco e mineral; cocho em sacos de mistura) | **concluída** (v0.9.1) |
 | 7.1.2 | Painel com serviços pendentes por pasto; contagem parte do saldo do sistema | **concluída** (v0.9.2–0.9.3) |
 | 7.2 | Diesel: compras, equipamentos, consumo, custo médio ponderado | **concluída** (v0.10.0) |
-| 7.3 | Relatórios de combustível (semana, mês, equipamento, responsável, L/h) | planejada |
+| 7.2.1 | Financeiro com dados do responsável (CPF) e ajustes visuais da reserva | **concluída** (v0.10.1) |
+| 7.3 | Relatórios de combustível (semana, mês, equipamento, responsável, L/h), na tela e em PDF | **concluída** (v0.11.0) |
 | 7.4 | Vacinação com cobertura parcial e várias aplicações por campanha | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
 

@@ -1,6 +1,7 @@
 import { formatDecimal, formatMoney } from '../../core/money'
-import type { Client, Farm, Movement, Pasture, Payment, ReserveEntry, Sale } from '../../db/types'
+import type { Client, Equipment, Farm, FuelMovement, Movement, Pasture, Payment, ReserveEntry, Responsible, Sale } from '../../db/types'
 import { CATEGORIES, category, isUnspecified } from '../../domain/categories'
+import { formatLiters, fuelLedger } from '../diesel/fuel'
 import { computeBalances, formatDay, todayLocal } from '../rebanho/herd'
 import { activePayments, METHOD_LABELS, saleBalance } from '../receber/receivables'
 import { rateOn, reserveShare } from '../reserva/reserve'
@@ -71,6 +72,7 @@ export const REPORTS = [
   { id: 'reserva', title: 'Reserva financeira' },
   { id: 'nascimentos-mortes', title: 'Nascimentos e mortes' },
   { id: 'rebanho', title: 'Rebanho por pasto e categoria' },
+  { id: 'diesel', title: 'Diesel' },
 ] as const
 
 export type ReportId = (typeof REPORTS)[number]['id']
@@ -83,6 +85,9 @@ export interface ReportData {
   payments: Payment[]
   clients: Client[]
   reserveEntries: ReserveEntry[]
+  fuelMovements?: FuelMovement[]
+  equipments?: Equipment[]
+  responsibles?: Responsible[]
   today?: string
 }
 
@@ -427,6 +432,191 @@ function rebanho(d: ReportData, p: Period): Report {
   }
 }
 
+
+// ------------------------------------------------------------------ diesel
+
+/** Segunda-feira da semana (AAAA-MM-DD). */
+export function weekStart(date: string): string {
+  const d = new Date(`${date}T12:00:00Z`)
+  const dow = (d.getUTCDay() + 6) % 7 // segunda = 0
+  d.setUTCDate(d.getUTCDate() - dow)
+  return d.toISOString().slice(0, 10)
+}
+
+function addDaysIso(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+const shortDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
+const lit = (cl: number) => formatLiters(cl)
+const dec = (v: number, max = 1) => v.toLocaleString('pt-BR', { minimumFractionDigits: max, maximumFractionDigits: max })
+
+/**
+ * Consumo por intervalo de medidor: cada abastecimento com leitura, que tenha uma leitura anterior do mesmo
+ * equipamento, conta os litros abastecidos agora sobre as horas (ou km) desde o abastecimento anterior.
+ */
+export function meterIntervals(movements: readonly FuelMovement[], equipmentId: string): { date: string; liters: number; delta: number }[] {
+  const list = movements
+    .filter((m) => m.status === 'ativo' && m.deletedAt === null && m.type === 'consumo' && m.equipmentId === equipmentId && m.meterReading !== null)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
+  const out: { date: string; liters: number; delta: number }[] = []
+  for (let i = 1; i < list.length; i++) {
+    const delta = list[i].meterReading! - list[i - 1].meterReading!
+    if (delta > 0) out.push({ date: list[i].date, liters: Math.abs(list[i].centiliters), delta })
+  }
+  return out
+}
+
+function diesel(d: ReportData, p: Period): Report {
+  const all = d.fuelMovements ?? []
+  const equipments = new Map((d.equipments ?? []).map((e) => [e.id, e]))
+  const people = new Map((d.responsibles ?? []).map((r) => [r.id, r.name]))
+  const ledger = fuelLedger(all)
+  const { end } = periodRange(p)
+  const lines = ledger.lines.filter((l) => inPeriod(l.movement.date, p))
+  const upTo = ledger.lines.filter((l) => l.movement.date <= end).at(-1)
+  const buys = lines.filter((l) => l.movement.type === 'compra')
+  const uses = lines.filter((l) => l.movement.type === 'consumo')
+  const sum = (ls: typeof lines, f: (l: (typeof lines)[number]) => number) => ls.reduce((a, l) => a + f(l), 0)
+  const boughtCl = sum(buys, (l) => l.movement.centiliters)
+  const boughtCents = sum(buys, (l) => l.costCents)
+  const usedCl = sum(uses, (l) => -l.movement.centiliters)
+  const usedCents = sum(uses, (l) => l.costCents)
+
+  // por semana (mês) ou por mês (ano)
+  const groups = new Map<string, { cl: number; cents: number; n: number }>()
+  for (const l of uses) {
+    const k = p.kind === 'mes' ? weekStart(l.movement.date) : l.movement.date.slice(5, 7)
+    const g = groups.get(k) ?? { cl: 0, cents: 0, n: 0 }
+    g.cl += -l.movement.centiliters
+    g.cents += l.costCents
+    g.n++
+    groups.set(k, g)
+  }
+  const timeTable: ReportTable =
+    p.kind === 'mes'
+      ? {
+          title: 'Por semana',
+          columns: [{ label: 'Semana' }, { label: 'Abastec.', align: R }, { label: 'Litros', align: R }, { label: 'Custo', align: R }],
+          rows: [...groups.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([k, g]) => [`${shortDay(k)} a ${shortDay(addDaysIso(k, 6))}`, n(g.n), lit(g.cl), formatMoney(g.cents)]),
+          foot: ['Total', n(uses.length), lit(usedCl), formatMoney(usedCents)],
+        }
+      : {
+          title: 'Por mês',
+          columns: [{ label: 'Mês' }, { label: 'Abastec.', align: R }, { label: 'Litros', align: R }, { label: 'Custo', align: R }],
+          rows: [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([k, g]) => [monthName(Number(k)), n(g.n), lit(g.cl), formatMoney(g.cents)]),
+          foot: ['Total', n(uses.length), lit(usedCl), formatMoney(usedCents)],
+        }
+
+  // por equipamento (com média L/h pelo horímetro ou km/L pelo hodômetro)
+  const byEq = new Map<string, { cl: number; cents: number; n: number }>()
+  for (const l of uses) {
+    const k = l.movement.equipmentId ?? '-'
+    const g = byEq.get(k) ?? { cl: 0, cents: 0, n: 0 }
+    g.cl += -l.movement.centiliters
+    g.cents += l.costCents
+    g.n++
+    byEq.set(k, g)
+  }
+  const eqRows = [...byEq.entries()]
+    .map(([id, g]) => {
+      const eq = equipments.get(id)
+      const iv = eq && eq.meter !== 'nenhum' ? meterIntervals(all, id).filter((x) => inPeriod(x.date, p)) : []
+      const liters = iv.reduce((a, x) => a + x.liters, 0) / 100
+      const delta = iv.reduce((a, x) => a + x.delta, 0) / 10
+      let worked = '-'
+      let avg = '-'
+      if (eq && delta > 0) {
+        if (eq.meter === 'horimetro') {
+          worked = `${dec(delta)} h`
+          avg = `${dec(liters / delta, 2)} L/h`
+        } else {
+          worked = `${dec(delta)} km`
+          avg = `${dec(delta / liters, 2)} km/L`
+        }
+      }
+      return { name: eq?.name ?? '-', row: [eq?.name ?? '-', n(g.n), lit(g.cl), formatMoney(g.cents), worked, avg] }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }))
+
+  const byResp = new Map<string, { cl: number; cents: number; n: number }>()
+  for (const l of uses) {
+    const k = l.movement.responsibleId ? (people.get(l.movement.responsibleId) ?? '-') : 'Sem responsável'
+    const g = byResp.get(k) ?? { cl: 0, cents: 0, n: 0 }
+    g.cl += -l.movement.centiliters
+    g.cents += l.costCents
+    g.n++
+    byResp.set(k, g)
+  }
+
+  const fmtMeter = (m: FuelMovement) => {
+    const eq = m.equipmentId ? equipments.get(m.equipmentId) : undefined
+    if (!eq || m.meterReading === null) return '-'
+    return `${dec(m.meterReading / 10)} ${eq.meter === 'km' ? 'km' : 'h'}`
+  }
+  const empty = !buys.length && !uses.length
+  return {
+    id: 'diesel',
+    title: 'Diesel',
+    summary: [
+      { label: 'Comprado', value: `${lit(boughtCl)} · ${formatMoney(boughtCents)}` },
+      { label: 'Consumido', value: lit(usedCl) },
+      { label: 'Custo do consumo', value: formatMoney(usedCents) },
+      { label: 'Custo médio no fim', value: upTo?.avgCents ? `${formatMoney(upTo.avgCents)}/L` : '-' },
+      { label: 'Estoque no fim', value: lit(upTo?.balanceCl ?? 0) },
+    ],
+    tables: [
+      timeTable,
+      {
+        title: 'Por equipamento',
+        columns: [{ label: 'Equipamento' }, { label: 'Abastec.', align: R }, { label: 'Litros', align: R }, { label: 'Custo', align: R }, { label: 'Trabalhado', align: R }, { label: 'Média', align: R }],
+        rows: eqRows.map((x) => x.row),
+        foot: ['Total', n(uses.length), lit(usedCl), formatMoney(usedCents), '', ''],
+      },
+      {
+        title: 'Por responsável',
+        columns: [{ label: 'Responsável' }, { label: 'Abastec.', align: R }, { label: 'Litros', align: R }, { label: 'Custo', align: R }],
+        rows: [...byResp.entries()].sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([k, g]) => [k, n(g.n), lit(g.cl), formatMoney(g.cents)]),
+      },
+      {
+        title: 'Compras',
+        columns: [{ label: 'Data' }, { label: 'Posto' }, { label: 'Litros', align: R }, { label: 'Valor', align: R }, { label: 'R$/L', align: R }],
+        rows: buys.map((l) => [
+          formatDay(l.movement.date),
+          l.movement.station || '-',
+          lit(l.movement.centiliters),
+          formatMoney(l.costCents),
+          formatMoney(Math.round((l.costCents * 100) / l.movement.centiliters)),
+        ]),
+        foot: ['Total', '', lit(boughtCl), formatMoney(boughtCents), boughtCl ? formatMoney(Math.round((boughtCents * 100) / boughtCl)) : ''],
+      },
+      {
+        title: 'Abastecimentos',
+        columns: [{ label: 'Data' }, { label: 'Equipamento' }, { label: 'Responsável' }, { label: 'Litros', align: R }, { label: 'Medidor', align: R }, { label: 'Custo', align: R }, { label: 'Obs.' }],
+        rows: uses.map((l) => [
+          formatDay(l.movement.date),
+          (l.movement.equipmentId && equipments.get(l.movement.equipmentId)?.name) || '-',
+          (l.movement.responsibleId && people.get(l.movement.responsibleId)) || '-',
+          lit(-l.movement.centiliters),
+          fmtMeter(l.movement),
+          formatMoney(l.costCents),
+          l.movement.notes || '-',
+        ]),
+        wide: true,
+      },
+    ],
+    notes: [
+      'Custo de cada abastecimento = litros × custo médio ponderado do diesel no dia. Lançamentos estornados não entram.',
+      'Média L/h (horímetro) ou km/L (hodômetro): litros de cada abastecimento sobre as horas/km desde o abastecimento anterior do mesmo equipamento; só entram abastecimentos com leitura.',
+    ],
+    empty: empty ? 'Nenhuma compra ou abastecimento de diesel no período.' : undefined,
+  }
+}
+
 const BUILDERS: Record<ReportId, (d: ReportData, p: Period) => Report> = {
   vendas,
   arrobas,
@@ -435,6 +625,7 @@ const BUILDERS: Record<ReportId, (d: ReportData, p: Period) => Report> = {
   reserva,
   'nascimentos-mortes': nascimentosMortes,
   rebanho,
+  diesel,
 }
 
 export function buildReports(ids: readonly ReportId[], d: ReportData, p: Period): Report[] {

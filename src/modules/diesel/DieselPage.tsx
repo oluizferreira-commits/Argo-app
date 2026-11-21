@@ -108,6 +108,16 @@ export function DieselPage() {
       )}
 
       <div className="card module-list" style={{ paddingTop: 6, paddingBottom: 6 }}>
+        <Link to="/relatorios?r=diesel" data-testid="fuel-reports">
+          <div className="status-icon">
+            <Icon name="chart" />
+          </div>
+          <div className="status-body">
+            <div className="status-label">Relatórios do diesel</div>
+            <div className="status-detail">Semana, mês, equipamento, responsável, L/h · PDF</div>
+          </div>
+          <Icon name="chevronRight" size={20} className="muted" />
+        </Link>
         <Link to="/diesel/equipamentos">
           <div className="status-icon">
             <Icon name="gear" />

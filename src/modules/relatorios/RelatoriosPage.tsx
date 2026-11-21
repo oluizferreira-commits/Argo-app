@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
 import { saveFile } from '../../platform/files'
@@ -8,26 +9,36 @@ import { todayLocal } from '../rebanho/herd'
 import { buildReports, MONTHS, periodLabel, REPORTS, type Period, type Report, type ReportId } from './reports'
 
 export function RelatoriosPage() {
+  // ?r=diesel abre só aquele relatório (atalho de outras telas); trocar o filtro recria a tela
+  const [params] = useSearchParams()
+  const only = REPORTS.find((r) => r.id === params.get('r'))?.id
+  return <Relatorios key={only ?? 'todos'} only={only} />
+}
+
+function Relatorios({ only }: { only: ReportId | undefined }) {
   const { farm } = useFarm()
   const today = todayLocal()
   const thisYear = Number(today.slice(0, 4))
   const [kind, setKind] = useState<'mes' | 'ano'>('mes')
   const [year, setYear] = useState(thisYear)
   const [month, setMonth] = useState(Number(today.slice(5, 7)))
-  const [selected, setSelected] = useState<ReportId[]>(REPORTS.map((r) => r.id))
+  const [selected, setSelected] = useState<ReportId[]>(only ? [only] : REPORTS.map((r) => r.id))
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
 
   const data = useLiveQuery(async () => {
-    const [pastures, movements, sales, payments, clients, reserveEntries] = await Promise.all([
+    const [pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles] = await Promise.all([
       db.pastures.where('farmId').equals(farm.id).toArray(),
       db.movements.where('farmId').equals(farm.id).toArray(),
       db.sales.where('farmId').equals(farm.id).toArray(),
       db.payments.where('farmId').equals(farm.id).toArray(),
       db.clients.where('farmId').equals(farm.id).toArray(),
       db.reserveEntries.where('farmId').equals(farm.id).toArray(),
+      db.fuelMovements.where('farmId').equals(farm.id).toArray(),
+      db.equipments.where('farmId').equals(farm.id).toArray(),
+      db.responsibles.where('farmId').equals(farm.id).toArray(),
     ])
-    return { farm, pastures, movements, sales, payments, clients, reserveEntries }
+    return { farm, pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles }
   }, [farm])
 
   const period: Period = kind === 'ano' ? { kind, year } : { kind, year, month }
@@ -36,7 +47,7 @@ export function RelatoriosPage() {
   // anos disponíveis: do primeiro lançamento até o ano atual
   const firstYear = useMemo(() => {
     if (!data) return thisYear
-    const dates = [...data.movements.map((m) => m.date), ...data.sales.map((s) => s.date), ...data.payments.map((p) => p.date)]
+    const dates = [...data.movements.map((m) => m.date), ...data.sales.map((s) => s.date), ...data.payments.map((p) => p.date), ...data.fuelMovements.map((f) => f.date)]
     return dates.length ? Math.min(thisYear, ...dates.map((d) => Number(d.slice(0, 4)))) : thisYear
   }, [data, thisYear])
   const years = Array.from({ length: thisYear - firstYear + 1 }, (_, i) => thisYear - i)

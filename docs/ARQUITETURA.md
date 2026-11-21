@@ -150,6 +150,7 @@ src/
 - **Lançamentos** (`fuelMovements`): litros em **centilitros** com sinal. Compra (+, posto e valor total em centavos; preço por litro calculado), abastecimento (−, equipamento, responsável — sugerido pelo equipamento —, leitura do medidor ×10, que não pode ser menor que a anterior) e ajuste (±, com motivo).
 - **Custo médio ponderado** (`fuelLedger`): em ordem de data; cada compra recalcula (valor em estoque + valor pago) ÷ (litros em estoque + litros comprados); cada saída sai pelo custo médio do momento. Com estoque zerado ou negativo, o custo passa a ser o preço da compra.
 - Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
+- **Relatório do diesel** (em Relatórios, id `diesel`; atalho `/relatorios?r=diesel`): resumo (comprado, consumido, custo, custo médio e estoque no fim do período), por semana (período mensal, semanas de segunda a domingo) ou por mês (período anual), por equipamento (litros, custo, horas/km trabalhados e média L/h ou km/L), por responsável, compras e abastecimentos. Média do medidor: litros de cada abastecimento com leitura ÷ horas (ou km) desde o abastecimento anterior do mesmo equipamento.
 
 ## Esquema do banco
 

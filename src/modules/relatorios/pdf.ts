@@ -140,6 +140,12 @@ export async function buildReportsPdf(reports: readonly Report[], meta: PdfMeta)
     } else {
       for (const t of r.tables) {
         if (t.rows.length === 0) continue
+        // título não fica sozinho no fim da página: se não couber título + algumas linhas, vai para a próxima
+        if (y > doc.internal.pageSize.getHeight() - 45) {
+          doc.addPage()
+          header()
+          y = 35
+        }
         if (t.title) {
           doc.setFont('helvetica', 'bold')
           doc.setFontSize(9.5)
