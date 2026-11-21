@@ -1,10 +1,13 @@
 import { formatDecimal, formatMoney } from '../../core/money'
-import type { Client, Equipment, FieldOperation, Farm, FuelMovement, Movement, Pasture, Payment, ReserveEntry, Responsible, Sale, Supply, SupplyMovement } from '../../db/types'
+import type { Client, Equipment, FieldOperation, Farm, FuelMovement, MachineSession, MaintenancePlan, MaintenanceRecord, MeterAdjustment, Movement, Pasture, Payment, ReserveEntry, Responsible, Sale, Supply, SupplyMovement, Worker, WorkDay, WorkerPayment } from '../../db/types'
 import { CATEGORIES, category, isUnspecified } from '../../domain/categories'
 import { formatLiters, fuelLedger } from '../diesel/fuel'
 import { formatQty } from '../insumos/supplies'
 import { EMPTY_FILTER, grassLabel, manejoStats, type ManejoFilter } from '../manejo/manejoStats'
 import { formatHa, formatHours, typeLabel } from '../manejo/operations'
+import { equipmentStatus, formatMeterH, meterAt, sessionSeconds } from '../maquinas/machines'
+import { planStatus } from '../maquinas/maintenance'
+import { monthSummary } from '../diaristas/workers'
 import { computeBalances, formatDay, todayLocal } from '../rebanho/herd'
 import { activePayments, METHOD_LABELS, saleBalance } from '../receber/receivables'
 import { rateOn, reserveShare } from '../reserva/reserve'
@@ -77,6 +80,8 @@ export const REPORTS = [
   { id: 'rebanho', title: 'Rebanho por pasto e categoria' },
   { id: 'diesel', title: 'Diesel' },
   { id: 'manejo', title: 'Manejo de pastagens' },
+  { id: 'maquinas', title: 'Máquinas: horas e manutenção' },
+  { id: 'diaristas', title: 'Diaristas' },
 ] as const
 
 export type ReportId = (typeof REPORTS)[number]['id']
@@ -95,6 +100,13 @@ export interface ReportData {
   fieldOperations?: FieldOperation[]
   supplies?: Supply[]
   supplyMovements?: SupplyMovement[]
+  machineSessions?: MachineSession[]
+  meterAdjustments?: MeterAdjustment[]
+  maintenancePlans?: MaintenancePlan[]
+  maintenanceRecords?: MaintenanceRecord[]
+  workers?: Worker[]
+  workDays?: WorkDay[]
+  workerPayments?: WorkerPayment[]
   today?: string
 }
 
@@ -664,8 +676,8 @@ export function manejoReport(d: ReportData, p: Period | null, extra: Partial<Man
     tables: [
       {
         title: 'Custo por pasto',
-        columns: [{ label: 'Pasto' }, { label: 'Oper.', align: R }, { label: 'Herbicidas/produtos', align: R }, { label: 'Sementes', align: R }, { label: 'Diesel', align: R }, { label: 'Outros', align: R }, { label: 'Total', align: R }, { label: 'Formação', align: R }, { label: 'R$/ha do pasto', align: R }],
-        rows: st.pastures.map((c) => [c.name, n(c.operations), formatMoney(c.herbicideCents), formatMoney(c.seedsCents), formatMoney(c.dieselCents), formatMoney(c.otherCents), formatMoney(c.totalCents), formatMoney(c.formationCents), c.perHaCents === null ? '-' : formatMoney(c.perHaCents)]),
+        columns: [{ label: 'Pasto' }, { label: 'Oper.', align: R }, { label: 'Herbicidas/produtos', align: R }, { label: 'Sementes', align: R }, { label: 'Diesel', align: R }, { label: 'Outros e diaristas', align: R }, { label: 'Total', align: R }, { label: 'Formação', align: R }, { label: 'R$/ha do pasto', align: R }],
+        rows: st.pastures.map((c) => [c.name, n(c.operations), formatMoney(c.herbicideCents), formatMoney(c.seedsCents), formatMoney(c.dieselCents), formatMoney(c.otherCents + c.laborCents), formatMoney(c.totalCents), formatMoney(c.formationCents), c.perHaCents === null ? '-' : formatMoney(c.perHaCents)]),
         foot: ['Total', n(st.machines.operations), '', '', '', '', formatMoney(st.totalCents), '', ''],
         wide: true,
       },
@@ -711,6 +723,161 @@ export function manejoReport(d: ReportData, p: Period | null, extra: Partial<Man
   }
 }
 
+// ------------------------------------------------------------------ máquinas
+
+const localDay = (iso: string) => {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const hm = (secs: number) => `${Math.floor(secs / 3600)} h ${String(Math.round((secs % 3600) / 60)).padStart(2, '0')} min`
+
+interface HourEntry {
+  date: string
+  equipmentId: string
+  responsibleId: string | null
+  type: string
+  seconds: number
+}
+
+/** Horas de máquina: sessões do horímetro digital + horas digitadas nas operações (sem sessão). Nada conta duas vezes. */
+export function machineHours(d: ReportData): HourEntry[] {
+  const out: HourEntry[] = []
+  for (const s of d.machineSessions ?? [])
+    if (s.status === 'encerrada' && s.deletedAt === null) out.push({ date: localDay(s.startedAt), equipmentId: s.equipmentId, responsibleId: s.responsibleId, type: typeLabel(s.serviceType, s.customType), seconds: sessionSeconds(s) })
+  for (const o of d.fieldOperations ?? []) {
+    if (o.status !== 'concluida' || o.deletedAt !== null) continue
+    for (const l of o.equipments) if (!l.sessionId && l.hoursTenths) out.push({ date: o.date, equipmentId: l.equipmentId, responsibleId: l.responsibleId, type: typeLabel(o.type, o.customType), seconds: l.hoursTenths * 360 })
+  }
+  return out
+}
+
+function maquinas(d: ReportData, p: Period): Report {
+  const eqs = new Map((d.equipments ?? []).map((e) => [e.id, e]))
+  const people = new Map((d.responsibles ?? []).map((r) => [r.id, r.name]))
+  const hours = machineHours(d).filter((h) => inPeriod(h.date, p))
+  const group = (key: (h: HourEntry) => string) => {
+    const m = new Map<string, number>()
+    for (const h of hours) m.set(key(h), (m.get(key(h)) ?? 0) + h.seconds)
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  }
+  const ledger = fuelLedger(d.fuelMovements ?? [])
+  const fuelBy = new Map<string, { cl: number; cents: number }>()
+  for (const l of ledger.lines) {
+    const m = l.movement
+    if (m.type !== 'consumo' || !m.equipmentId || !inPeriod(m.date, p)) continue
+    const g = fuelBy.get(m.equipmentId) ?? { cl: 0, cents: 0 }
+    g.cl += -m.centiliters
+    g.cents += l.costCents
+    fuelBy.set(m.equipmentId, g)
+  }
+  const recs = (d.maintenanceRecords ?? []).filter((r) => r.status === 'concluida' && r.deletedAt === null && r.date && inPeriod(r.date, p)).sort((a, b) => a.date!.localeCompare(b.date!))
+  const maintBy = new Map<string, number>()
+  for (const r of recs) maintBy.set(r.equipmentId, (maintBy.get(r.equipmentId) ?? 0) + r.stockCents + r.directCents)
+  const totalSecs = hours.reduce((a, h) => a + h.seconds, 0)
+  const ctx = { sessions: d.machineSessions ?? [], fuel: d.fuelMovements ?? [], operations: d.fieldOperations ?? [], adjustments: d.meterAdjustments ?? [] }
+  const today = d.today ?? todayLocal()
+  const upcoming = (d.maintenancePlans ?? [])
+    .filter((pl) => pl.active && pl.deletedAt === null)
+    .map((pl) => {
+      const eq = eqs.get(pl.equipmentId)
+      return eq && equipmentStatus(eq) !== 'inativo' ? { pl, eq, st: planStatus(pl, d.maintenanceRecords ?? [], meterAt(eq, ctx), today) } : null
+    })
+    .filter((x) => x !== null)
+    .sort((a, b) => ['vencido', 'proximo', 'ok', 'sem-base'].indexOf(a.st.state) - ['vencido', 'proximo', 'ok', 'sem-base'].indexOf(b.st.state))
+  const eqIds = [...new Set([...hours.map((h) => h.equipmentId), ...fuelBy.keys(), ...maintBy.keys()])]
+  const byTime = p.kind === 'mes' ? group((h) => h.date) : group((h) => h.date.slice(5, 7))
+  return {
+    id: 'maquinas',
+    title: 'Máquinas: horas e manutenção',
+    summary: [
+      { label: 'Horas trabalhadas', value: hm(totalSecs) },
+      { label: 'Diesel', value: `${lit([...fuelBy.values()].reduce((a, g) => a + g.cl, 0))} · ${formatMoney([...fuelBy.values()].reduce((a, g) => a + g.cents, 0))}` },
+      { label: 'Custo de manutenção', value: formatMoney(recs.reduce((a, r) => a + r.stockCents + r.directCents, 0)) },
+      { label: 'Manutenções atrasadas', value: n(upcoming.filter((u) => u.st.state === 'vencido').length) },
+    ],
+    tables: [
+      {
+        title: 'Por equipamento',
+        columns: [{ label: 'Equipamento' }, { label: 'Horas', align: R }, { label: 'Diesel', align: R }, { label: 'Custo diesel', align: R }, { label: 'Manutenção', align: R }, { label: 'Horímetro atual', align: R }],
+        rows: eqIds.map((id) => {
+          const eq = eqs.get(id)
+          const secs = hours.filter((h) => h.equipmentId === id).reduce((a, h) => a + h.seconds, 0)
+          return [eq?.name ?? '-', hm(secs), lit(fuelBy.get(id)?.cl ?? 0), formatMoney(fuelBy.get(id)?.cents ?? 0), formatMoney(maintBy.get(id) ?? 0), eq ? formatMeterH(meterAt(eq, ctx)) : '-']
+        }),
+      },
+      { title: p.kind === 'mes' ? 'Horas por dia' : 'Horas por mês', columns: [{ label: p.kind === 'mes' ? 'Dia' : 'Mês' }, { label: 'Horas', align: R }], rows: byTime.sort((a, b) => a[0].localeCompare(b[0])).map(([k, v]) => [p.kind === 'mes' ? formatDay(k) : monthName(Number(k)), hm(v)]) },
+      { title: 'Horas por responsável', columns: [{ label: 'Responsável' }, { label: 'Horas', align: R }], rows: group((h) => (h.responsibleId ? (people.get(h.responsibleId) ?? '-') : 'Sem responsável')).map(([k, v]) => [k, hm(v)]) },
+      { title: 'Horas por tipo de serviço', columns: [{ label: 'Serviço' }, { label: 'Horas', align: R }], rows: group((h) => h.type).map(([k, v]) => [k, hm(v)]) },
+      {
+        title: 'Manutenções realizadas',
+        columns: [{ label: 'Data' }, { label: 'Equipamento' }, { label: 'Manutenção' }, { label: 'Horímetro', align: R }, { label: 'Peças e serviço' }, { label: 'Custo', align: R }],
+        rows: recs.map((r) => [formatDay(r.date!), eqs.get(r.equipmentId)?.name ?? '-', r.kind, r.meter !== null ? formatMeterH(r.meter) : '-', [...r.parts.map((x) => x.description), r.serviceCents ? 'mão de obra' : ''].filter(Boolean).join(', ') || '-', formatMoney(r.stockCents + r.directCents)]),
+        wide: true,
+      },
+      {
+        title: 'Próximas revisões e atrasadas',
+        columns: [{ label: 'Equipamento' }, { label: 'Manutenção' }, { label: 'Próxima' }, { label: 'Situação' }],
+        rows: upcoming.map(({ pl, eq, st }) => [
+          eq.name,
+          pl.name,
+          [st.nextMeter !== null ? formatMeterH(st.nextMeter) : '', st.nextDate ? formatDay(st.nextDate) : ''].filter(Boolean).join(' ou ') || '-',
+          st.state === 'vencido' ? 'Vencida' : st.state === 'proximo' ? 'Próxima' : st.state === 'ok' ? 'Em dia' : 'Sem referência',
+        ]),
+      },
+    ],
+    notes: [
+      'Horas = horímetro digital (início, pausas e fim) + horas digitadas nas operações sem horímetro digital; nada conta duas vezes.',
+      'Custo de manutenção = peças do estoque (custo médio) + peças compradas e mão de obra. Só estas duas últimas são saída de caixa (as do estoque já foram na compra).',
+    ],
+    empty: hours.length || recs.length || fuelBy.size ? undefined : 'Nenhuma hora de máquina, abastecimento ou manutenção no período.',
+  }
+}
+
+// ------------------------------------------------------------------ diaristas
+
+function diaristasReport(d: ReportData, p: Period): Report {
+  const workers = (d.workers ?? []).filter((w) => w.deletedAt === null)
+  const months = p.kind === 'mes' ? [`${p.year}-${pad(p.month ?? 1)}`] : Array.from({ length: 12 }, (_, i) => `${p.year}-${pad(i + 1)}`)
+  const today = d.today ?? todayLocal()
+  const rows = workers
+    .map((w) => {
+      const ms = months.filter((m) => m >= w.startDate.slice(0, 7) && `${m}-01` <= today).map((m) => monthSummary(w, d.workDays ?? [], d.workerPayments ?? [], m, today))
+      const t = ms.reduce((a, m) => ({ dw: a.dw + m.daysWorked, i: a.i + m.integral, h: a.h + m.half, ab: a.ab + m.absences, j: a.j + m.justified, f: a.f + m.dayOff, due: a.due + m.dueCents, paid: a.paid + m.paidCents }), { dw: 0, i: 0, h: 0, ab: 0, j: 0, f: 0, due: 0, paid: 0 })
+      return { w, t }
+    })
+    .filter((x) => x.t.due || x.t.paid || x.t.dw)
+  const pays = (d.workerPayments ?? []).filter((x) => x.status === 'ativo' && x.deletedAt === null && inPeriod(x.date, p)).sort((a, b) => a.date.localeCompare(b.date))
+  const names = new Map(workers.map((w) => [w.id, w.name]))
+  const sum = (f: (t: (typeof rows)[number]['t']) => number) => rows.reduce((a, r) => a + f(r.t), 0)
+  return {
+    id: 'diaristas',
+    title: 'Diaristas',
+    summary: [
+      { label: 'Dias trabalhados', value: n(sum((t) => t.dw)) },
+      { label: 'Valor devido', value: formatMoney(sum((t) => t.due)) },
+      { label: 'Pago (referente ao período)', value: formatMoney(sum((t) => t.paid)) },
+      { label: 'Saldo pendente', value: formatMoney(sum((t) => t.due - t.paid)) },
+      { label: 'Saída de caixa no período', value: formatMoney(pays.reduce((a, x) => a + x.amountCents, 0)) },
+    ],
+    tables: [
+      {
+        title: 'Por trabalhador',
+        columns: [{ label: 'Trabalhador' }, { label: 'Dias', align: R }, { label: 'Integrais', align: R }, { label: 'Meias', align: R }, { label: 'Faltas', align: R }, { label: 'Just./folgas', align: R }, { label: 'Devido', align: R }, { label: 'Pago', align: R }, { label: 'Saldo', align: R }],
+        rows: rows.map(({ w, t }) => [w.name, n(t.dw), n(t.i), n(t.h), n(t.ab), n(t.j + t.f), formatMoney(t.due), formatMoney(t.paid), formatMoney(t.due - t.paid)]),
+        foot: ['Total', n(sum((t) => t.dw)), n(sum((t) => t.i)), n(sum((t) => t.h)), n(sum((t) => t.ab)), n(sum((t) => t.j + t.f)), formatMoney(sum((t) => t.due)), formatMoney(sum((t) => t.paid)), formatMoney(sum((t) => t.due - t.paid))],
+        wide: true,
+      },
+      {
+        title: 'Pagamentos no período',
+        columns: [{ label: 'Data' }, { label: 'Trabalhador' }, { label: 'Referente a' }, { label: 'Forma' }, { label: 'Valor', align: R }],
+        rows: pays.map((x) => [formatDay(x.date), names.get(x.workerId) ?? '-', `${monthName(Number(x.refMonth.slice(5)))}/${x.refMonth.slice(0, 4)}`, x.method, formatMoney(x.amountCents)]),
+      },
+    ],
+    notes: ['Devido = dias marcados no calendário (valor guardado na marcação). Pago = pagamentos referentes ao(s) mês(es). Faltas incluem dias úteis passados sem marcação; domingos e datas futuras não contam.'],
+    empty: rows.length || pays.length ? undefined : 'Nenhuma diária ou pagamento no período.',
+  }
+}
+
 const BUILDERS: Record<ReportId, (d: ReportData, p: Period) => Report> = {
   vendas,
   arrobas,
@@ -721,6 +888,8 @@ const BUILDERS: Record<ReportId, (d: ReportData, p: Period) => Report> = {
   rebanho,
   diesel,
   manejo: (d, p) => manejoReport(d, p),
+  maquinas,
+  diaristas: diaristasReport,
 }
 
 export function buildReports(ids: readonly ReportId[], d: ReportData, p: Period): Report[] {

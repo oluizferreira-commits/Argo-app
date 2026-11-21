@@ -85,6 +85,12 @@ export function PastureManejo({ pastureId }: { pastureId: string }) {
             </dd>
             <dt>Outros custos</dt>
             <dd>{formatMoney(c.otherCents)}</dd>
+            {c.laborCents > 0 && (
+              <>
+                <dt>Mão de obra (diaristas)</dt>
+                <dd>{formatMoney(c.laborCents)}</dd>
+              </>
+            )}
             <dt>Área trabalhada (soma)</dt>
             <dd>{formatHa(st.machines.workedCentiHa)}</dd>
             {st.herbicides.byProduct.length > 0 && (

@@ -27,7 +27,7 @@ function Relatorios({ only }: { only: ReportId | undefined }) {
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
 
   const data = useLiveQuery(async () => {
-    const [pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles, fieldOperations, supplies, supplyMovements] = await Promise.all([
+    const [pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles, fieldOperations, supplies, supplyMovements, machineSessions, meterAdjustments, maintenancePlans, maintenanceRecords, workers, workDays, workerPayments] = await Promise.all([
       db.pastures.where('farmId').equals(farm.id).toArray(),
       db.movements.where('farmId').equals(farm.id).toArray(),
       db.sales.where('farmId').equals(farm.id).toArray(),
@@ -40,8 +40,15 @@ function Relatorios({ only }: { only: ReportId | undefined }) {
       db.fieldOperations.where('farmId').equals(farm.id).toArray(),
       db.supplies.where('farmId').equals(farm.id).toArray(),
       db.supplyMovements.where('farmId').equals(farm.id).toArray(),
+      db.machineSessions.where('farmId').equals(farm.id).toArray(),
+      db.meterAdjustments.where('farmId').equals(farm.id).toArray(),
+      db.maintenancePlans.where('farmId').equals(farm.id).toArray(),
+      db.maintenanceRecords.where('farmId').equals(farm.id).toArray(),
+      db.workers.where('farmId').equals(farm.id).toArray(),
+      db.workDays.where('farmId').equals(farm.id).toArray(),
+      db.workerPayments.where('farmId').equals(farm.id).toArray(),
     ])
-    return { farm, pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles, fieldOperations, supplies, supplyMovements }
+    return { farm, pastures, movements, sales, payments, clients, reserveEntries, fuelMovements, equipments, responsibles, fieldOperations, supplies, supplyMovements, machineSessions, meterAdjustments, maintenancePlans, maintenanceRecords, workers, workDays, workerPayments }
   }, [farm])
 
   const period: Period = kind === 'ano' ? { kind, year } : { kind, year, month }

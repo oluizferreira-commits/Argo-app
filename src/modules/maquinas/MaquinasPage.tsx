@@ -42,6 +42,9 @@ export function MaquinasPage() {
       <Link to="/maquinas/servico/novo" className="btn btn-primary btn-block" data-testid="start-service">
         <Icon name="clock" /> Iniciar serviço (horímetro digital)
       </Link>
+      <Link to="/relatorios?r=maquinas" className="btn btn-outline btn-block" data-testid="machines-report">
+        <Icon name="chart" /> Relatório de horas e manutenção
+      </Link>
       {adding ? (
         <MaquinaForm current={null} onCancel={() => setAdding(false)} onDone={(e) => navigate(`/maquinas/${e.id}`)} />
       ) : (

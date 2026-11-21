@@ -35,6 +35,8 @@ import { ChecklistPage, ManutencaoPage } from '../modules/maquinas/ManutencaoPag
 import { MaquinaPage } from '../modules/maquinas/MaquinaPage'
 import { MaquinasPage } from '../modules/maquinas/MaquinasPage'
 import { IniciarServicoPage, ServicoPage } from '../modules/maquinas/ServicoPages'
+import { DiaristaPage } from '../modules/diaristas/DiaristaPage'
+import { DiaristasPage } from '../modules/diaristas/DiaristasPage'
 import { InsumoPage } from '../modules/insumos/InsumoPage'
 import { InsumosPage } from '../modules/insumos/InsumosPage'
 import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
@@ -90,6 +92,8 @@ const implemented: RouteObject[] = [
   { path: '/manejo', element: <ManejoPage />, handle: t('Manejo de pastagens') },
   { path: '/manejo/nova', element: <OperacaoFormPage />, handle: t('Operação de campo') },
   { path: '/manejo/:id', element: <OperacaoPage />, handle: t('Operação de campo') },
+  { path: '/diaristas', element: <DiaristasPage />, handle: t('Diaristas') },
+  { path: '/diaristas/:id', element: <DiaristaPage />, handle: t('Diarista') },
   { path: '/responsaveis', element: <ResponsaveisPage />, handle: t('Responsáveis') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <FinanceiroPage />, handle: t('Financeiro') },

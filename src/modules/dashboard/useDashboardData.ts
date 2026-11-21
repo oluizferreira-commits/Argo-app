@@ -13,7 +13,7 @@ export function useDashboardData() {
   const { farm } = useFarm()
   const data = useLiveQuery(async (): Promise<DashboardData> => {
     const f = farm.id
-    const [pastures, movements, sales, payments, clients, reserveEntries, supplies, supplyMovements, fuelMovements, equipments, tasks, vaccinations, vaccinationApplications, responsibles, maintenancePlans, maintenanceRecords, machineChecklists, machineSessions, meterAdjustments, fieldOperations, audit] = await Promise.all([
+    const [pastures, movements, sales, payments, clients, reserveEntries, supplies, supplyMovements, fuelMovements, equipments, tasks, vaccinations, vaccinationApplications, responsibles, maintenancePlans, maintenanceRecords, machineChecklists, machineSessions, meterAdjustments, fieldOperations, workerPayments, audit] = await Promise.all([
       db.pastures.where('farmId').equals(f).toArray(),
       db.movements.where('farmId').equals(f).toArray(),
       db.sales.where('farmId').equals(f).toArray(),
@@ -34,9 +34,10 @@ export function useDashboardData() {
       db.machineSessions.where('farmId').equals(f).toArray(),
       db.meterAdjustments.where('farmId').equals(f).toArray(),
       db.fieldOperations.where('farmId').equals(f).toArray(),
+      db.workerPayments.where('farmId').equals(f).toArray(),
       db.auditLog.orderBy('at').reverse().limit(80).toArray(),
     ])
-    return { farm, pastures, movements, sales, payments, clients, reserveEntries, supplies, supplyMovements, fuelMovements, equipments, tasks, vaccinations, vaccinationApplications, responsibles, maintenancePlans, maintenanceRecords, machineChecklists, machineSessions, meterAdjustments, fieldOperations, audit }
+    return { farm, pastures, movements, sales, payments, clients, reserveEntries, supplies, supplyMovements, fuelMovements, equipments, tasks, vaccinations, vaccinationApplications, responsibles, maintenancePlans, maintenanceRecords, machineChecklists, machineSessions, meterAdjustments, fieldOperations, workerPayments, audit }
   }, [farm])
 
   return useMemo(() => {

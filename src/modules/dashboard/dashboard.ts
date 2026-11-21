@@ -26,6 +26,7 @@ import type {
   MachineSession,
   MeterAdjustment,
   FieldOperation,
+  WorkerPayment,
 } from '../../db/types'
 import { MOVEMENT_INFO } from '../../domain/movements'
 import type { IconName } from '../../components/Icon'
@@ -38,6 +39,7 @@ import { formatSaleNumber } from '../vendas/sales'
 import { coverage, lotLabel } from '../vacinacao/vaccination'
 import { equipmentStatus, formatMeterH, meterAt, type MeterContext } from '../maquinas/machines'
 import { planStatus } from '../maquinas/maintenance'
+import { workerExpense } from '../diaristas/workers'
 
 export interface DashboardData {
   farm: Farm
@@ -62,6 +64,7 @@ export interface DashboardData {
   machineSessions?: MachineSession[]
   meterAdjustments?: MeterAdjustment[]
   fieldOperations?: FieldOperation[]
+  workerPayments?: WorkerPayment[]
 }
 
 function meterCtx(d: DashboardData): MeterContext {
@@ -103,6 +106,8 @@ export interface Indicators {
   fuelExpenseCents: number
   supplyExpenseCents: number
   maintenanceExpenseCents: number
+  /** pagamentos efetivos aos diaristas no mês */
+  workerExpenseCents: number
   /** saldo da reserva (conta separada) */
   reserveCents: number
   reservePendingCents: number
@@ -138,6 +143,7 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
     .filter((m) => m.type === 'compra' && m.status === 'ativo' && m.deletedAt === null && m.date.startsWith(month))
     .reduce((a, m) => a + (m.costCents ?? 0), 0)
   const maintenanceExpenseCents = maintenanceExpense(d.maintenanceRecords ?? [], month)
+  const workerExpenseCents = workerExpense(d.workerPayments ?? [], month)
   const reserve = reserveSummary(d.sales, d.payments, d.reserveEntries, d.farm)
   return {
     animals,
@@ -146,10 +152,11 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
     openCents,
     overdueCents,
     receivedMonthCents,
-    expensesMonthCents: fuelExpenseCents + supplyExpenseCents + maintenanceExpenseCents,
+    expensesMonthCents: fuelExpenseCents + supplyExpenseCents + maintenanceExpenseCents + workerExpenseCents,
     fuelExpenseCents,
     supplyExpenseCents,
     maintenanceExpenseCents,
+    workerExpenseCents,
     reserveCents: reserve.balanceCents,
     reservePendingCents: reserve.pendingCents,
   }

@@ -7,7 +7,8 @@
 import { newId, nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { FieldOperation, FieldOperationEquipment, FieldOperationProduct, FieldOperationType, FuelMovement } from '../../db/types'
+import type { FieldOperation, FieldOperationEquipment, FieldOperationProduct, FieldOperationType, FieldOperationWorker, FuelMovement, WorkDay } from '../../db/types'
+import { KIND_LABEL, markDay, workDayId } from '../diaristas/workers'
 import { formatLiters, fuelLedger, recordFuelMovement, reverseFuelMovement } from '../diesel/fuel'
 import { categoryOf, formatQty, recordSupplyMovement, reverseSupplyMovement, unitOf } from '../insumos/supplies'
 import { loadMeterContext, meterAt, sessionSeconds } from '../maquinas/machines'
@@ -52,6 +53,8 @@ export interface OperationInput {
   products: { supplyId: string; qty: number; lot?: string }[]
   equipments: { equipmentId: string; responsibleId: string | null; meterStart: number | null; meterEnd: number | null; hoursTenths: number | null; dieselCl: number; sessionId?: string | null }[]
   otherCosts: { description: string; costCents: number }[]
+  /** diaristas: a diária do calendário é vinculada (ou marcada) — sem segunda diária nem custo duplicado */
+  workers?: { workerId: string; kind: 'integral' | 'meia' }[]
   notes: string
 }
 
@@ -81,6 +84,8 @@ function dieselCost(movs: readonly FuelMovement[], date: string, cl: number): nu
 
 const TABLES = (db: ArgoDatabase) => [
   db.fieldOperations,
+  db.workers,
+  db.workDays,
   db.machineSessions,
   db.meterAdjustments,
   db.supplies,
@@ -127,6 +132,8 @@ async function cancelInside(db: ArgoDatabase, op: FieldOperation, reason: string
   for (const e of op.equipments) if (e.fuelMovementId) await reverseFuelMovement(db, e.fuelMovementId, reason, true)
   // as horas do horímetro digital continuam valendo (a máquina trabalhou); só deixam de estar nesta operação
   for (const e of op.equipments) if (e.sessionId) await new Repository(db, 'machineSessions').update(e.sessionId, { operationId: null })
+  // diárias continuam no calendário (o trabalhador trabalhou); só deixam de estar nesta operação
+  for (const w of op.workers ?? []) await new Repository(db, 'workDays').update(w.workDayId, { operationId: null })
   await new Repository(db, 'fieldOperations').update(op.id, { status: 'cancelada', canceledAt: nowIso(), cancelReason: reason })
 }
 
@@ -260,6 +267,27 @@ export async function createOperation(
       })
     }
 
+    // diaristas: vincula a diária do dia (ou marca no calendário); uma diária = uma operação
+    const workers: FieldOperationWorker[] = []
+    const wk = (input.workers ?? []).map((w) => w.workerId)
+    if (new Set(wk).size !== wk.length) throw new OperationError('O mesmo trabalhador aparece duas vezes.')
+    for (const line of input.workers ?? []) {
+      const w = await db.workers.get(line.workerId)
+      if (!w || w.farmId !== farmId) throw new OperationError('Trabalhador não encontrado.')
+      const id = workDayId(w.id, input.date)
+      const day = await db.workDays.get(id)
+      let linked: WorkDay
+      if (day && day.deletedAt === null) {
+        if (day.kind !== 'integral' && day.kind !== 'meia') throw new OperationError(`${w.name} está marcado como "${KIND_LABEL[day.kind]}" neste dia. Corrija o calendário antes.`)
+        if (day.operationId && day.operationId !== replaced?.id) throw new OperationError(`A diária de ${w.name} neste dia já está em outra operação.`)
+        linked = await new Repository(db, 'workDays').update(id, { operationId: opId })
+      } else {
+        linked = await markDay(db, farmId, w.id, input.date, line.kind, '', { operationId: opId })
+      }
+      workers.push({ workerId: w.id, name: w.name, kind: linked.kind as 'integral' | 'meia', valueCents: linked.valueCents, workDayId: linked.id })
+    }
+    const laborCents = workers.reduce((a, w) => a + w.valueCents, 0)
+
     const seedsCents = products.filter((p) => p.category === 'semente').reduce((a, p) => a + p.costCents, 0)
     const productsCents = products.filter((p) => p.category !== 'semente').reduce((a, p) => a + p.costCents, 0)
     const dieselCents = equipments.reduce((a, e) => a + e.dieselCents, 0)
@@ -284,7 +312,9 @@ export async function createOperation(
         seedsCents,
         dieselCents,
         otherCents,
-        totalCents: productsCents + seedsCents + dieselCents + otherCents,
+        workers,
+        laborCents,
+        totalCents: productsCents + seedsCents + dieselCents + otherCents + laborCents,
         notes: input.notes.trim().slice(0, 1000),
         status: 'concluida',
         canceledAt: null,

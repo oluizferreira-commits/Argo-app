@@ -7,6 +7,7 @@ import { cancelOperation, createOperation, type OperationInput } from '../manejo
 import { createPasture } from '../pastos/pastures'
 import { todayLocal } from '../rebanho/herd'
 import { createResponsible } from '../responsaveis/responsibles'
+import { buildReports } from '../relatorios/reports'
 import { adjustMeter, adjustSessionTime, endSession, loadMeterContext, MachineError, meterAt, pauseSession, resumeSession, sessionSeconds, startService } from './machines'
 
 let db: ArgoDatabase
@@ -115,5 +116,19 @@ describe('integração com a operação de campo', () => {
     const op = await createOperation(db, farm.id, { ...base, location: 'Sede → Redenção' })
     expect(op).toMatchObject({ pastureId: '', location: 'Sede → Redenção' })
     await expect(createOperation(db, farm.id, { ...base, type: 'rocada', location: 'x' })).rejects.toThrow('Escolha o pasto')
+  })
+})
+
+describe('relatório de máquinas', () => {
+  it('horas por equipamento sem contar a sessão duas vezes (sessão + operação)', async () => {
+    const { farm, pasto, jd, svc, sessions } = await setup()
+    const id = await svc([jd.id], T('07:00'))
+    const [s] = await sessions(id)
+    await endSession(db, s.id, T('10:00'))
+    await createOperation(db, farm.id, { type: 'rocada', date: todayLocal(), pastureId: pasto.id, workedAreaCentiHa: 500, responsibleId: null, products: [], equipments: [{ equipmentId: jd.id, responsibleId: null, meterStart: null, meterEnd: null, hoursTenths: null, dieselCl: 0, sessionId: s.id }], otherCosts: [], notes: '' })
+    const y = Number(T('07:00').slice(0, 4))
+    const [r] = buildReports(['maquinas'], { farm: (await db.farms.get(farm.id))!, pastures: [], movements: [], sales: [], payments: [], clients: [], reserveEntries: [], equipments: await db.equipments.toArray(), machineSessions: await db.machineSessions.toArray(), fieldOperations: await db.fieldOperations.toArray(), fuelMovements: [], maintenanceRecords: [], maintenancePlans: [], meterAdjustments: [] }, { kind: 'ano', year: y })
+    expect(r.summary[0].value).toBe('3 h 00 min')
+    expect(r.tables[0].rows.find((x) => x[0] === 'John Deere 7230J')?.[1]).toBe('3 h 00 min')
   })
 })

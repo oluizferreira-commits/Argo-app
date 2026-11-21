@@ -100,6 +100,13 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     machineChecklists: 'id, farmId, equipmentId, at, createdAt, updatedAt',
   })
 
+  // v13 — diaristas: cadastro, calendário de diárias (um registro por trabalhador e dia) e pagamentos.
+  db.version(13).stores({
+    workers: 'id, farmId, createdAt, updatedAt',
+    workDays: 'id, farmId, workerId, date, createdAt, updatedAt',
+    workerPayments: 'id, farmId, workerId, date, createdAt, updatedAt',
+  })
+
   return db
 }
 

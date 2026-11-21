@@ -13,6 +13,7 @@ interface Option {
 /** Atalhos para os formulários que já existem nos módulos (nada de formulário paralelo). */
 const QUICK_OPTIONS: Option[] = [
   { label: 'Iniciar serviço de máquina', detail: 'Horímetro digital: início, pausa e fim pelo relógio', icon: 'clock', to: '/maquinas/servico/novo' },
+  { label: 'Marcar diária', detail: 'Calendário dos diaristas', icon: 'people', to: '/diaristas' },
   { label: 'Registrar animal', detail: 'Nascimento, compra, morte, transferência ou contagem', icon: 'herd', to: '/rebanho/movimentar' },
   { label: 'Registrar despesa', detail: 'Em breve. Compras de diesel e de insumos já contam como despesa', icon: 'wallet', to: null },
   { label: 'Registrar receita', detail: 'Venda de gado (por arroba ou por cabeça)', icon: 'cash', to: '/vendas/nova' },
@@ -23,7 +24,7 @@ const QUICK_OPTIONS: Option[] = [
   { label: 'Plantio de capim', detail: 'Sementes, máquinas, diesel e custo por hectare', icon: 'pasture', to: '/manejo/nova?tipo=plantio' },
   { label: 'Registrar vacinação', detail: 'Por pasto e lote, com aplicação parcial', icon: 'syringe', to: '/vacinacao/nova' },
   { label: 'Registrar pesagem', detail: 'Em breve. Hoje a pesagem é feita dentro da venda por arroba', icon: 'scale', to: null },
-  { label: 'Registrar manutenção', detail: 'Em breve', icon: 'gear', to: null },
+  { label: 'Registrar manutenção', detail: 'Escolha a máquina e registre a manutenção', icon: 'gear', to: '/maquinas' },
   { label: 'Criar tarefa', detail: 'Escolha o pasto e anote o serviço', icon: 'clipboard', to: '/pastos' },
 ]
 

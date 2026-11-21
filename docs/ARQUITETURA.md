@@ -103,6 +103,16 @@ Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendência
 - **Checklist diário** (`machineChecklists`): itens configuráveis por fazenda (`farm.checklistItems`), cada um em ordem / atenção / problema / não se aplica; só grava com todos marcados; fotos reduzidas (JPEG ~1024 px) guardadas no aparelho; problema → solicitação de manutenção ligada.
 - **Central de Pendências**: manutenção próxima/vencida (horímetro atual, previsto, data, responsável), solicitação aberta e inspeção diária não feita em máquina que trabalhou hoje; uma pendência por plano/solicitação/máquina-dia. Agenda: manutenções por data.
 
+## Diaristas
+
+- **Cadastro** (`workers`): nome, diária, meia diária (metade automática; valor diferente só com motivo e PIN), início do trabalho, situação, observações.
+- **Calendário** (`workDays`): um registro por trabalhador e dia (`id = workerId:data`), então não existe diária duplicada. Ao tocar no dia, a sugestão é: seg–sex diária integral, sábado meia diária, domingo (sem expediente) só se trabalhou. Opções: integral, meia, não trabalhou, falta justificada, folga, desmarcar. O valor é guardado na marcação (mudar a diária não altera dias já marcados). Alterações ficam no histórico (auditLog) e aparecem no dia.
+- **Situação do dia** (`dayState`): marcado → a marcação; antes do início → neutro; hoje e futuro → neutro (não é falta); domingo sem marcação → sem expediente; dia útil passado sem marcação → não trabalhou.
+- **Fechamento** (`monthSummary`): dias trabalhados, integrais, meias, faltas (marcadas + dias úteis passados sem marca), justificadas, folgas, devido, pago (pagamentos do mês de referência) e saldo; saldo geral = todo o devido − todo o pago.
+- **Pagamentos** (`workerPayments`): data, valor (parcial ou de vários dias), forma, mês de referência; estorno com motivo. **Só o pagamento é saída de caixa** (Despesas do mês).
+- **Operação de campo**: diarista na operação vincula a diária do calendário daquele dia (ou marca, se ainda não existir); uma diária = uma operação (`workDays.operationId`). O custo entra na operação como mão de obra (gerencial) e no custo do pasto; não gera despesa (a despesa é o pagamento). Cancelar a operação desvincula a diária (o dia continua trabalhado).
+- **Relatórios** (Relatórios): "Máquinas: horas e manutenção" (horas por equipamento, dia/mês, responsável, tipo de serviço; diesel; manutenções e custos; próximas e atrasadas) e "Diaristas" (por trabalhador: dias, integrais, meias, faltas, devido, pago, saldo; pagamentos).
+
 ## Manejo e formação de pastagens
 
 Objetivo: saber quanto custa formar, recuperar e manter cada pasto, **sem estoques ou lançamentos paralelos**.
@@ -222,6 +232,7 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 | v10 | fieldOperations (operações de campo). Campos novos sem índice em supplies (categoria, unidade L/kg, fabricante, princípio ativo, espécie, cultivar, VC%, mínimo), supplyMovements (qty em mL/g, NF, lote, operationId) e fuelMovements (operationId, pastureId) |
 | v11 | machineSessions (horímetro digital), meterAdjustments (ajustes autorizados do horímetro). Equipamento ganha marca, modelo, ano, aquisição, situação e horímetro inicial (sem índice) |
 | v12 | maintenancePlans, maintenanceRecords (manutenções e solicitações), machineChecklists. supplyMovements ganha maintenanceId; farm ganha checklistItems (sem índice) |
+| v13 | workers, workDays (id = trabalhador:data — uma diária por dia), workerPayments. fieldOperations ganha workers/laborCents (sem índice) |
 
 ## Migrações (preservação de dados)
 

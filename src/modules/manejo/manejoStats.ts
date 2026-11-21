@@ -56,6 +56,8 @@ export interface PastureCost {
   seedsCents: number
   dieselCents: number
   otherCents: number
+  /** diaristas (mão de obra) */
+  laborCents: number
   totalCents: number
   /** plantio + replantio */
   formationCents: number
@@ -127,11 +129,12 @@ export function manejoStats(ops: readonly FieldOperation[], supplies: readonly S
     const p = pastures.find((x) => x.id === o.pastureId)
     const c =
       byPasture.get(o.pastureId) ??
-      ({ pastureId: o.pastureId, name: p?.name ?? 'pasto removido', areaCentiHa: p?.areaHa == null ? null : Math.round(p.areaHa * 100), herbicideCents: 0, seedsCents: 0, dieselCents: 0, otherCents: 0, totalCents: 0, formationCents: 0, perHaCents: null, operations: 0 } as PastureCost)
+      ({ pastureId: o.pastureId, name: p?.name ?? 'pasto removido', areaCentiHa: p?.areaHa == null ? null : Math.round(p.areaHa * 100), herbicideCents: 0, seedsCents: 0, dieselCents: 0, otherCents: 0, laborCents: 0, totalCents: 0, formationCents: 0, perHaCents: null, operations: 0 } as PastureCost)
     c.herbicideCents += o.productsCents
     c.seedsCents += o.seedsCents
     c.dieselCents += o.dieselCents
     c.otherCents += o.otherCents
+    c.laborCents += o.laborCents ?? 0
     c.totalCents += o.totalCents
     if (isFormation(o.type)) c.formationCents += o.totalCents
     c.operations++

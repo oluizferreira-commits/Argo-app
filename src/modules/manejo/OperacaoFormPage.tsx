@@ -14,6 +14,8 @@ import { categoryOf, formatQty, isMixture, NegativeStockError, parseQty, supplyL
 import { todayLocal } from '../rebanho/herd'
 import { createOperation, formatHa, OPERATION_TYPES, OperationError, PASTURE_OPTIONAL, type OperationInput } from './operations'
 import { formatHoursMinutes, sessionSeconds } from '../maquinas/machines'
+import { useDiaristas } from '../diaristas/useDiaristas'
+import { halfValue, workDayId } from '../diaristas/workers'
 import { useManejo, type ManejoData } from './useManejo'
 
 interface ProductLine {
@@ -126,6 +128,10 @@ function Form({
   )
   const [costs, setCosts] = useState<CostLine[]>(fix ? fix.otherCosts.map((c) => ({ key: newId(), description: c.description, value: dec(c.costCents, 2) })) : [])
   const [notes, setNotes] = useState(fix?.notes ?? '')
+  const diaristas = useDiaristas()
+  const [workers, setWorkers] = useState<{ key: string; workerId: string; kind: 'integral' | 'meia' }[]>(
+    (fix?.workers ?? []).map((w) => ({ key: newId(), workerId: w.workerId, kind: w.kind })),
+  )
   const [fixReason, setFixReason] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -158,7 +164,16 @@ function Form({
   const herb = prodSum(false)
   const diesel = equips.reduce((a, l) => a + dieselCostOf(l), 0)
   const other = costs.reduce((a, c) => a + (parseMoney(c.value) ?? 0), 0)
-  const total = seeds + herb + diesel + other
+  const dayOf = (workerId: string) => diaristas?.days.find((d) => d.id === workDayId(workerId, date) && d.deletedAt === null)
+  const laborOf = (l: { workerId: string; kind: 'integral' | 'meia' }) => {
+    const w = diaristas?.workers.find((x) => x.id === l.workerId)
+    if (!w) return 0
+    const d = dayOf(w.id)
+    if (d && (d.kind === 'integral' || d.kind === 'meia')) return d.valueCents
+    return l.kind === 'integral' ? w.dailyCents : halfValue(w)
+  }
+  const labor = workers.reduce((a, l) => a + laborOf(l), 0)
+  const total = seeds + herb + diesel + other + labor
   const areaC = parseDecimal(area, 2) ?? 0
   const seedKg = products.reduce((a, l) => {
     const s = data.supplyById.get(l.supplyId)
@@ -199,6 +214,7 @@ function Form({
         sessionId: l.sessionId ?? null,
       })),
       otherCosts: costs.filter((c) => c.description.trim() || c.value.trim()).map((c) => ({ description: c.description, costCents: parseMoney(c.value) ?? 0 })),
+      workers: workers.filter((l) => l.workerId).map((l) => ({ workerId: l.workerId, kind: l.kind })),
       notes,
     }
   }
@@ -486,6 +502,54 @@ function Form({
         </button>
       </div>
 
+      <h2 className="section-title">Diaristas (opcional)</h2>
+      <div className="card stack" data-testid="op-workers-form">
+        {workers.map((l, i) => {
+          const d = l.workerId ? dayOf(l.workerId) : undefined
+          const linked = d && (d.kind === 'integral' || d.kind === 'meia')
+          return (
+            <div key={l.key} className="op-line">
+              <div className="row" style={{ alignItems: 'flex-end' }}>
+                <select className="input" style={{ flex: 2 }} aria-label={`Diarista ${i + 1}`} value={l.workerId} onChange={(e) => setWorkers(workers.map((x) => (x.key === l.key ? { ...x, workerId: e.target.value } : x)))}>
+                  <option value="">Escolha o trabalhador</option>
+                  {(diaristas?.workers ?? [])
+                    .filter((w) => w.active || w.id === l.workerId)
+                    .map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                </select>
+                <button type="button" className="btn btn-outline btn-icon" aria-label={`Remover diarista ${i + 1}`} onClick={() => setWorkers(workers.filter((x) => x.key !== l.key))}>
+                  <Icon name="trash" size={18} />
+                </button>
+              </div>
+              {!linked && (
+                <div className="row" style={{ gap: 8, marginTop: 8 }}>
+                  {(['integral', 'meia'] as const).map((k) => (
+                    <button type="button" key={k} className={`chip${l.kind === k ? ' active' : ''}`} onClick={() => setWorkers(workers.map((x) => (x.key === l.key ? { ...x, kind: k } : x)))}>
+                      {k === 'integral' ? 'Diária integral' : 'Meia diária'}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {l.workerId && (
+                <p className="muted op-line-cost" data-testid={`op-worker-${i}`}>
+                  {linked
+                    ? `Já marcado no calendário (${d!.kind === 'meia' ? 'meia diária' : 'diária integral'}): vincula esta diária, sem duplicar · ${formatMoney(d!.valueCents)}`
+                    : d
+                      ? `No calendário consta "${d.kind}" neste dia: corrija o calendário antes`
+                      : `Será marcado no calendário · ${formatMoney(laborOf(l))}`}
+                </p>
+              )}
+            </div>
+          )
+        })}
+        <button type="button" className="btn btn-outline btn-block" disabled={!diaristas?.workers.length} onClick={() => setWorkers([...workers, { key: newId(), workerId: '', kind: 'integral' }])} data-testid="add-worker">
+          <Icon name="plus" /> Adicionar diarista
+        </button>
+      </div>
+
       <h2 className="section-title">Outros custos (opcional)</h2>
       <div className="card stack" data-testid="op-costs">
         {costs.map((c, i) => (
@@ -539,6 +603,12 @@ function Form({
             <>
               <dt>Diesel</dt>
               <dd>{formatMoney(diesel)}</dd>
+            </>
+          )}
+          {labor > 0 && (
+            <>
+              <dt>Mão de obra (diaristas)</dt>
+              <dd>{formatMoney(labor)}</dd>
             </>
           )}
           {other > 0 && (

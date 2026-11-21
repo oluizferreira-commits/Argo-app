@@ -380,6 +380,60 @@ export interface MachineChecklist extends BaseRecord {
   requestId: string | null
 }
 
+/** Trabalhador diarista. Meia diária = metade da diária, salvo ajuste autorizado (`halfCents`). */
+export interface Worker extends BaseRecord {
+  farmId: string
+  name: string
+  dailyCents: number
+  /** null = metade da diária */
+  halfCents: number | null
+  halfReason: string
+  startDate: string
+  active: boolean
+  notes: string
+}
+
+export type WorkDayKind = 'integral' | 'meia' | 'falta' | 'falta-justificada' | 'folga'
+
+/**
+ * Dia no calendário do diarista. id = `${workerId}:${date}` (um registro por dia: sem duplicidade).
+ * Valor guardado na marcação (preserva o valor da época). Dia passado sem registro = não trabalhou.
+ */
+export interface WorkDay extends BaseRecord {
+  farmId: string
+  workerId: string
+  date: string
+  kind: WorkDayKind
+  valueCents: number
+  notes: string
+  /** operação de campo em que o custo desta diária foi atribuído (uma só) */
+  operationId: string | null
+}
+
+/** Pagamento ao diarista (saída financeira). Pode ser parcial e cobrir vários dias. */
+export interface WorkerPayment extends BaseRecord {
+  farmId: string
+  workerId: string
+  date: string
+  amountCents: number
+  method: string
+  /** mês a que se refere (AAAA-MM) */
+  refMonth: string
+  notes: string
+  status: 'ativo' | 'estornado'
+  reversedAt: string | null
+  reverseReason: string
+}
+
+/** Diarista numa operação de campo (custo gerencial; a saída de dinheiro é o pagamento). */
+export interface FieldOperationWorker {
+  workerId: string
+  name: string
+  kind: 'integral' | 'meia'
+  valueCents: number
+  workDayId: string
+}
+
 /** Ajuste manual autorizado do horímetro (valor absoluto, centésimos de hora). */
 export interface MeterAdjustment extends BaseRecord {
   farmId: string
@@ -476,6 +530,9 @@ export interface FieldOperation extends BaseRecord {
   products: FieldOperationProduct[]
   equipments: FieldOperationEquipment[]
   otherCosts: FieldOperationCost[]
+  /** diaristas (mão de obra) — custo vem das diárias do calendário, sem duplicar */
+  workers?: FieldOperationWorker[]
+  laborCents?: number
   /** totais em centavos (guardados: preservam o custo histórico) */
   productsCents: number
   seedsCents: number
@@ -663,6 +720,9 @@ export interface EntityMap {
   maintenancePlans: MaintenancePlan
   maintenanceRecords: MaintenanceRecord
   machineChecklists: MachineChecklist
+  workers: Worker
+  workDays: WorkDay
+  workerPayments: WorkerPayment
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -670,7 +730,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments', 'maintenancePlans', 'maintenanceRecords', 'machineChecklists']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments', 'maintenancePlans', 'maintenanceRecords', 'machineChecklists', 'workers', 'workDays', 'workerPayments']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

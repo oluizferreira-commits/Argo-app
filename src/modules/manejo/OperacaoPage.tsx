@@ -126,6 +126,12 @@ export function OperacaoPage() {
               <dd>{formatMoney(op.dieselCents)}</dd>
             </>
           )}
+          {(op.laborCents ?? 0) > 0 && (
+            <>
+              <dt>Mão de obra (diaristas)</dt>
+              <dd>{formatMoney(op.laborCents ?? 0)}</dd>
+            </>
+          )}
           {op.otherCents > 0 && (
             <>
               <dt>Outros custos registrados</dt>
@@ -193,6 +199,27 @@ export function OperacaoPage() {
         </>
       )}
 
+      {(op.workers ?? []).length > 0 && (
+        <>
+          <h2 className="section-title">Diaristas</h2>
+          <div className="card" style={{ paddingTop: 4, paddingBottom: 4 }} data-testid="op-workers">
+            {(op.workers ?? []).map((w) => (
+              <div className="task" key={w.workDayId}>
+                <div className="status-body">
+                  <div className="status-label">
+                    <Link className="inline-link" to={`/diaristas/${w.workerId}`}>
+                      {w.name}
+                    </Link>
+                  </div>
+                  <div className="status-detail">
+                    {w.kind === 'meia' ? 'Meia diária' : 'Diária integral'} · {formatMoney(w.valueCents)} · do calendário (pagamento no fechamento)
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       {op.otherCosts.length > 0 && (
         <>
           <h2 className="section-title">Outros custos</h2>

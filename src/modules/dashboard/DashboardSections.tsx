@@ -28,6 +28,7 @@ export function IndicatorsSection({ ind, today }: { ind: Indicators; today: stri
     ind.fuelExpenseCents && `diesel ${formatMoney(ind.fuelExpenseCents)}`,
     ind.supplyExpenseCents && `insumos ${formatMoney(ind.supplyExpenseCents)}`,
     ind.maintenanceExpenseCents && `manutenção ${formatMoney(ind.maintenanceExpenseCents)}`,
+    ind.workerExpenseCents && `diaristas ${formatMoney(ind.workerExpenseCents)}`,
   ].filter(Boolean)
   return (
     <>

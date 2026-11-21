@@ -1919,3 +1919,83 @@ input[type='date'].input {
   border-radius: 10px;
   display: block;
 }
+
+/* ---------------------------------------------------------------- diaristas (calendário) */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.cal-head {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+.cal-n {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+.cal-k {
+  font-size: 12px;
+  line-height: 1.1;
+  min-height: 13px;
+}
+.cal-day.is-today {
+  border-color: var(--green-900);
+}
+.st-integral {
+  background: #d9efe0;
+  color: #1d6b3c;
+}
+.st-meia {
+  background: #fbefc5;
+  color: #8a6200;
+}
+.st-falta,
+.st-nao-marcado {
+  background: #f8dcd9;
+  color: var(--danger);
+}
+.st-domingo,
+.st-futuro,
+.st-antes {
+  background: var(--line);
+  color: var(--ink-3);
+}
+.st-falta-justificada,
+.st-folga {
+  background: #e4e9f2;
+  color: #3b4d6b;
+}
+.cal-day:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cal-legend .lg {
+  font-size: 12.5px;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+.day-opt.current {
+  outline: 2px solid var(--gold-500);
+}
