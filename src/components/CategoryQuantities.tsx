@@ -17,7 +17,9 @@ export function CategoryQuantities(props: {
   const filter = (list: readonly Category[]) =>
     list.filter(
       (c) =>
-        (!props.only || props.only.includes(c.id)) && (!props.hideEmpty || !props.available || props.available(c.id) > 0),
+        (!props.only || props.only.includes(c.id)) &&
+        (!props.hideEmpty || !props.available || props.available(c.id) > 0) &&
+        (!c.unspecified || (props.available !== undefined && props.available(c.id) > 0)),
     )
   const groups = [
     { title: 'Machos', list: filter(MALE_CATEGORIES) },

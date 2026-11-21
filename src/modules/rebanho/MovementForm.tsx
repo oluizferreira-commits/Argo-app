@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { db } from '../../db/database'
 import type { MovementEntry } from '../../db/types'
-import { CATEGORIES, category, laterCategories, nextCategory, NEWBORN_CATEGORIES, type CategoryId } from '../../domain/categories'
+import { CATEGORIES, category, laterCategories, nextCategory, NEWBORN_CATEGORIES, UNSPECIFIED, type CategoryId, type Sex } from '../../domain/categories'
 import { COUNT_REASONS, MOVEMENT_INFO, type CountReason } from '../../domain/movements'
 import { CategoryQuantities } from '../../components/CategoryQuantities'
 import { sumQty, toQuantities, type QtyText } from '../../components/quantities'
@@ -13,6 +13,7 @@ import {
   balanceOf,
   entriesCategoryChange,
   entriesCount,
+  entriesSpecify,
   entriesIn,
   entriesOut,
   entriesTransfer,
@@ -32,6 +33,7 @@ const NOTES_PLACEHOLDER: Record<FormType, string> = {
   morte: 'Ex.: causa da morte',
   venda: 'Ex.: comprador (detalhes financeiros na etapa de vendas)',
   contagem: 'Opcional',
+  especificacao: 'Ex.: contado no curral em …',
 }
 
 export function MovementForm({ type }: { type: FormType }) {
@@ -66,6 +68,18 @@ export function MovementForm({ type }: { type: FormType }) {
     return n > 0 ? [{ from: c.id, to: changeDest[c.id] ?? nextCategory(c.id)!, quantity: n }] : []
   })
 
+  // Especificação (fêmeas/machos contados sem categoria).
+  const pendingF = from ? balanceOf(balances, from, UNSPECIFIED.F) : 0
+  const pendingM = from ? balanceOf(balances, from, UNSPECIFIED.M) : 0
+  const [sexChoice, setSexChoice] = useState<Sex | null>(null)
+  const specSex: Sex | null = sexChoice && (sexChoice === 'F' ? pendingF : pendingM) > 0 ? sexChoice : pendingF > 0 ? 'F' : pendingM > 0 ? 'M' : null
+  const [diffReason, setDiffReason] = useState<CountReason | ''>('')
+  const spec =
+    type === 'especificacao' && from && specSex
+      ? entriesSpecify(from, specSex, countedQty(qty), balances)
+      : { entries: [] as MovementEntry[], difference: 0 }
+  const specCounted = type === 'especificacao' && Object.values(qty).some((v) => v !== '' && v !== undefined)
+
   // Diferenças da contagem.
   const countEntries: MovementEntry[] = type === 'contagem' && from ? entriesCount(from, countedQty(qty), balances, reasons) : []
 
@@ -90,6 +104,8 @@ export function MovementForm({ type }: { type: FormType }) {
         return entriesCategoryChange(from, to || from, changeLines)
       case 'contagem':
         return countEntries
+      case 'especificacao':
+        return spec.entries
     }
   }
 
@@ -105,9 +121,18 @@ export function MovementForm({ type }: { type: FormType }) {
       if (countEntries.some((x) => !reasonOptions(x).includes(reasons[x.category] as CountReason)))
         return setError('Escolha o motivo de cada diferença.')
     }
+    if (type === 'especificacao') {
+      if (!specSex) return setError('Não há gado a especificar neste pasto.')
+      if (!specCounted) return setError('Informe quantos animais contou em cada categoria.')
+      if (spec.difference !== 0 && !diffReason) return setError('O total contado é diferente: escolha o motivo da diferença.')
+    }
     setSaving(true)
     try {
-      const m = await recordMovement(db, { type, date, entries: buildEntries(), notes }, formKey)
+      const m = await recordMovement(
+        db,
+        { type, date, entries: buildEntries(), notes, differenceReason: type === 'especificacao' && spec.difference !== 0 ? diffReason || null : null },
+        formKey,
+      )
       navigate(`/rebanho/movimentacao/${m.id}`, { replace: true, state: { saved: true } })
     } catch (err) {
       setError(err instanceof HerdError ? err.message : `Não foi possível salvar: ${(err as Error).message}`)
@@ -118,7 +143,13 @@ export function MovementForm({ type }: { type: FormType }) {
   if (!pastures || !ready) return null
 
   const total =
-    type === 'mudanca-categoria' ? changeLines.reduce((a, l) => a + l.quantity, 0) : type === 'contagem' ? countEntries.length : sumQty(qty)
+    type === 'mudanca-categoria'
+      ? changeLines.reduce((a, l) => a + l.quantity, 0)
+      : type === 'contagem'
+        ? countEntries.length
+        : type === 'especificacao'
+          ? (specCounted ? 1 : 0)
+          : sumQty(qty)
 
   return (
     <form onSubmit={submit} className="stack">
@@ -188,6 +219,24 @@ export function MovementForm({ type }: { type: FormType }) {
               dest={changeDest}
               setDest={setChangeDest}
             />
+          ) : type === 'especificacao' ? (
+            <SpecifyFields
+              sex={specSex}
+              setSex={(s) => {
+                setSexChoice(s)
+                setQty({})
+                setDiffReason('')
+              }}
+              pendingF={pendingF}
+              pendingM={pendingM}
+              expected={avail}
+              qty={qty}
+              setQty={setQty}
+              difference={spec.difference}
+              counted={specCounted}
+              reason={diffReason}
+              setReason={setDiffReason}
+            />
           ) : type === 'contagem' ? (
             <CountFields
               expected={avail}
@@ -241,6 +290,8 @@ export function MovementForm({ type }: { type: FormType }) {
             ? 'Salvando…'
             : type === 'contagem'
               ? `Registrar contagem${total ? ` (${total} diferença${total > 1 ? 's' : ''})` : ''}`
+              : type === 'especificacao'
+                ? 'Registrar especificação'
               : `Registrar${total ? ` ${total} cab.` : ''}`}
         </button>
       </div>
@@ -337,7 +388,10 @@ function CountFields(props: {
             <div className="qty-row" key={c.id}>
               <div className="qty-label">
                 <div className="status-label">{c.label}</div>
-                <div className="status-detail">No sistema: {props.expected(c.id)}</div>
+                <div className="status-detail">
+                  No sistema: {props.expected(c.id)}
+                  {c.unspecified && ' · use se contou sem separar por categoria'}
+                </div>
               </div>
               <Stepper label={c.label} placeholder="—" value={props.qty[c.id] ?? ''} onChange={(v) => setCount({ ...props.qty, [c.id]: v })} />
             </div>
@@ -372,6 +426,86 @@ function CountFields(props: {
               </select>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SpecifyFields(props: {
+  sex: Sex | null
+  setSex: (s: Sex) => void
+  pendingF: number
+  pendingM: number
+  expected: (c: CategoryId) => number
+  qty: QtyText
+  setQty: (v: QtyText) => void
+  difference: number
+  counted: boolean
+  reason: CountReason | ''
+  setReason: (r: CountReason | '') => void
+}) {
+  if (!props.sex) return <p className="muted">Este pasto não tem gado a especificar.</p>
+  const pending = props.sex === 'F' ? props.pendingF : props.pendingM
+  const word = props.sex === 'F' ? 'fêmeas' : 'machos'
+  const options: CountReason[] =
+    props.difference > 0 ? ['nascimento-nao-registrado', 'erro-contagem', 'outro'] : ['morte-nao-registrada', 'erro-contagem', 'outro']
+  return (
+    <div className="stack">
+      {props.pendingF > 0 && props.pendingM > 0 && (
+        <div className="chips">
+          <button type="button" className={`chip${props.sex === 'F' ? ' active' : ''}`} onClick={() => props.setSex('F')}>
+            Fêmeas ({props.pendingF})
+          </button>
+          <button type="button" className={`chip${props.sex === 'M' ? ' active' : ''}`} onClick={() => props.setSex('M')}>
+            Machos ({props.pendingM})
+          </button>
+        </div>
+      )}
+      <div className="notice notice-warn">
+        <Icon name="alert" />
+        <div>
+          <strong>
+            {pending} {word} a especificar.
+          </strong>{' '}
+          Digite quantos você contou de cada categoria. Deixe em branco (—) a categoria que não foi contada.
+        </div>
+      </div>
+      {CATEGORIES.filter((c) => c.sex === props.sex && !c.unspecified).map((c) => (
+        <div className="qty-row" key={c.id}>
+          <div className="qty-label">
+            <div className="status-label">{c.label}</div>
+            <div className="status-detail">Já especificado: {props.expected(c.id)}</div>
+          </div>
+          <Stepper label={c.label} placeholder="—" value={props.qty[c.id] ?? ''} onChange={(v) => props.setQty({ ...props.qty, [c.id]: v })} />
+        </div>
+      ))}
+      {props.counted && (
+        <div className="stack">
+          <div className="cat-line">
+            <span>Diferença no total</span>
+            <span className={`num ${props.difference > 0 ? 'delta-plus' : props.difference < 0 ? 'delta-minus' : ''}`} data-testid="spec-difference">
+              {props.difference > 0 ? '+' : props.difference < 0 ? '−' : ''}
+              {Math.abs(props.difference)}
+            </span>
+          </div>
+          {props.difference === 0 ? (
+            <p className="muted">O total bate: as {pending} {word} serão só separadas por categoria.</p>
+          ) : (
+            <select
+              className="input"
+              aria-label="Motivo da diferença"
+              value={options.includes(props.reason as CountReason) ? props.reason : ''}
+              onChange={(e) => props.setReason(e.target.value as CountReason)}
+            >
+              <option value="">Motivo da diferença…</option>
+              {options.map((r) => (
+                <option key={r} value={r}>
+                  {COUNT_REASONS[r]}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
     </div>

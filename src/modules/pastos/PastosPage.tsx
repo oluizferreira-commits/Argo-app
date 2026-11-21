@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { Icon } from '../../components/Icon'
-import { pastureTotal } from '../rebanho/herd'
+import { balanceOf, pastureTotal } from '../rebanho/herd'
 import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 import { formatArea } from './pastures'
 
@@ -36,6 +36,9 @@ export function PastosPage() {
                   <div className="status-detail">
                     {formatArea(p.areaHa)}
                     {n > 0 && <span className="badge badge-warn" style={{ marginLeft: 8 }}>{n} serviço(s)</span>}
+                    {balanceOf(balances, p.id, 'femea-a-especificar') + balanceOf(balances, p.id, 'macho-a-especificar') > 0 && (
+                      <span className="badge badge-warn" style={{ marginLeft: 8 }}>Especificar</span>
+                    )}
                   </div>
                 </div>
                 <span className="num">{pastureTotal(balances, p.id).toLocaleString('pt-BR')} cab.</span>

@@ -157,6 +157,10 @@ export interface Movement extends BaseRecord {
   reversedBy: string | null
   /** Se foi gerada por uma venda: id da venda (só pode ser desfeita cancelando a venda). */
   saleId?: string | null
+  /** Especificação: diferença entre o total contado e o que havia (0 = só reclassificação). */
+  difference?: number
+  /** Especificação com diferença: motivo da diferença. */
+  differenceReason?: CountReason | null
 }
 
 /** Cliente (comprador). */

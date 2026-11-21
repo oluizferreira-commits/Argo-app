@@ -10,6 +10,7 @@ import { useStorageStatus } from '../../hooks/useStorageStatus'
 import { isStandalone } from '../../platform/storage'
 import { totalsByCategory } from '../rebanho/herd'
 import { useFarm } from '../fazendas/FarmContext'
+import { SpecificationAlerts } from '../rebanho/SpecificationAlerts'
 import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 
 const SHORTCUTS = ['rebanho', 'pastos', 'vendas', 'clientes', 'acesso', 'contas-receber']
@@ -58,6 +59,8 @@ export function DashboardPage() {
           </div>
         </div>
       )}
+
+      <SpecificationAlerts />
 
       <h2 className="section-title">Fazenda</h2>
       {pastures && pastures.length === 0 ? (

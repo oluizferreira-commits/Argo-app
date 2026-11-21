@@ -78,6 +78,16 @@ export function MovimentacaoPage() {
           ))}
         </div>
 
+        {m.type === 'especificacao' && (m.difference ?? 0) !== 0 && (
+          <p>
+            <span className="muted">Diferença no total: </span>
+            <strong>
+              {(m.difference ?? 0) > 0 ? '+' : '−'}
+              {Math.abs(m.difference ?? 0)}
+            </strong>
+            {m.differenceReason && <span className="muted"> · {COUNT_REASONS[m.differenceReason]}</span>}
+          </p>
+        )}
         {m.notes && (
           <p>
             <span className="muted">Observação: </span>

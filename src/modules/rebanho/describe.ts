@@ -16,6 +16,11 @@ export function describeMovement(m: Movement, pastures: Map<string, Pasture>): s
         return `${total} ${category(from.category).plural.toLowerCase()} → ${category(to.category).label.toLowerCase()}${where}`
       return `${total} cab.${where}`
     }
+    case 'especificacao': {
+      const out = m.entries.filter((e) => e.delta < 0).reduce((a, e) => a - e.delta, 0)
+      const parts = m.entries.filter((e) => e.delta > 0).map((e) => `${e.delta} ${category(e.category).plural.toLowerCase()}`)
+      return `${out} especificados: ${parts.join(' + ')} · ${name(m.pastureIds[0])}`
+    }
     case 'contagem': {
       const net = total - out
       return `${net >= 0 ? '+' : ''}${net} cab. · ${name(m.pastureIds[0])}`

@@ -56,6 +56,9 @@ src/
    - Movimentações não são editadas nem apagadas: corrige-se com **estorno** (lançamento inverso, ligado ao original).
      O estorno é recusado se os animais já foram movimentados depois.
    - Categorias ficam em `src/domain/categories.ts`. Os ids são gravados no banco: nunca renomear um id.
+   - **Fêmeas/Machos (a especificar)**: contagem feita sem separar por categoria. Geram alerta (Painel, Rebanho, Pastos)
+     até a movimentação **Especificar contagem**, que distribui o gado nas categorias contadas no curral; se o total
+     for diferente, a diferença é registrada com motivo.
 6. **Valores financeiros** serão gravados em **centavos (inteiros)** para evitar erros de arredondamento.
    Pagamentos parciais serão registros próprios ligados à conta a receber. O saldo é calculado e nunca sobrescrito.
 

@@ -6,6 +6,7 @@ import { db } from '../../db/database'
 import { CATEGORIES } from '../../domain/categories'
 import { Icon } from '../../components/Icon'
 import { balanceOf, pastureTotal } from '../rebanho/herd'
+import { PastureSpecificationNotice } from '../rebanho/SpecificationAlerts'
 import { useFarm } from '../fazendas/FarmContext'
 import { useBalances } from '../rebanho/useHerd'
 import { addTask, archivePasture, formatArea, PastureError, removeTask, setTaskDone } from './pastures'
@@ -74,6 +75,12 @@ export function PastoPage() {
         </div>
       </section>
 
+      <PastureSpecificationNotice
+        pastureId={id}
+        females={balanceOf(balances, id, 'femea-a-especificar')}
+        males={balanceOf(balances, id, 'macho-a-especificar')}
+      />
+
       <div className="row">
         <Link to={`/rebanho/movimentar/contagem?pasto=${id}`} className="btn btn-gold" style={{ flex: 1 }}>
           <Icon name="clipboard" /> Contagem
@@ -92,7 +99,7 @@ export function PastoPage() {
             {(['M', 'F'] as const).map((sex) => (
               <div key={sex}>
                 <div className="group-title">{sex === 'M' ? 'Machos' : 'Fêmeas'}</div>
-                {CATEGORIES.filter((c) => c.sex === sex).map((c) => (
+                {CATEGORIES.filter((c) => c.sex === sex && (!c.unspecified || balanceOf(balances, id, c.id) > 0)).map((c) => (
                   <div className="cat-line" key={c.id}>
                     <span>{c.label}</span>
                     <span className="num">{balanceOf(balances, id, c.id)}</span>

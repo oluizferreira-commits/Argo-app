@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon'
 import { pastureTotal, totalsByCategory } from './herd'
 import { sortMovements } from './describe'
 import { MovementRow } from './MovementSummary'
+import { SpecificationAlerts } from './SpecificationAlerts'
 import { useBalances, useMovements, usePastureMap, usePastures } from './useHerd'
 
 export function RebanhoPage() {
@@ -46,6 +47,8 @@ export function RebanhoPage() {
         <p>cabeças em {pastures.length} pasto(s)</p>
       </section>
 
+      <SpecificationAlerts />
+
       <Link to="/rebanho/movimentar" className="btn btn-gold btn-block">
         <Icon name="plus" /> Nova movimentação
       </Link>
@@ -56,7 +59,7 @@ export function RebanhoPage() {
           {(['M', 'F'] as const).map((sex) => (
             <div key={sex}>
               <div className="group-title">{sex === 'M' ? 'Machos' : 'Fêmeas'}</div>
-              {CATEGORIES.filter((c) => c.sex === sex).map((c) => (
+              {CATEGORIES.filter((c) => c.sex === sex && (!c.unspecified || (byCat.get(c.id) ?? 0) > 0)).map((c) => (
                 <div className="cat-line" key={c.id}>
                   <span>{c.label}</span>
                   <span className="num">{(byCat.get(c.id) ?? 0).toLocaleString('pt-BR')}</span>

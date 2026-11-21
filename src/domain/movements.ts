@@ -8,6 +8,7 @@ export const MOVEMENT_TYPES = [
   'morte',
   'venda',
   'contagem',
+  'especificacao',
   'estorno',
 ] as const
 
@@ -27,6 +28,7 @@ export const MOVEMENT_INFO: Record<MovementType, MovementTypeInfo> = {
   morte: { label: 'Morte', description: 'Animais mortos', icon: 'minusCircle' },
   venda: { label: 'Venda', description: 'Por arroba ou por cabeça, com comprovante', icon: 'tag' },
   contagem: { label: 'Contagem', description: 'Conferir um pasto e acertar diferenças', icon: 'clipboard' },
+  especificacao: { label: 'Especificar contagem', description: 'Separar fêmeas/machos contados sem categoria', icon: 'list' },
   estorno: { label: 'Estorno', description: 'Correção de lançamento', icon: 'undo' },
 }
 
@@ -36,6 +38,7 @@ export const COUNT_REASONS = {
   'nascimento-nao-registrado': 'Nascimentos não registrados',
   'morte-nao-registrada': 'Mortes não registradas',
   'erro-contagem': 'Correção de contagem anterior',
+  especificacao: 'Especificação de contagem',
   outro: 'Outro motivo (ver observação)',
 } as const
 
