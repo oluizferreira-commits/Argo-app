@@ -11,7 +11,9 @@ describe('fazendas', () => {
     db = createDatabase(`test-${newId()}`)
     const f = await createFarm(db, { name: 'Fazenda Boa Vista', responsible: 'Luiz', city: '' }, '1234')
     expect(f.pinHash).toMatch(/^[0-9a-f]{64}$/)
-    expect(JSON.stringify(f)).not.toContain('1234')
+    // Nenhum campo guarda o PIN em texto (o hash é aleatório e pode conter "1234" por acaso).
+    expect(Object.values(f)).not.toContain('1234')
+    expect(f.pinHash).not.toBe('1234')
     expect(await verifyPin(f, '1234')).toBe(true)
     expect(await verifyPin(f, '0000')).toBe(false)
     await expect(createFarm(db, { name: 'fazenda boa vista', responsible: '', city: '' }, '')).rejects.toThrow(/Já existe/)
