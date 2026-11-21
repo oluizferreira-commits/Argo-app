@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router'
+import { Link, Navigate, useParams } from 'react-router'
 import { MOVEMENT_INFO, MOVEMENT_TYPES, type MovementType } from '../../domain/movements'
 import { Icon } from '../../components/Icon'
 import { MovementForm } from './MovementForm'
@@ -28,7 +28,7 @@ export function MovimentarPage() {
       </p>
       <div className="type-grid">
         {FORM_TYPES.map((t) => (
-          <Link key={t} to={`/rebanho/movimentar/${t}`} className="type-tile">
+          <Link key={t} to={t === 'venda' ? '/vendas/nova' : `/rebanho/movimentar/${t}`} className="type-tile">
             <div className="tile-icon">
               <Icon name={MOVEMENT_INFO[t].icon} />
             </div>
@@ -44,6 +44,7 @@ export function MovimentarPage() {
 /** Formulário de um tipo específico (/rebanho/movimentar/:tipo). */
 export function MovimentarTipoPage() {
   const { tipo } = useParams()
+  if (tipo === 'venda') return <Navigate to="/vendas/nova" replace />
   if (!FORM_TYPES.includes(tipo as FormType)) {
     return (
       <div className="card empty">

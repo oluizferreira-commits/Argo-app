@@ -12,7 +12,7 @@ import { totalsByCategory } from '../rebanho/herd'
 import { useFarm } from '../fazendas/FarmContext'
 import { useBalances, usePastures, usePendingTasks } from '../rebanho/useHerd'
 
-const SHORTCUTS = ['rebanho', 'pastos', 'vendas-arroba', 'contas-receber', 'reserva', 'relatorios']
+const SHORTCUTS = ['rebanho', 'pastos', 'vendas', 'clientes', 'contas-receber', 'relatorios']
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -148,6 +148,10 @@ export function DashboardPage() {
       <Link to="/configuracoes" className="btn btn-outline btn-block">
         <Icon name="gear" /> Configurações e backup
       </Link>
+
+      <p className="app-credit">
+        ARGO · Gestão Pecuária · <span>by Luiz Ferreira</span>
+      </p>
     </>
   )
 }

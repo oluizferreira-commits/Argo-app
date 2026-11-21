@@ -42,6 +42,12 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     movements: 'id, createdAt, updatedAt, date, type, *pastureIds, farmId',
   })
 
+  // v4 — Etapa 3: clientes e vendas.
+  db.version(4).stores({
+    clients: 'id, farmId, createdAt, updatedAt, name',
+    sales: 'id, farmId, createdAt, updatedAt, date, clientId, number',
+  })
+
   return db
 }
 

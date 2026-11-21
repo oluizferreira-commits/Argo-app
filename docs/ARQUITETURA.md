@@ -68,6 +68,17 @@ src/
 - Dados lançados antes do cadastro de fazendas são adotados pela primeira fazenda cadastrada.
 - O backup inclui todas as fazendas do aparelho.
 
+## Vendas e Pix
+
+- `src/modules/vendas/sales.ts`: venda e saída do rebanho gravadas na MESMA transação (nada fica pela metade).
+  A saída gerada por venda só é desfeita cancelando a venda.
+- Arroba: peso vivo → kg ÷ 30 (rendimento de 50% sobre @ de 15 kg); abate → arrobas lançadas direto. Peso por animal.
+- Valores em centavos; pesos em décimos de kg; arrobas em centésimos. Arredondamento só no final.
+- Parcelas somam exatamente o total (diferença de centavos na 1ª parcela).
+- `src/domain/pix.ts`: BR Code estático (padrão EMV do Banco Central), CRC16 conferido com o exemplo oficial (1D3D).
+  Chaves e documentos aparecem sempre mascarados na tela e no comprovante.
+- `src/modules/vendas/receipt.ts`: comprovante desenhado em imagem PNG (canvas), com QR Code; não é documento fiscal.
+
 ## Esquema do banco
 
 | Versão | Tabelas adicionadas |
@@ -75,6 +86,7 @@ src/
 | v1 | meta, auditLog, outbox, diagnostics |
 | v2 | pastures (pastos), pastureTasks (serviços dos pastos), movements (movimentações do rebanho) |
 | v3 | farms (fazendas) + índice `farmId` em pastures, pastureTasks e movements |
+| v4 | clients (clientes), sales (vendas) |
 
 ## Migrações (preservação de dados)
 

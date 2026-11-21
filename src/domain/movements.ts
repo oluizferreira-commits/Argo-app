@@ -25,7 +25,7 @@ export const MOVEMENT_INFO: Record<MovementType, MovementTypeInfo> = {
   transferencia: { label: 'Transferência', description: 'Mudar animais de pasto', icon: 'arrows' },
   'mudanca-categoria': { label: 'Mudança de categoria', description: 'Ex.: bezerros que viraram desmama', icon: 'trendUp' },
   morte: { label: 'Morte', description: 'Animais mortos', icon: 'minusCircle' },
-  venda: { label: 'Venda', description: 'Animais que saíram vendidos', icon: 'tag' },
+  venda: { label: 'Venda', description: 'Por arroba ou por cabeça, com comprovante', icon: 'tag' },
   contagem: { label: 'Contagem', description: 'Conferir um pasto e acertar diferenças', icon: 'clipboard' },
   estorno: { label: 'Estorno', description: 'Correção de lançamento', icon: 'undo' },
 }

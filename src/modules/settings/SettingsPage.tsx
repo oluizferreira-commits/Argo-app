@@ -298,6 +298,8 @@ function AboutSection() {
         <dl className="kv">
           <dt>Aplicativo</dt>
           <dd>ARGO — Gestão Pecuária</dd>
+          <dt>Desenvolvido por</dt>
+          <dd>Luiz Ferreira</dd>
           <dt>Versão</dt>
           <dd>{__APP_VERSION__}</dd>
           <dt>Esquema do banco</dt>

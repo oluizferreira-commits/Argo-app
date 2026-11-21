@@ -143,6 +143,7 @@ function GateShell({ children }: { children: ReactNode }) {
           <img src={`${import.meta.env.BASE_URL}logo-mark.svg`} alt="" />
           <div className="brand-name">ARGO</div>
           <div className="brand-sub">Gestão Pecuária</div>
+          <div className="byline">by Luiz Ferreira</div>
         </div>
         {children}
       </div>

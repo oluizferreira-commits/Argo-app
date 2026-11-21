@@ -9,4 +9,4 @@ export const TABS: readonly { path: string; label: string; icon: IconName }[] = 
   { path: '/mais', label: 'Mais', icon: 'grid' },
 ]
 
-export const FINANCE_MODULE_IDS = ['vendas-arroba', 'vendas-lote', 'clientes', 'contas-receber', 'pagamentos', 'reserva']
+export const FINANCE_MODULE_IDS = ['vendas', 'vendas-arroba', 'vendas-lote', 'clientes', 'contas-receber', 'pagamentos', 'reserva']

@@ -3,8 +3,8 @@
  * (permite "Salvar em Arquivos", AirDrop, WhatsApp, e-mail...). Fora disso, baixa o arquivo.
  * Retorna false se o usuário cancelou.
  */
-export async function saveFile(name: string, content: string, mime = 'application/json'): Promise<boolean> {
-  const file = new File([content], name, { type: mime })
+export async function saveFile(name: string, content: string | Blob, mime = 'application/json'): Promise<boolean> {
+  const file = new File([content], name, { type: content instanceof Blob && content.type ? content.type : mime })
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: name })

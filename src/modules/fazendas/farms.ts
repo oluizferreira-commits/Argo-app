@@ -2,6 +2,7 @@ import type { ArgoDatabase } from '../../db/database'
 import { getMeta, setMeta } from '../../db/device'
 import { Repository } from '../../db/repository'
 import type { Farm } from '../../db/types'
+import { normalizePixKey, PixError, pixText, type PixKeyType } from '../../domain/pix'
 
 export class FarmError extends Error {
   constructor(message: string) {
@@ -101,6 +102,34 @@ export async function setFarmPin(db: ArgoDatabase, id: string, pin: string): Pro
   if (pin) validatePin(pin)
   const secret = pin ? await hashPin(pin) : { pinHash: null, pinSalt: null }
   return new Repository(db, 'farms').update(id, secret)
+}
+
+// ------------------------------------------------------------------ Pix
+
+export interface FarmPixInput {
+  type: PixKeyType
+  key: string
+  name: string
+  city: string
+}
+
+/** Salva a chave Pix da fazenda (validada e normalizada). */
+export async function updateFarmPix(db: ArgoDatabase, id: string, input: FarmPixInput): Promise<Farm> {
+  let key: string
+  try {
+    key = normalizePixKey(input.type, input.key)
+  } catch (e) {
+    throw new FarmError(e instanceof PixError ? e.message : 'Chave Pix inválida.')
+  }
+  const name = pixText(input.name, 25)
+  const city = pixText(input.city, 15)
+  if (!name) throw new FarmError('Informe o nome do recebedor (como aparece no banco).')
+  if (!city) throw new FarmError('Informe a cidade do recebedor.')
+  return new Repository(db, 'farms').update(id, { pixKeyType: input.type, pixKey: key, pixName: name, pixCity: city })
+}
+
+export async function removeFarmPix(db: ArgoDatabase, id: string): Promise<Farm> {
+  return new Repository(db, 'farms').update(id, { pixKeyType: null, pixKey: null, pixName: '', pixCity: '' })
 }
 
 // ------------------------------------------------------------------ fazenda atual

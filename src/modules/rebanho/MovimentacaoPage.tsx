@@ -106,7 +106,12 @@ export function MovimentacaoPage() {
         </div>
       )}
 
-      {m.type !== 'estorno' && !m.reversedBy && (
+      {m.saleId && (
+        <Link to={`/vendas/${m.saleId}`} className="btn btn-outline btn-block">
+          <Icon name="receipt" /> Ver venda
+        </Link>
+      )}
+      {m.type !== 'estorno' && !m.reversedBy && !m.saleId && (
         <button className="btn btn-danger btn-block" onClick={reverse} disabled={busy}>
           <Icon name="undo" /> Estornar (corrigir lançamento)
         </button>

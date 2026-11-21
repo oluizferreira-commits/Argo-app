@@ -115,6 +115,8 @@ export interface MovementInput {
   date: string
   entries: MovementEntry[]
   notes: string
+  /** Preenchido só quando a movimentação é gerada por uma venda. */
+  saleId?: string
 }
 
 function validateShape(input: MovementInput): void {
@@ -224,6 +226,7 @@ export async function recordMovement(db: ArgoDatabase, input: MovementInput, ide
         notes: input.notes.trim(),
         reversalOf: null,
         reversedBy: null,
+        saleId: input.saleId ?? null,
       },
       idempotencyKey,
     )
@@ -231,13 +234,20 @@ export async function recordMovement(db: ArgoDatabase, input: MovementInput, ide
 }
 
 /** Estorna uma movimentação: lança o inverso e marca a original como estornada. */
-export async function reverseMovement(db: ArgoDatabase, id: string, notes: string): Promise<Movement> {
+export async function reverseMovement(
+  db: ArgoDatabase,
+  id: string,
+  notes: string,
+  opts: { fromSale?: boolean } = {},
+): Promise<Movement> {
   const repo = new Repository(db, 'movements')
   return db.transaction('rw', tables(db), async () => {
     const original = await db.movements.get(id)
     if (!original) throw new HerdError('Movimentação não encontrada.')
     if (original.type === 'estorno') throw new HerdError('Um estorno não pode ser estornado.')
     if (original.reversedBy) throw new HerdError('Esta movimentação já foi estornada.')
+    if (original.saleId && !opts.fromSale)
+      throw new HerdError('Esta saída foi gerada por uma venda. Para desfazer, cancele a venda.')
     const entries = original.entries.map((e) => ({ ...e, delta: -e.delta }))
     const pastures = await db.pastures.bulkGet(original.pastureIds)
     const names = new Map(pastures.filter(Boolean).map((p) => [p!.id, p!.name]))
@@ -257,6 +267,7 @@ export async function reverseMovement(db: ArgoDatabase, id: string, notes: strin
       notes: notes.trim(),
       reversalOf: original.id,
       reversedBy: null,
+      saleId: original.saleId ?? null,
     })
     await repo.update(original.id, { reversedBy: reversal.id })
     return reversal

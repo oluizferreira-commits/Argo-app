@@ -3,6 +3,12 @@ import { Layout } from '../components/Layout'
 import { DashboardPage } from '../modules/dashboard/DashboardPage'
 import { FazendaPage } from '../modules/fazendas/FazendaPage'
 import { HubPage } from '../modules/hub/HubPage'
+import { ClienteFormPage } from '../modules/clientes/ClienteFormPage'
+import { ClientePage } from '../modules/clientes/ClientePage'
+import { ClientesPage } from '../modules/clientes/ClientesPage'
+import { NovaVendaPage } from '../modules/vendas/NovaVendaPage'
+import { VendaPage } from '../modules/vendas/VendaPage'
+import { VendasPage } from '../modules/vendas/VendasPage'
 import { PastoFormPage } from '../modules/pastos/PastoFormPage'
 import { PastoPage } from '../modules/pastos/PastoPage'
 import { PastosPage } from '../modules/pastos/PastosPage'
@@ -35,6 +41,14 @@ const implemented: RouteObject[] = [
   { path: '/pastos/:id', element: <PastoPage />, handle: t('Pasto') },
   { path: '/pastos/:id/editar', element: <PastoFormPage />, handle: t('Editar pasto') },
   { path: '/fazenda', element: <FazendaPage />, handle: t('Fazenda') },
+  { path: '/vendas', element: <VendasPage />, handle: t('Vendas') },
+  { path: '/vendas/nova', element: <NovaVendaPage />, handle: t('Nova venda') },
+  { path: '/vendas/nova/:modo', element: <NovaVendaPage />, handle: t('Nova venda') },
+  { path: '/vendas/:id', element: <VendaPage />, handle: t('Venda') },
+  { path: '/clientes', element: <ClientesPage />, handle: t('Clientes') },
+  { path: '/clientes/novo', element: <ClienteFormPage />, handle: t('Novo cliente') },
+  { path: '/clientes/:id', element: <ClientePage />, handle: t('Cliente') },
+  { path: '/clientes/:id/editar', element: <ClienteFormPage />, handle: t('Editar cliente') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <HubPage ids={FINANCE_MODULE_IDS} intro="Vendas, clientes, recebimentos e reserva financeira." />, handle: t('Financeiro') },
   { path: '/mais', element: <HubPage intro="Todos os módulos do ARGO." />, handle: t('Módulos') },
