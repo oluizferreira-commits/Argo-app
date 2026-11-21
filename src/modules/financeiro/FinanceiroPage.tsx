@@ -50,6 +50,18 @@ export function FinanceiroPage() {
                   <Icon name="chevronRight" size={20} className="muted" />
                 </Link>
               ))}
+            {g.title === 'Vendas' && (
+              <Link to="/relatorios?r=vendas" data-testid="fin-sales-report">
+                <div className="status-icon">
+                  <Icon name="chart" />
+                </div>
+                <div className="status-body">
+                  <div className="status-label">Relatório de vendas</div>
+                  <div className="status-detail">Mensal ou anual (mês a mês), por cliente · PDF</div>
+                </div>
+                <Icon name="chevronRight" size={20} className="muted" />
+              </Link>
+            )}
           </div>
         </Fragment>
       ))}

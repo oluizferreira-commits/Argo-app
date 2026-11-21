@@ -33,9 +33,14 @@ export function VendasPage() {
           <Icon name="tag" /> Por cabeça
         </Link>
       </div>
-      <Link to="/clientes" className="btn btn-outline btn-block">
-        <Icon name="people" /> Clientes
-      </Link>
+      <div className="row">
+        <Link to="/clientes" className="btn btn-outline" style={{ flex: 1 }}>
+          <Icon name="people" /> Clientes
+        </Link>
+        <Link to="/relatorios?r=vendas" className="btn btn-outline" style={{ flex: 1 }} data-testid="sales-report">
+          <Icon name="chart" /> Relatório
+        </Link>
+      </div>
       <h2 className="section-title">Vendas</h2>
       <div className="card" style={{ paddingTop: 4, paddingBottom: 4 }}>
         {sales.length === 0 ? (

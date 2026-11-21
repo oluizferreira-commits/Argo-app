@@ -52,7 +52,8 @@ export interface PdfMeta {
 }
 
 export async function buildReportsPdf(reports: readonly Report[], meta: PdfMeta): Promise<Blob> {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+  // todas as páginas deitadas (paisagem), no mesmo padrão
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
   const logo = await logoDataUrl()
   const generated = formatDateTime(new Date().toISOString())
 
@@ -98,12 +99,7 @@ export async function buildReportsPdf(reports: readonly Report[], meta: PdfMeta)
 
   let first = true
   for (const r of reports) {
-    const wide = r.tables.some((t) => t.wide)
-    if (!first) doc.addPage('a4', wide ? 'landscape' : 'portrait')
-    else if (wide) {
-      doc.deletePage(1)
-      doc.addPage('a4', 'landscape')
-    }
+    if (!first) doc.addPage('a4', 'landscape')
     first = false
     header()
     const w = doc.internal.pageSize.getWidth()
@@ -142,7 +138,7 @@ export async function buildReportsPdf(reports: readonly Report[], meta: PdfMeta)
         if (t.rows.length === 0) continue
         // título não fica sozinho no fim da página: se não couber título + algumas linhas, vai para a próxima
         if (y > doc.internal.pageSize.getHeight() - 45) {
-          doc.addPage()
+          doc.addPage('a4', 'landscape')
           header()
           y = 35
         }

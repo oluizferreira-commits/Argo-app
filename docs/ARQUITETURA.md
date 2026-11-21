@@ -136,6 +136,8 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 
 ## Relatórios
 
+- PDF sempre em A4 **paisagem** (todas as páginas). Relatório de vendas: lista, por cliente e, no ano, mês a mês; atalhos em Vendas e no Financeiro (`/relatorios?r=vendas`).
+
 - `src/modules/relatorios/reports.ts`: cálculos puros (mesmos números na tela e no PDF). Período: mês ou ano.
 - Vendas, arrobas, recebimentos, inadimplência (posição no fim do período ou hoje; só pagamentos até essa data),
   reserva (saldo inicial/final), nascimentos e mortes (inclui os encontrados na contagem), rebanho por pasto e categoria.

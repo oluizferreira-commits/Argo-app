@@ -78,6 +78,10 @@ describe('relatórios', () => {
     // pode atravessar a virada do ano em datas relativas; os testes só usam valores quando no mesmo ano
     if (addDays(data.today!, -200).slice(0, 4) === String(year) && addDays(data.today!, -60).slice(0, 4) === String(year)) {
       expect(sum(v)['Valor total']).toBe('R$ 10.500,00')
+      // relatório anual de vendas: mês a mês e por cliente (soma = 100%)
+      expect(v.tables.map((t) => t.title)).toEqual(['Por mês', 'Por cliente', undefined])
+      const porCliente = v.tables[1]
+      expect(porCliente.rows.map((r) => r[4]).reduce((a, x) => a + Number(x.replace('%', '').replace(',', '.')), 0)).toBeCloseTo(100, 0)
       expect(sum(ar)).toMatchObject({ 'Arrobas vendidas': '35,00 @', 'Preço médio': 'R$ 300,00/@' })
       expect(sum(ina)['Total vencido']).toBe('R$ 2.250,00') // parcela 1 (R$ 5.250) − R$ 3.000 recebidos
     }

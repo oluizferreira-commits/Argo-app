@@ -132,6 +132,19 @@ function vendas(d: ReportData, p: Period): Report {
       foot: ['Total', '', '', '', n(list.reduce((a, s) => a + heads(s), 0)), '', formatMoney(total)],
     },
   ]
+  // por cliente (mês ou ano)
+  if (list.length) {
+    const byClient = new Map<string, Sale[]>()
+    for (const sl of list) byClient.set(sl.clientId, [...(byClient.get(sl.clientId) ?? []), sl])
+    tables.unshift({
+      title: 'Por cliente',
+      columns: [{ label: 'Cliente' }, { label: 'Vendas', align: R }, { label: 'Cabeças', align: R }, { label: 'Valor', align: R }, { label: '% do total', align: R }],
+      rows: [...byClient.entries()]
+        .map(([cid, ss]) => ({ name: clients.get(cid) ?? '-', ss, v: ss.reduce((a, x) => a + x.totalCents, 0) }))
+        .sort((a, b) => b.v - a.v)
+        .map(({ name, ss, v }) => [name, n(ss.length), n(ss.reduce((a, x) => a + heads(x), 0)), formatMoney(v), total ? `${((v * 100) / total).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '-']),
+    })
+  }
   if (p.kind === 'ano' && list.length) {
     const bm = byMonth(list, (s) => s.date)
     tables.unshift({
