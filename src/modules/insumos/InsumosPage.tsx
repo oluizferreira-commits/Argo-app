@@ -27,7 +27,7 @@ import { useSupplies } from './useSupplies'
 
 const CATS: SupplyCategory[] = ['geral', 'herbicida', 'semente']
 const INTRO: Record<SupplyCategory, string> = {
-  geral: 'Estoque em sacos (aceita meio saco). Sal branco e mineral saem do estoque quando você lança “Mistura feita”; o consumo no cocho é lançado em sacos de mistura, por pasto.',
+  geral: 'Sal, mistura e outros produtos (sacos, litros ou kg — ex.: óleo e filtros das máquinas). Sal branco e mineral saem do estoque quando você lança “Mistura feita”; o consumo no cocho é lançado em sacos de mistura, por pasto.',
   herbicida: 'Herbicidas em litros ou kg. A compra entra no estoque (custo médio); a saída é lançada na aplicação, em Manejo de pastagens, com o custo por pasto.',
   semente: 'Sementes de capim em kg, por espécie e cultivar. A saída é lançada no plantio ou replantio, em Manejo de pastagens.',
 }

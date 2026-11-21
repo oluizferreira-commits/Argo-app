@@ -93,6 +93,13 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     meterAdjustments: 'id, farmId, equipmentId, at, createdAt, updatedAt',
   })
 
+  // v12 — manutenção programada (planos e registros/solicitações) e checklist diário das máquinas.
+  db.version(12).stores({
+    maintenancePlans: 'id, farmId, equipmentId, createdAt, updatedAt',
+    maintenanceRecords: 'id, farmId, equipmentId, planId, status, date, createdAt, updatedAt',
+    machineChecklists: 'id, farmId, equipmentId, at, createdAt, updatedAt',
+  })
+
   return db
 }
 

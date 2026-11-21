@@ -98,6 +98,10 @@ Ordem: boas-vindas compacto → Indicadores da fazenda → Central de Pendência
 - **Operação de campo**: "Concluir a operação" abre o formulário já preenchido (tipo, pasto ou local, máquinas, responsáveis, horas). Cada sessão entra em **uma** operação (`operationId`); cancelar a operação libera a sessão (as horas continuam no horímetro: a máquina trabalhou). Novos tipos: roçada, limpeza, adubação, preparo de solo, transporte, outra (nome livre). Transporte, preparo e outra podem ser fora de pasto (`pastureId` = '' e `location`), sem custo de pasto.
 - **Ajustes autorizados** (motivo + PIN): tempo de uma sessão encerrada (ex.: esqueceu de encerrar) e horímetro absoluto (`meterAdjustments`). Tudo no histórico.
 - Sincronização: os registros ficam no aparelho e entram na fila (`outbox`) para a sincronização futura; não há nuvem configurada.
+- **Manutenção programada** (`maintenancePlans`): intervalo por horas, por dias ou os dois (vale o que vencer primeiro), aviso antecipado configurável (horas/dias) e última vez feita antes do ARGO. `planStatus`: próxima = última manutenção concluída (ou a base) + intervalo; estados em dia / próxima / vencida.
+- **Manutenções** (`maintenanceRecords`): solicitada (ex.: problema no checklist) ou concluída. Peças do estoque dão baixa (custo médio; `maintenanceId`, só corrigida pela manutenção) e **não** viram despesa de novo; peças compradas direto + mão de obra = `directCents`, que entra em Despesas do mês. Cancelar devolve as peças ao estoque.
+- **Checklist diário** (`machineChecklists`): itens configuráveis por fazenda (`farm.checklistItems`), cada um em ordem / atenção / problema / não se aplica; só grava com todos marcados; fotos reduzidas (JPEG ~1024 px) guardadas no aparelho; problema → solicitação de manutenção ligada.
+- **Central de Pendências**: manutenção próxima/vencida (horímetro atual, previsto, data, responsável), solicitação aberta e inspeção diária não feita em máquina que trabalhou hoje; uma pendência por plano/solicitação/máquina-dia. Agenda: manutenções por data.
 
 ## Manejo e formação de pastagens
 
@@ -217,6 +221,7 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 | v9 | responsibles, supplies, supplyMovements (insumos em meios sacos), equipments, fuelMovements (diesel em centilitros), vaccinations, vaccinationApplications |
 | v10 | fieldOperations (operações de campo). Campos novos sem índice em supplies (categoria, unidade L/kg, fabricante, princípio ativo, espécie, cultivar, VC%, mínimo), supplyMovements (qty em mL/g, NF, lote, operationId) e fuelMovements (operationId, pastureId) |
 | v11 | machineSessions (horímetro digital), meterAdjustments (ajustes autorizados do horímetro). Equipamento ganha marca, modelo, ano, aquisição, situação e horímetro inicial (sem índice) |
+| v12 | maintenancePlans, maintenanceRecords (manutenções e solicitações), machineChecklists. supplyMovements ganha maintenanceId; farm ganha checklistItems (sem índice) |
 
 ## Migrações (preservação de dados)
 

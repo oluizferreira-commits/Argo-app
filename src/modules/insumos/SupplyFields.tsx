@@ -16,13 +16,13 @@ export function SupplyFields({ value: f, onChange, unitLocked }: { value: Supply
   )
   return (
     <>
-      {!unitLocked && f.category === 'herbicida' && (
+      {!unitLocked && f.category !== 'semente' && (
         <div className="field" style={{ margin: 0 }}>
           <div className="label">Unidade de medida</div>
-          <div className="row" style={{ gap: 8 }}>
-            {(['L', 'kg'] as const).map((u) => (
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            {(f.category === 'geral' ? (['saco', 'L', 'kg'] as const) : (['L', 'kg'] as const)).map((u) => (
               <button type="button" key={u} className={`chip${f.unit === u ? ' active' : ''}`} onClick={() => set({ unit: u })}>
-                {u === 'L' ? 'Litros (L)' : 'Quilos (kg)'}
+                {u === 'L' ? 'Litros (L)' : u === 'kg' ? 'Quilos (kg)' : 'Sacos'}
               </button>
             ))}
           </div>
@@ -45,7 +45,7 @@ export function SupplyFields({ value: f, onChange, unitLocked }: { value: Supply
           </div>
         </>
       )}
-      {f.category === 'geral' && input('sf-kgsaco', 'Peso do saco (kg)', 'kgPerSack', 'Ex.: 25', 'decimal')}
+      {f.category === 'geral' && f.unit === 'saco' && input('sf-kgsaco', 'Peso do saco (kg)', 'kgPerSack', 'Ex.: 25', 'decimal')}
       {input('sf-min', `Estoque mínimo (${UNIT_TEXT[f.unit]}) — opcional`, 'min', 'Avisa quando ficar abaixo', 'decimal')}
       {f.category !== 'geral' && (
         <div className="field" style={{ margin: 0 }}>

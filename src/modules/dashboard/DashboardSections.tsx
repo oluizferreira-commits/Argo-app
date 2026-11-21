@@ -24,7 +24,11 @@ function Kpi({ to, label, value, detail, testId, tone }: { to: string; label: st
 
 export function IndicatorsSection({ ind, today }: { ind: Indicators; today: string }) {
   const month = MONTHS[Number(today.slice(5, 7)) - 1]
-  const expenseParts = [ind.fuelExpenseCents && `diesel ${formatMoney(ind.fuelExpenseCents)}`, ind.supplyExpenseCents && `insumos ${formatMoney(ind.supplyExpenseCents)}`].filter(Boolean)
+  const expenseParts = [
+    ind.fuelExpenseCents && `diesel ${formatMoney(ind.fuelExpenseCents)}`,
+    ind.supplyExpenseCents && `insumos ${formatMoney(ind.supplyExpenseCents)}`,
+    ind.maintenanceExpenseCents && `manutenção ${formatMoney(ind.maintenanceExpenseCents)}`,
+  ].filter(Boolean)
   return (
     <>
       <h2 className="section-title">Indicadores da fazenda</h2>
@@ -166,9 +170,9 @@ export function AgendaSection({ items, today }: { items: AgendaItem[]; today: st
                           <span className={`badge ${cls}`}>{label}</span>
                         </div>
                       </Link>
-                      {it.kind === 'vacina' ? (
+                      {it.kind === 'vacina' || it.kind === 'manutencao' ? (
                         <Link to={it.to} className="btn btn-outline agenda-action" aria-label={`Abrir ${it.title}`}>
-                          <Icon name="syringe" size={20} />
+                          <Icon name={it.kind === 'vacina' ? 'syringe' : 'gear'} size={20} />
                         </Link>
                       ) : it.taskId ? (
                         <button

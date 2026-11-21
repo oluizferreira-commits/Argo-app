@@ -11,7 +11,7 @@ export function useMaquinas() {
   const { farm } = useFarm()
   const data = useLiveQuery(async () => {
     const f = farm.id
-    const [equipments, sessions, fuel, operations, adjustments, responsibles, pastures] = await Promise.all([
+    const [equipments, sessions, fuel, operations, adjustments, responsibles, pastures, plans, records, checklists, supplies, supplyMovements] = await Promise.all([
       db.equipments.where('farmId').equals(f).toArray(),
       db.machineSessions.where('farmId').equals(f).toArray(),
       db.fuelMovements.where('farmId').equals(f).toArray(),
@@ -19,8 +19,13 @@ export function useMaquinas() {
       db.meterAdjustments.where('farmId').equals(f).toArray(),
       db.responsibles.where('farmId').equals(f).toArray(),
       db.pastures.where('farmId').equals(f).toArray(),
+      db.maintenancePlans.where('farmId').equals(f).toArray(),
+      db.maintenanceRecords.where('farmId').equals(f).toArray(),
+      db.machineChecklists.where('farmId').equals(f).toArray(),
+      db.supplies.where('farmId').equals(f).toArray(),
+      db.supplyMovements.where('farmId').equals(f).toArray(),
     ])
-    return { equipments, sessions, fuel, operations, adjustments, responsibles, pastures }
+    return { equipments, sessions, fuel, operations, adjustments, responsibles, pastures, plans, records, checklists, supplies, supplyMovements }
   }, [farm.id])
   return useMemo(() => {
     if (!data) return undefined

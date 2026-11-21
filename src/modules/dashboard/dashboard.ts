@@ -20,6 +20,12 @@ import type {
   SupplyMovement,
   Vaccination,
   VaccinationApplication,
+  MaintenancePlan,
+  MaintenanceRecord,
+  MachineChecklist,
+  MachineSession,
+  MeterAdjustment,
+  FieldOperation,
 } from '../../db/types'
 import { MOVEMENT_INFO } from '../../domain/movements'
 import type { IconName } from '../../components/Icon'
@@ -30,6 +36,8 @@ import { saleBalance } from '../receber/receivables'
 import { reserveSummary } from '../reserva/reserve'
 import { formatSaleNumber } from '../vendas/sales'
 import { coverage, lotLabel } from '../vacinacao/vaccination'
+import { equipmentStatus, formatMeterH, meterAt, type MeterContext } from '../maquinas/machines'
+import { planStatus } from '../maquinas/maintenance'
 
 export interface DashboardData {
   farm: Farm
@@ -48,9 +56,30 @@ export interface DashboardData {
   vaccinations?: Vaccination[]
   vaccinationApplications?: VaccinationApplication[]
   responsibles?: Responsible[]
+  maintenancePlans?: MaintenancePlan[]
+  maintenanceRecords?: MaintenanceRecord[]
+  machineChecklists?: MachineChecklist[]
+  machineSessions?: MachineSession[]
+  meterAdjustments?: MeterAdjustment[]
+  fieldOperations?: FieldOperation[]
+}
+
+function meterCtx(d: DashboardData): MeterContext {
+  return { sessions: d.machineSessions ?? [], fuel: d.fuelMovements, operations: d.fieldOperations ?? [], adjustments: d.meterAdjustments ?? [] }
+}
+
+/** Custo de manutenção que é saída de dinheiro (peças compradas direto + serviço). Peças do estoque já foram despesa na compra. */
+export function maintenanceExpense(records: readonly MaintenanceRecord[], month: string): number {
+  return records.filter((r) => r.status === 'concluida' && r.deletedAt === null && r.date?.startsWith(month)).reduce((a, r) => a + r.directCents, 0)
 }
 
 const alive = <T extends { deletedAt: string | null }>(x: T) => x.deletedAt === null
+
+/** dia local (AAAA-MM-DD) de um horário ISO */
+function localDay(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function addDays(date: string, days: number): string {
   const d = new Date(`${date}T12:00:00Z`)
@@ -73,6 +102,7 @@ export interface Indicators {
   expensesMonthCents: number
   fuelExpenseCents: number
   supplyExpenseCents: number
+  maintenanceExpenseCents: number
   /** saldo da reserva (conta separada) */
   reserveCents: number
   reservePendingCents: number
@@ -107,6 +137,7 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
   const supplyExpenseCents = d.supplyMovements
     .filter((m) => m.type === 'compra' && m.status === 'ativo' && m.deletedAt === null && m.date.startsWith(month))
     .reduce((a, m) => a + (m.costCents ?? 0), 0)
+  const maintenanceExpenseCents = maintenanceExpense(d.maintenanceRecords ?? [], month)
   const reserve = reserveSummary(d.sales, d.payments, d.reserveEntries, d.farm)
   return {
     animals,
@@ -115,9 +146,10 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
     openCents,
     overdueCents,
     receivedMonthCents,
-    expensesMonthCents: fuelExpenseCents + supplyExpenseCents,
+    expensesMonthCents: fuelExpenseCents + supplyExpenseCents + maintenanceExpenseCents,
     fuelExpenseCents,
     supplyExpenseCents,
+    maintenanceExpenseCents,
     reserveCents: reserve.balanceCents,
     reservePendingCents: reserve.pendingCents,
   }
@@ -211,6 +243,45 @@ export function computePendencies(d: DashboardData, today: string, ind = compute
     })
   }
 
+  // máquinas: manutenção próxima/vencida, solicitações abertas, inspeção do dia
+  const equipments = d.equipments.filter((e) => e.deletedAt === null && equipmentStatus(e) !== 'inativo')
+  const records = d.maintenanceRecords ?? []
+  const ctx = meterCtx(d)
+  const people = new Map((d.responsibles ?? []).map((r) => [r.id, r.name]))
+  for (const p of (d.maintenancePlans ?? []).filter((x) => x.active && x.deletedAt === null)) {
+    const eq = equipments.find((e) => e.id === p.equipmentId)
+    if (!eq) continue
+    const cur = meterAt(eq, ctx)
+    const st = planStatus(p, records, cur, today)
+    if (st.state !== 'proximo' && st.state !== 'vencido') continue
+    const parts = [
+      cur !== null && `horímetro ${formatMeterH(cur)}`,
+      st.nextMeter !== null && `previsto ${formatMeterH(st.nextMeter)}`,
+      st.nextDate && `vence ${st.nextDate.split('-').reverse().join('/')}`,
+      eq.responsibleId && people.get(eq.responsibleId),
+    ].filter(Boolean)
+    out.push({
+      id: `manut:${p.id}`,
+      priority: st.state === 'vencido' ? 1 : 2,
+      icon: 'gear',
+      title: `${st.state === 'vencido' ? 'Manutenção vencida' : 'Manutenção próxima'} · ${p.name} · ${eq.name}`,
+      detail: parts.join(' · '),
+      to: `/maquinas/${eq.id}`,
+    })
+  }
+  for (const r of records.filter((x) => x.status === 'solicitada' && x.deletedAt === null)) {
+    const eq = equipments.find((e) => e.id === r.equipmentId)
+    if (!eq) continue
+    out.push({ id: `solic:${r.id}`, priority: 1, icon: 'alert', title: `Manutenção solicitada · ${eq.name}`, detail: r.problem || r.kind, to: `/maquinas/${eq.id}` })
+  }
+  const checklists = d.machineChecklists ?? []
+  for (const eq of equipments) {
+    const workedToday = (d.machineSessions ?? []).some((s) => s.equipmentId === eq.id && s.deletedAt === null && s.status !== 'cancelada' && localDay(s.startedAt) === today)
+    if (!workedToday) continue
+    if (checklists.some((c) => c.equipmentId === eq.id && c.deletedAt === null && localDay(c.at) === today)) continue
+    out.push({ id: `inspecao:${eq.id}:${today}`, priority: 2, icon: 'clipboard', title: `Inspeção diária não feita · ${eq.name}`, detail: 'A máquina trabalhou hoje e ainda não tem checklist', to: `/maquinas/${eq.id}/checklist` })
+  }
+
   // reserva a separar
   if (ind.reservePendingCents > 0)
     out.push({ id: 'reserva', priority: 2, icon: 'vault', title: 'Reserva financeira a separar', detail: `Separe ${formatMoney(ind.reservePendingCents)} do que já foi recebido`, to: '/reserva' })
@@ -232,7 +303,7 @@ export const AGENDA_GROUPS: { id: AgendaGroup; title: string }[] = [
 
 export interface AgendaItem {
   id: string
-  kind: 'parcela' | 'tarefa' | 'vacina'
+  kind: 'parcela' | 'tarefa' | 'vacina' | 'manutencao'
   title: string
   detail: string
   date: string | null
@@ -288,6 +359,25 @@ export function computeAgenda(d: DashboardData, today: string): AgendaItem[] {
       status: late ? 'atrasada' : 'pendente',
       group: late ? 'atrasadas' : v.nextDate === today ? 'hoje' : 'proximos',
       to: `/vacinacao/${v.id}`,
+    })
+  }
+  // manutenção programada por data
+  for (const p of (d.maintenancePlans ?? []).filter((x) => x.active && x.deletedAt === null)) {
+    const eq = d.equipments.find((e) => e.id === p.equipmentId && e.deletedAt === null)
+    if (!eq) continue
+    const st = planStatus(p, d.maintenanceRecords ?? [], null, today)
+    if (!st.nextDate || st.nextDate > limit) continue
+    const late = st.nextDate < today
+    out.push({
+      id: `manut:${p.id}`,
+      kind: 'manutencao',
+      title: `Manutenção: ${p.name}`,
+      detail: eq.name,
+      date: st.nextDate,
+      responsible: eq.responsibleId ? (people.get(eq.responsibleId) ?? null) : null,
+      status: late ? 'atrasada' : 'pendente',
+      group: late ? 'atrasadas' : st.nextDate === today ? 'hoje' : 'proximos',
+      to: `/maquinas/${eq.id}`,
     })
   }
   for (const t of d.tasks.filter(alive)) {

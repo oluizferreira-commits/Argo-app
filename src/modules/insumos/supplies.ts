@@ -327,6 +327,8 @@ export interface SupplyMovementInput {
   lot?: string
   /** consumo de uma operação de campo */
   operationId?: string
+  /** baixa de peça/óleo/filtro numa manutenção */
+  maintenanceId?: string
   /** ajuste: entrada ou saída */
   direction?: 'entrada' | 'saida'
   costCents?: number | null
@@ -351,7 +353,7 @@ export async function recordSupplyMovement(
     if (!input.costCents || input.costCents <= 0) throw new SupplyError('Informe o valor pago.')
     if (!supplier) throw new SupplyError('Informe o fornecedor.')
   } else if (input.type === 'consumo') {
-    if (!input.pastureId && !input.operationId) throw new SupplyError('Escolha o pasto (cocho).')
+    if (!input.pastureId && !input.operationId && !input.maintenanceId) throw new SupplyError('Escolha o pasto (cocho).')
     sign = -1
   } else {
     if (input.type !== 'ajuste') throw new SupplyError('Tipo de lançamento inválido.')
@@ -371,7 +373,7 @@ export async function recordSupplyMovement(
     if (amount === undefined || !Number.isInteger(amount) || amount <= 0) throw new SupplyError(unit === 'saco' ? 'Informe a quantidade de sacos.' : 'Informe a quantidade.')
     if (input.type === 'compra' && isMixture(supply)) throw new SupplyError('A mistura não é comprada: lance "Mistura feita".')
     if (input.type === 'consumo') {
-      const mix = input.operationId ? undefined : mixtureUsing(await db.supplies.where('farmId').equals(farmId).toArray(), supply.id)
+      const mix = input.operationId || input.maintenanceId ? undefined : mixtureUsing(await db.supplies.where('farmId').equals(farmId).toArray(), supply.id)
       if (mix) throw new SupplyError(`${supply.name} vai para o cocho misturado: lance o consumo em "${mix.name}".`)
       if (input.pastureId) {
         const p = await db.pastures.get(input.pastureId)
@@ -405,6 +407,7 @@ export async function recordSupplyMovement(
         invoice: input.type === 'compra' ? (input.invoice ?? '').trim().slice(0, 40) : '',
         lot: (input.lot ?? '').trim().slice(0, 40),
         operationId: input.operationId ?? null,
+        maintenanceId: input.maintenanceId ?? null,
         costCents: input.type === 'compra' ? input.costCents! : outCost,
         supplier: input.type === 'compra' ? supplier : '',
         pastureId: input.type === 'consumo' ? (input.pastureId ?? null) : null,
@@ -483,6 +486,7 @@ export async function reverseSupplyMovement(db: ArgoDatabase, id: string, reason
     if (!m) throw new SupplyError('Lançamento não encontrado.')
     if (m.status === 'estornado') throw new SupplyError('Este lançamento já foi estornado.')
     if (m.operationId && !fromOperation) throw new SupplyError('Este consumo é de uma operação de campo: corrija ou cancele pela operação.')
+    if (m.maintenanceId && !fromOperation) throw new SupplyError('Esta baixa é de uma manutenção: corrija ou cancele pela manutenção.')
     const all = await db.supplyMovements.where('farmId').equals(m.farmId).toArray()
     const group = m.batchId ? all.filter((x) => x.batchId === m.batchId && x.status === 'ativo') : [m]
     for (const g of group) {

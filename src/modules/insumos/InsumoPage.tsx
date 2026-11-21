@@ -115,7 +115,15 @@ export function InsumoPage() {
         <Link to="/manejo" className="notice notice-ok" style={{ textDecoration: 'none' }}>
           <Icon name="pasture" />
           <div>
-            A saída deste produto é lançada numa <strong>operação de campo</strong> (Manejo de pastagens), que já calcula o custo por pasto.
+            {cat === 'geral' ? (
+              <>
+                A saída deste produto é lançada numa <strong>manutenção de máquina</strong> ou numa <strong>operação de campo</strong>, com o custo de cada uma.
+              </>
+            ) : (
+              <>
+                A saída deste produto é lançada numa <strong>operação de campo</strong> (Manejo de pastagens), que já calcula o custo por pasto.
+              </>
+            )}
           </div>
         </Link>
       )}

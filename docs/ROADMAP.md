@@ -26,7 +26,7 @@
 | 7.4 | Vacinação com cobertura parcial e várias aplicações por campanha | **concluída** (v0.13.0) |
 | 8 | Manejo e formação de pastagens: herbicidas e sementes no estoque, operações de campo com máquinas e diesel, custo por pasto, painel e relatórios | **concluída** (v0.14.0) |
 | 9.1 | Máquinas: cadastro completo, página da máquina, horímetro digital (iniciar/pausar/encerrar), integração com operações | **concluída** (v0.15.0) |
-| 9.2 | Manutenção programada, checklist diário e alertas | em andamento |
+| 9.2 | Manutenção programada, checklist diário e alertas | **concluída** (v0.16.0) |
 | 9.3 | Diaristas: calendário, fechamento, pagamentos, relatórios | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
 

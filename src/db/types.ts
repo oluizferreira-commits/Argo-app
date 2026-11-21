@@ -106,6 +106,8 @@ export interface Farm extends BaseRecord {
    * (AAAA-MM-DD). Sem itens = 35%. Recebimentos usam o percentual vigente na data deles.
    */
   reserveRates?: { since: string; percent: number }[]
+  /** itens do checklist diário das máquinas (ausente = itens iniciais) */
+  checklistItems?: string[]
 }
 
 export type LandmarkKind = 'referencia' | 'bifurcacao' | 'atencao'
@@ -239,6 +241,8 @@ export interface SupplyMovement extends BaseRecord {
   lot?: string
   /** Lançamento gerado por uma operação de campo (só é corrigido pela operação). */
   operationId?: string | null
+  /** Baixa de peça/óleo/filtro numa manutenção (só é corrigida pela manutenção). */
+  maintenanceId?: string | null
   /** Compra: valor pago (centavos). */
   costCents: number | null
   supplier: string
@@ -300,6 +304,80 @@ export interface MachineSession extends BaseRecord {
   /** operação de campo em que as horas foram lançadas (uma só) */
   operationId: string | null
   notes: string
+}
+
+/**
+ * Plano de manutenção preventiva de uma máquina: intervalo por horas, por dias, ou os dois
+ * (vale o que vencer primeiro). `baseline*` = última vez feita antes de começar a usar o ARGO.
+ */
+export interface MaintenancePlan extends BaseRecord {
+  farmId: string
+  equipmentId: string
+  name: string
+  /** centésimos de hora */
+  intervalHours: number | null
+  intervalDays: number | null
+  /** avisar com antecedência: centésimos de hora / dias */
+  warnHours: number | null
+  warnDays: number | null
+  baselineDate: string | null
+  baselineMeter: number | null
+  active: boolean
+  notes: string
+}
+
+/** Peça, óleo, filtro ou serviço usado numa manutenção. Do estoque (baixa) ou comprado direto (despesa). */
+export interface MaintenancePart {
+  supplyId: string | null
+  description: string
+  /** do estoque: quantidade na unidade do produto (meios sacos, mL ou g) */
+  qty: number | null
+  unit: SupplyUnit | null
+  /** do estoque: custo médio da baixa; comprado direto: valor pago */
+  costCents: number
+  movementId: string | null
+}
+
+/** Manutenção: solicitada (ex.: problema no checklist) ou concluída. */
+export interface MaintenanceRecord extends BaseRecord {
+  farmId: string
+  equipmentId: string
+  planId: string | null
+  kind: string
+  status: 'solicitada' | 'concluida' | 'cancelada'
+  date: string | null
+  /** horímetro no momento (centésimos) */
+  meter: number | null
+  responsibleId: string | null
+  parts: MaintenancePart[]
+  /** mão de obra / oficina paga (despesa) */
+  serviceCents: number
+  /** peças do estoque (custo gerencial, sem nova despesa) */
+  stockCents: number
+  /** comprado direto + serviço (saída financeira) */
+  directCents: number
+  notes: string
+  /** descrição do problema (solicitação) e o checklist de origem */
+  problem: string
+  checklistId: string | null
+  cancelReason: string
+}
+
+export type ChecklistStatus = 'ok' | 'atencao' | 'problema' | 'na'
+
+/** Inspeção diária de uma máquina. Só é gravada com todos os itens marcados. */
+export interface MachineChecklist extends BaseRecord {
+  farmId: string
+  equipmentId: string
+  at: string
+  responsibleId: string | null
+  items: { label: string; status: ChecklistStatus; note: string }[]
+  /** fotos (JPEG reduzido, data URL) */
+  photos: string[]
+  notes: string
+  hasProblem: boolean
+  /** solicitação de manutenção aberta a partir desta inspeção */
+  requestId: string | null
 }
 
 /** Ajuste manual autorizado do horímetro (valor absoluto, centésimos de hora). */
@@ -582,6 +660,9 @@ export interface EntityMap {
   fieldOperations: FieldOperation
   machineSessions: MachineSession
   meterAdjustments: MeterAdjustment
+  maintenancePlans: MaintenancePlan
+  maintenanceRecords: MaintenanceRecord
+  machineChecklists: MachineChecklist
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
@@ -589,7 +670,7 @@ export interface EntityMap {
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments', 'maintenancePlans', 'maintenanceRecords', 'machineChecklists']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

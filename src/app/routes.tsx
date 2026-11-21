@@ -31,6 +31,7 @@ import { VacinacaoPage } from '../modules/vacinacao/VacinacaoPage'
 import { ManejoPage } from '../modules/manejo/ManejoPage'
 import { OperacaoFormPage } from '../modules/manejo/OperacaoFormPage'
 import { OperacaoPage } from '../modules/manejo/OperacaoPage'
+import { ChecklistPage, ManutencaoPage } from '../modules/maquinas/ManutencaoPages'
 import { MaquinaPage } from '../modules/maquinas/MaquinaPage'
 import { MaquinasPage } from '../modules/maquinas/MaquinasPage'
 import { IniciarServicoPage, ServicoPage } from '../modules/maquinas/ServicoPages'
@@ -81,6 +82,8 @@ const implemented: RouteObject[] = [
   { path: '/maquinas/servico/novo', element: <IniciarServicoPage />, handle: t('Iniciar serviço') },
   { path: '/maquinas/servico/:id', element: <ServicoPage />, handle: t('Serviço') },
   { path: '/maquinas/:id', element: <MaquinaPage />, handle: t('Máquina') },
+  { path: '/maquinas/:id/manutencao', element: <ManutencaoPage />, handle: t('Manutenção') },
+  { path: '/maquinas/:id/checklist', element: <ChecklistPage />, handle: t('Checklist diário') },
   { path: '/vacinacao', element: <VacinacaoPage />, handle: t('Vacinação') },
   { path: '/vacinacao/nova', element: <NovaVacinacaoPage />, handle: t('Nova vacinação') },
   { path: '/vacinacao/:id', element: <VacinacaoDetailPage />, handle: t('Vacinação') },

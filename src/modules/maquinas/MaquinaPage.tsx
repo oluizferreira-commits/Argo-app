@@ -10,6 +10,7 @@ import { typeLabel } from '../manejo/operations'
 import { formatDay } from '../rebanho/herd'
 import { absoluteReadings, adjustMeter, equipmentStatus, formatHoursMinutes, formatMeterH, sessionSeconds, STATUS_LABEL } from './machines'
 import { MaquinaForm } from './MaquinaForm'
+import { ChecklistHistory, MaintenanceSection } from './MaintenanceSection'
 import { useMaquinas, useNow } from './useMaquinas'
 
 export function MaquinaPage() {
@@ -113,6 +114,9 @@ export function MaquinaPage() {
           Responsáveis: {people.join(' · ')}
         </p>
       )}
+
+      <MaintenanceSection eq={eq} data={data} />
+      <ChecklistHistory eq={eq} data={data} />
 
       <h2 className="section-title">Histórico de utilização</h2>
       <div className="card" style={{ paddingTop: 4, paddingBottom: 4 }} data-testid="machine-sessions">
