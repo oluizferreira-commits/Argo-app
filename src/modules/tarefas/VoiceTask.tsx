@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { newId } from '../../core/ids'
 import { db } from '../../db/database'
@@ -9,7 +9,7 @@ import { removeTask } from '../pastos/pastures'
 import { todayLocal } from '../rebanho/herd'
 import { usePastures } from '../rebanho/useHerd'
 import { useResponsibles } from '../responsaveis/useResponsibles'
-import { listen, speechSupported, type SpeechFailure } from './speech'
+import { isIOS, listen, preferKeyboardDictation, speechSupported, type SpeechFailure } from './speech'
 import { createTask } from './tasks'
 import { parseSpokenTask, type SpokenTask } from './voice'
 
@@ -48,7 +48,7 @@ const FAIL_TEXT: Record<SpeechFailure, string> = {
   'sem-suporte': 'Este aparelho não liberou o reconhecimento de voz dentro do app.',
   negado: 'O microfone não foi liberado para o ARGO.',
   'sem-internet': 'Sem internet, o reconhecimento de voz do app não respondeu.',
-  'nada-ouvido': 'Não ouvi nada. Fale perto do celular.',
+  'nada-ouvido': 'O reconhecimento de voz do app não captou nada.',
   erro: 'O reconhecimento de voz não respondeu.',
 }
 
@@ -60,8 +60,14 @@ function VoiceSheet({ session: first, onClose }: { session: Session | null; onCl
   const { farm } = useFarm()
   const pastures = usePastures() ?? []
   const people = (useResponsibles() ?? []).filter((r) => r.active)
-  const [mode, setMode] = useState<Mode>(() => (first ? { k: 'ouvindo', heard: '' } : { k: 'digitar', reason: 'sem-suporte' }))
+  const [mode, setMode] = useState<Mode>(() => (first ? { k: 'ouvindo', heard: '' } : { k: 'digitar', reason: null }))
   const [typed, setTyped] = useState('')
+  const textRef = useRef<HTMLTextAreaElement>(null)
+  // o teclado já foi aberto no toque do botão (campo auxiliar); aqui o foco passa para o campo da tarefa
+  useLayoutEffect(() => {
+    if (mode.k === 'digitar') textRef.current?.focus()
+  }, [mode.k])
+  const preview = typed.trim().length > 3 ? parseSpokenTask(typed, { today: todayLocal(), pastures, responsibles: people }) : null
   const [session, setSession] = useState<Session | null>(first)
   const ctxRef = useRef({ pastures, people })
   useEffect(() => {
@@ -144,14 +150,23 @@ function VoiceSheet({ session: first, onClose }: { session: Session | null; onCl
             }}
             data-testid="voice-type"
           >
-            {mode.reason && mode.reason !== 'nada-ouvido' && <div className="notice notice-warn">
-              <Icon name="mic" />
-              <div>
-                {FAIL_TEXT[mode.reason]} Use o <strong>microfone do teclado</strong>: toque no campo abaixo e depois no ícone de microfone do teclado do iPhone — ele funciona até sem internet nos modelos recentes.
+            {mode.reason ? (
+              <div className="notice notice-warn">
+                <Icon name="mic" />
+                <div>{FAIL_TEXT[mode.reason]} Use o ditado do teclado, como explicado abaixo.</div>
               </div>
-            </div>}
-            {mode.reason === 'nada-ouvido' && <p className="muted">{FAIL_TEXT['nada-ouvido']} Tente de novo ou dite pelo microfone do teclado.</p>}
+            ) : null}
+            <ol className="dictation-steps" data-testid="dictation-steps">
+              <li>
+                Toque no <b>microfone</b> <Icon name="mic" size={16} /> do teclado{isIOS() ? ' (embaixo, à direita)' : ''}.
+              </li>
+              <li>Fale a tarefa. Ex.: “amanhã arrumar a cerca do Pasto da Represa, urgente, pro Zé”.</li>
+              <li>
+                Toque em <b>Anotar tarefa</b>.
+              </li>
+            </ol>
             <textarea
+              ref={textRef}
               className="input"
               rows={3}
               autoFocus
@@ -160,10 +175,27 @@ function VoiceSheet({ session: first, onClose }: { session: Session | null; onCl
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
             />
+            {preview && preview.understood.length > 0 && (
+              <div className="herd-cats" data-testid="voice-preview">
+                <span className="muted" style={{ fontSize: 13 }}>
+                  Entendi:
+                </span>
+                {preview.understood.map((u) => (
+                  <span key={u} className="herd-cat">
+                    {u}
+                  </span>
+                ))}
+              </div>
+            )}
             <button type="submit" className="btn btn-gold btn-block" disabled={!typed.trim()} data-testid="voice-save">
               <Icon name="check" /> Anotar tarefa
             </button>
-            {speechSupported() && (
+            {isIOS() && (
+              <p className="muted" style={{ fontSize: 13 }}>
+                Não aparece o microfone no teclado? Ative em Ajustes › Geral › Teclado › Ativar Ditado.
+              </p>
+            )}
+            {speechSupported() && !isIOS() && (
               <button type="button" className="btn btn-outline btn-block" onClick={start}>
                 <Icon name="mic" /> Tentar falar de novo
               </button>
@@ -212,7 +244,7 @@ function VoiceSheet({ session: first, onClose }: { session: Session | null; onCl
               className="btn btn-gold btn-block"
               onClick={() => {
                 setTyped('')
-                if (speechSupported()) start()
+                if (!preferKeyboardDictation()) start()
                 else setMode({ k: 'digitar', reason: null })
               }}
             >
@@ -240,9 +272,17 @@ function VoiceSheet({ session: first, onClose }: { session: Session | null; onCl
 /** Botão "Falar tarefa" (Painel e aba Tarefas). */
 export function VoiceTaskButton({ variant = 'cta' }: { variant?: 'cta' | 'icon' }) {
   const [open, setOpen] = useState<{ session: Session | null } | null>(null)
-  const openSheet = () => setOpen({ session: speechSupported() ? startSession() : null })
+  const proxy = useRef<HTMLInputElement>(null)
+  const openSheet = () => {
+    if (preferKeyboardDictation()) {
+      // iPhone: só abre o teclado se o foco acontecer dentro do toque; foca um campo auxiliar já existente
+      proxy.current?.focus()
+      setOpen({ session: null })
+    } else setOpen({ session: startSession() })
+  }
   return (
     <>
+      <input ref={proxy} className="kb-proxy" aria-hidden="true" tabIndex={-1} />
       {variant === 'cta' ? (
         <button type="button" className="voice-cta" onClick={openSheet} data-testid="qa-voz">
           <span className="voice-cta-mic">

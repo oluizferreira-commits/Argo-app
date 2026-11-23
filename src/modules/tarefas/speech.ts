@@ -35,6 +35,20 @@ export function speechSupported(): boolean {
   return typeof window !== 'undefined' && ctor() !== null
 }
 
+/** iPhone/iPad (inclui iPad que se apresenta como Mac). */
+export function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+/**
+ * No iPhone, o reconhecimento de voz do navegador não é confiável (com o app instalado na tela de início
+ * ele costuma não receber o áudio). Lá o caminho principal é o ditado do teclado da Apple.
+ */
+export function preferKeyboardDictation(): boolean {
+  return isIOS() || !speechSupported()
+}
+
 export type SpeechFailure = 'sem-suporte' | 'negado' | 'sem-internet' | 'nada-ouvido' | 'erro'
 
 export interface ListenHandlers {
@@ -61,8 +75,20 @@ export function listen(h: ListenHandlers): () => void {
   const finish = (fn: () => void) => {
     if (done) return
     done = true
+    clearTimeout(watchdog)
     fn()
   }
+  // se nada for ouvido em alguns segundos, desiste (e a tela oferece o ditado do teclado)
+  const watchdog = setTimeout(() => {
+    if (!lastHeard) {
+      try {
+        rec.abort()
+      } catch {
+        /* já parou */
+      }
+      finish(() => h.onFail('nada-ouvido'))
+    }
+  }, 8000)
   rec.onresult = (e) => {
     let interim = ''
     for (let i = e.resultIndex; i < e.results.length; i++) {

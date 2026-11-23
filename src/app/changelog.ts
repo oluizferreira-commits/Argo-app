@@ -13,6 +13,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.23.1',
+    date: '2026-11-23',
+    title: 'Tarefa por voz corrigida no iPhone',
+    items: [
+      'No iPhone, a tarefa por voz agora usa o ditado do teclado da Apple, que funciona de verdade (até sem internet): o teclado já abre pronto, é só tocar no microfone e falar.',
+      'Antes de anotar, o ARGO mostra o que entendeu: prazo, pasto, responsável e urgência.',
+      'Se o reconhecimento de voz não captar nada em 8 segundos, passa sozinho para o ditado do teclado.',
+    ],
+  },
+  {
     version: '0.23.0',
     date: '2026-11-23',
     title: 'Novidades dentro do app',

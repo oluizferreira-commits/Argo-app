@@ -3998,3 +3998,30 @@ i.flow-out,
   line-height: 1.45;
   color: var(--ink-2);
 }
+
+/* ditado pelo teclado (iPhone) */
+.kb-proxy {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px; /* evita zoom do iPhone */
+  border: 0;
+  padding: 0;
+  pointer-events: none;
+}
+.dictation-steps {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.dictation-steps svg {
+  vertical-align: -3px;
+  color: var(--gold-300);
+}

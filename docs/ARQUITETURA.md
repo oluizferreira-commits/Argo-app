@@ -276,7 +276,11 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
   estiver dada. A coordenada enviada é arredondada (~1 km). Última leitura guardada no aparelho
   (`localStorage`) e mostrada offline com a hora; atualiza quando passar de 30 min. Nome da cidade:
   Photon/Nominatim (OpenStreetMap). Nada disso vai para o banco.
-- **Tarefa por voz** (`src/modules/tarefas/voice.ts`, `speech.ts`, `VoiceTask.tsx`): reconhecimento de
+- **Tarefa por voz** — no iPhone (e onde não houver reconhecimento) o caminho principal é o **ditado do
+  teclado da Apple**: o toque no botão foca um campo auxiliar (o iOS só abre o teclado num gesto) e o foco passa
+  ao campo da tarefa; a tela mostra "Entendi: …" antes de anotar. Motivo: com o app instalado na tela de início,
+  a Web Speech API do iOS existe mas não recebe áudio. Nos demais aparelhos, se nada for captado em 8 s, a
+  escuta é cancelada e cai no ditado do teclado. Detalhes técnicos: (`src/modules/tarefas/voice.ts`, `speech.ts`, `VoiceTask.tsx`): reconhecimento de
   fala do próprio navegador (pt-BR), iniciado dentro do toque (exigência do iPhone). O texto é interpretado
   (`parseSpokenTask`: prazo, pasto pelo nome, responsável com "pro/para o", "urgente" → alta) e a tarefa
   é criada na hora pela mesma `createTask` (com "Desfazer" = exclusão lógica). Se a voz do app não
