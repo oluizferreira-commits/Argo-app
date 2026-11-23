@@ -28,58 +28,103 @@ const QUICK_OPTIONS: Option[] = [
   { label: 'Criar tarefa', detail: 'Anotar com prazo, responsável e pasto', icon: 'clipboard', to: '/tarefas' },
 ]
 
-export function QuickLaunch() {
-  const [open, setOpen] = useState(false)
+/** Tudo o que hoje já entra como despesa no ARGO (cada um no seu módulo, sem lançamento em dobro). */
+const EXPENSE_OPTIONS: Option[] = [
+  { label: 'Compra de diesel', detail: 'Posto, litros e valor — entra nas despesas do mês', icon: 'fuel', to: '/diesel?novo=compra' },
+  { label: 'Compra de insumo', detail: 'Sal, mistura, herbicida, semente e outros', icon: 'sack', to: '/insumos' },
+  { label: 'Manutenção de máquina', detail: 'Peças e serviço — escolha a máquina', icon: 'gear', to: '/maquinas' },
+  { label: 'Pagamento de diarista', detail: 'Pelo calendário do diarista', icon: 'people', to: '/diaristas' },
+  { label: 'Outras despesas (energia, impostos…)', detail: 'Em breve. Ainda não existe lançamento avulso de despesa', icon: 'wallet', to: null },
+]
+
+/** Atalhos grandes do Painel: as ações mais usadas no campo. */
+const ACTIONS: { label: string; icon: IconName; to?: string; sheet?: 'despesa'; testId: string }[] = [
+  { label: 'Movimentar animais', icon: 'herd', to: '/rebanho/movimentar', testId: 'qa-animais' },
+  { label: 'Nova venda', icon: 'cash', to: '/vendas/nova', testId: 'qa-venda' },
+  { label: 'Novo serviço', icon: 'clock', to: '/maquinas/servico/novo', testId: 'qa-servico' },
+  { label: 'Abastecimento', icon: 'fuel', to: '/diesel?novo=consumo', testId: 'qa-abastecimento' },
+  { label: 'Tarefa', icon: 'clipboard', to: '/tarefas', testId: 'qa-tarefa' },
+  { label: 'Despesa', icon: 'wallet', sheet: 'despesa', testId: 'qa-despesa' },
+]
+
+function Sheet({ title, options, onClose }: { title: string; options: Option[]; onClose: () => void }) {
   useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open])
+  }, [onClose])
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} data-testid="quick-sheet">
+        <div className="sheet-grip" aria-hidden="true" />
+        <div className="sheet-head">
+          <strong>{title}</strong>
+          <button className="btn btn-outline btn-icon" aria-label="Fechar" onClick={onClose}>
+            <Icon name="chevronLeft" size={20} />
+          </button>
+        </div>
+        <div className="module-list sheet-list">
+          {options.map((o) =>
+            o.to ? (
+              <Link key={o.label} to={o.to} onClick={onClose}>
+                <div className="status-icon">
+                  <Icon name={o.icon} />
+                </div>
+                <div className="status-body">
+                  <div className="status-label">{o.label}</div>
+                  <div className="status-detail">{o.detail}</div>
+                </div>
+                <Icon name="chevronRight" size={20} className="muted" />
+              </Link>
+            ) : (
+              <div key={o.label} className="sheet-disabled" aria-disabled="true">
+                <div className="status-icon">
+                  <Icon name={o.icon} />
+                </div>
+                <div className="status-body">
+                  <div className="status-label">{o.label}</div>
+                  <div className="status-detail">{o.detail}</div>
+                </div>
+                <span className="badge badge-gold">Em breve</span>
+              </div>
+            ),
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function QuickLaunch() {
+  const [open, setOpen] = useState<null | 'todos' | 'despesa'>(null)
+  const close = () => setOpen(null)
   return (
     <>
-      <button className="btn btn-gold btn-block quick-launch" onClick={() => setOpen(true)} data-testid="quick-launch">
-        <Icon name="plus" /> Novo lançamento
+      <h2 className="section-title">Ações rápidas</h2>
+      <div className="quick-actions" data-testid="quick-actions">
+        {ACTIONS.map((a) =>
+          a.to ? (
+            <Link key={a.label} to={a.to} className="qa" data-testid={a.testId}>
+              <span className="qa-icon">
+                <Icon name={a.icon} size={24} />
+              </span>
+              <span className="qa-label">{a.label}</span>
+            </Link>
+          ) : (
+            <button key={a.label} type="button" className="qa" onClick={() => setOpen('despesa')} data-testid={a.testId}>
+              <span className="qa-icon">
+                <Icon name={a.icon} size={24} />
+              </span>
+              <span className="qa-label">{a.label}</span>
+            </button>
+          ),
+        )}
+      </div>
+      <button className="btn btn-gold btn-block quick-launch" onClick={() => setOpen('todos')} data-testid="quick-launch">
+        <Icon name="plus" /> Todos os lançamentos
       </button>
-      {open && (
-        <div className="sheet-backdrop" onClick={() => setOpen(false)}>
-          <div className="sheet" role="dialog" aria-modal="true" aria-label="Novo lançamento" onClick={(e) => e.stopPropagation()} data-testid="quick-sheet">
-            <div className="sheet-head">
-              <strong>Novo lançamento</strong>
-              <button className="btn btn-outline btn-icon" aria-label="Fechar" onClick={() => setOpen(false)}>
-                <Icon name="chevronLeft" size={20} />
-              </button>
-            </div>
-            <div className="module-list sheet-list">
-              {QUICK_OPTIONS.map((o) =>
-                o.to ? (
-                  <Link key={o.label} to={o.to} onClick={() => setOpen(false)}>
-                    <div className="status-icon">
-                      <Icon name={o.icon} />
-                    </div>
-                    <div className="status-body">
-                      <div className="status-label">{o.label}</div>
-                      <div className="status-detail">{o.detail}</div>
-                    </div>
-                    <Icon name="chevronRight" size={20} className="muted" />
-                  </Link>
-                ) : (
-                  <div key={o.label} className="sheet-disabled" aria-disabled="true">
-                    <div className="status-icon">
-                      <Icon name={o.icon} />
-                    </div>
-                    <div className="status-body">
-                      <div className="status-label">{o.label}</div>
-                      <div className="status-detail">{o.detail}</div>
-                    </div>
-                    <span className="badge badge-gold">Em breve</span>
-                  </div>
-                ),
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {open === 'todos' && <Sheet title="Novo lançamento" options={QUICK_OPTIONS} onClose={close} />}
+      {open === 'despesa' && <Sheet title="Lançar despesa" options={EXPENSE_OPTIONS} onClose={close} />}
     </>
   )
 }

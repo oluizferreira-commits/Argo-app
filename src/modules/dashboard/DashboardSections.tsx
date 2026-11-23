@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { formatDateTime } from '../../core/format'
 import { formatMoney } from '../../core/money'
 import { db } from '../../db/database'
+import { ZebuSilhouette, Topography } from '../../components/Art'
 import { Icon } from '../../components/Icon'
 import { setTaskDone } from '../pastos/pastures'
 import { MONTHS } from '../relatorios/reports'
@@ -12,12 +13,64 @@ const n = (v: number) => v.toLocaleString('pt-BR')
 
 // ------------------------------------------------------------------ indicadores
 
-function Kpi({ to, label, value, detail, testId, tone }: { to: string; label: string; value: string; detail: string; testId: string; tone?: 'warn' }) {
+const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 1000) / 10 : 0)
+
+/** Anel de proporção (ex.: pastos ocupados). */
+function Ring({ value, total }: { value: number; total: number }) {
+  const r = 26
+  const c = 2 * Math.PI * r
+  const f = total > 0 ? value / total : 0
   return (
-    <Link to={to} className="kpi" data-testid={testId}>
-      <span className="kpi-label">{label}</span>
-      <span className={`kpi-value${tone === 'warn' ? ' kpi-warn' : ''}`}>{value}</span>
-      <span className="kpi-detail">{detail}</span>
+    <svg className="ring" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r={r} className="ring-track" />
+      <circle cx="32" cy="32" r={r} className="ring-fill" strokeDasharray={`${c * f} ${c}`} transform="rotate(-90 32 32)" />
+    </svg>
+  )
+}
+
+function HerdPanel({ ind }: { ind: Indicators }) {
+  const total = ind.herdMales + ind.herdFemales + ind.herdUnspecified
+  const parts = [
+    { key: 'f', label: 'Fêmeas', n: ind.herdFemales },
+    { key: 'm', label: 'Machos', n: ind.herdMales },
+    { key: 'u', label: 'A especificar', n: ind.herdUnspecified },
+  ].filter((p) => p.n > 0)
+  return (
+    <Link to="/rebanho" className="ind ind-herd" data-testid="kpi-animais">
+      <ZebuSilhouette className="ind-herd-art" />
+      <span className="ind-label">Rebanho total</span>
+      <span className="ind-big">
+        {n(ind.animals)}
+        <small>{ind.animals === 1 ? 'cabeça' : 'cabeças'}</small>
+      </span>
+      {total > 0 ? (
+        <>
+          <span className="sexbar" aria-hidden="true">
+            {parts.map((p) => (
+              <i key={p.key} className={`sx-${p.key}`} style={{ width: `${pct(p.n, total)}%` }} />
+            ))}
+          </span>
+          <span className="sexlegend">
+            {parts.map((p) => (
+              <span key={p.key}>
+                <i className={`dot sx-${p.key}`} />
+                {p.label} <b>{n(p.n)}</b>
+              </span>
+            ))}
+          </span>
+          {ind.herdCategories.length > 0 && (
+            <span className="herd-cats">
+              {ind.herdCategories.slice(0, 4).map((c) => (
+                <span key={c.id} className="herd-cat">
+                  <b>{n(c.count)}</b> {c.label}
+                </span>
+              ))}
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="ind-detail">Nenhum animal lançado ainda. Toque para abrir o Rebanho.</span>
+      )}
     </Link>
   )
 }
@@ -30,36 +83,78 @@ export function IndicatorsSection({ ind, today }: { ind: Indicators; today: stri
     ind.maintenanceExpenseCents && `manutenção ${formatMoney(ind.maintenanceExpenseCents)}`,
     ind.workerExpenseCents && `diaristas ${formatMoney(ind.workerExpenseCents)}`,
   ].filter(Boolean)
+  const flowMax = Math.max(ind.receivedMonthCents, ind.expensesMonthCents)
+  const balance = ind.receivedMonthCents - ind.expensesMonthCents
   return (
     <>
-      <h2 className="section-title">Indicadores da fazenda</h2>
-      <div className="kpi-grid" data-testid="indicators">
-        <Kpi to="/rebanho" label="Animais" value={n(ind.animals)} detail="no rebanho hoje" testId="kpi-animais" />
-        <Kpi to="/pastos" label="Pastos" value={`${n(ind.occupiedPastures)} de ${n(ind.pastures)}`} detail="ocupados / cadastrados" testId="kpi-pastos" />
-        <Kpi
-          to="/receber"
-          label="A receber"
-          value={formatMoney(ind.openCents)}
-          detail={ind.overdueCents ? `vencido ${formatMoney(ind.overdueCents)}` : 'nada vencido'}
-          tone={ind.overdueCents ? 'warn' : undefined}
-          testId="kpi-receber"
-        />
-        <Kpi to="/pagamentos" label={`Receitas de ${month}`} value={formatMoney(ind.receivedMonthCents)} detail="dinheiro recebido no mês" testId="kpi-receitas" />
-        <Kpi
-          to={ind.supplyExpenseCents > ind.fuelExpenseCents ? '/insumos' : '/diesel'}
-          label={`Despesas de ${month}`}
-          value={formatMoney(ind.expensesMonthCents)}
-          detail={expenseParts.length ? expenseParts.join(' · ') : 'compras de diesel e insumos'}
-          testId="kpi-despesas"
-        />
-        <Kpi
-          to="/reserva"
-          label="Reserva (conta separada)"
-          value={formatMoney(ind.reserveCents)}
-          detail={ind.reservePendingCents ? `falta separar ${formatMoney(ind.reservePendingCents)}` : 'em dia'}
-          tone={ind.reservePendingCents ? 'warn' : undefined}
-          testId="kpi-reserva"
-        />
+      <h2 className="section-title">Visão da fazenda</h2>
+      <div className="ind-grid" data-testid="indicators">
+        <HerdPanel ind={ind} />
+
+        <Link to="/pastos" className="ind ind-pastos" data-testid="kpi-pastos">
+          <Topography className="ind-topo" />
+          <span className="ind-label">Pastos</span>
+          <span className="ind-ring">
+            <Ring value={ind.occupiedPastures} total={ind.pastures} />
+            <span className="ind-mid">
+              {n(ind.occupiedPastures)} de {n(ind.pastures)}
+            </span>
+          </span>
+          <span className="ind-detail">ocupados / cadastrados</span>
+        </Link>
+
+        <Link to="/receber" className="ind ind-receber" data-testid="kpi-receber">
+          <span className="ind-label">A receber</span>
+          <span className="ind-money ind-gold">{formatMoney(ind.openCents)}</span>
+          <span className={`ind-detail${ind.overdueCents ? ' ind-alert' : ''}`}>
+            {ind.overdueCents ? `vencido ${formatMoney(ind.overdueCents)}` : 'nada vencido'}
+          </span>
+        </Link>
+
+        <div className="ind ind-flow">
+          <span className="ind-label">Fluxo de {month}</span>
+          <Link to="/pagamentos" className="flow-line" data-testid="kpi-receitas">
+            <span className="flow-head">
+              <span>
+                <i className="dot flow-in" /> Receitas de {month}
+              </span>
+              <b className="flow-value">{formatMoney(ind.receivedMonthCents)}</b>
+            </span>
+            <span className="flow-bar">
+              <i className="flow-in" style={{ width: `${pct(ind.receivedMonthCents, flowMax)}%` }} />
+            </span>
+            <span className="ind-detail">dinheiro recebido no mês</span>
+          </Link>
+          <Link to={ind.supplyExpenseCents > ind.fuelExpenseCents ? '/insumos' : '/diesel'} className="flow-line" data-testid="kpi-despesas">
+            <span className="flow-head">
+              <span>
+                <i className="dot flow-out" /> Despesas de {month}
+              </span>
+              <b className="flow-value">{formatMoney(ind.expensesMonthCents)}</b>
+            </span>
+            <span className="flow-bar">
+              <i className="flow-out" style={{ width: `${pct(ind.expensesMonthCents, flowMax)}%` }} />
+            </span>
+            <span className="ind-detail">{expenseParts.length ? expenseParts.join(' · ') : 'compras de diesel e insumos'}</span>
+          </Link>
+          <span className="flow-balance">
+            Saldo do mês <b className={balance < 0 ? 'neg' : 'pos'}>{formatMoney(balance)}</b>
+          </span>
+        </div>
+
+        <Link to="/reserva" className="ind ind-reserva" data-testid="kpi-reserva">
+          <span className="ind-vault">
+            <Icon name="vault" size={26} />
+          </span>
+          <span className="ind-reserva-body">
+            <span className="ind-label">Reserva (conta separada)</span>
+            <span className="ind-money">{formatMoney(ind.reserveCents)}</span>
+            <span className={`ind-detail${ind.reservePendingCents ? ' ind-alert' : ''}`}>
+              {ind.reservePendingCents ? `falta separar ${formatMoney(ind.reservePendingCents)}` : 'em dia'}
+            </span>
+          </span>
+          <Icon name="chevronRight" size={20} className="muted" />
+        </Link>
       </div>
     </>
   )
@@ -74,7 +169,7 @@ export function PendingCenter({ items }: { items: Pendency[] }) {
   const shown = all ? items : items.slice(0, SHOW_PENDENCIES)
   return (
     <>
-      <h2 className="section-title section-title-row">
+      <h2 className="section-title section-title-row" id="pendencias">
         Central de Pendências
         <span className={`badge ${items.length ? 'badge-warn' : 'badge-ok'}`} data-testid="pending-count">
           {items.length}
@@ -88,7 +183,7 @@ export function PendingCenter({ items }: { items: Pendency[] }) {
       ) : (
         <div className="card pending-list" data-testid="pending-center">
           {shown.map((p) => (
-            <Link key={p.id} to={p.to} className="pending-row" data-testid={`pend-${p.id}`}>
+            <Link key={p.id} to={p.to} className={`pending-row pr-${p.priority}`} data-testid={`pend-${p.id}`}>
               <span className={`prio prio-${p.priority}`} title={`Prioridade ${PRIORITY_LABEL[p.priority].toLowerCase()}`}>
                 <Icon name={p.icon} size={18} />
               </span>

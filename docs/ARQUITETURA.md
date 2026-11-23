@@ -216,6 +216,24 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 - Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
 - **Relatório do diesel** (em Relatórios, id `diesel`; atalho `/relatorios?r=diesel`): resumo (comprado, consumido, custo, custo médio e estoque no fim do período), por semana (período mensal, semanas de segunda a domingo) ou por mês (período anual), por equipamento (litros, custo, horas/km trabalhados e média L/h ou km/L), por responsável, compras e abastecimentos. Média do medidor: litros de cada abastecimento com leitura ÷ horas (ou km) desde o abastecimento anterior do mesmo equipamento.
 
+## Identidade visual "Terra & Tecnologia" (design system)
+
+- Tudo em `src/styles/global.css`, por tokens no `:root`: fundo verde-floresta em camadas
+  (`--bg`, `--layer-1..3`, `--field` para campos), dourado envelhecido (`--gold`) para valores e ação,
+  areia/creme para texto (`--ink`, `--ink-2`, `--ink-3`), estados (`--ok`, `--warn`, `--danger`, `--info`).
+  Os nomes antigos (`--surface`, `--green-*`, `--gold-*`) continuam como apelidos, então os módulos
+  herdam o tema sem mudar código.
+- Fontes: Fraunces (títulos e números, empacotada com o app via `@fontsource-variable/fraunces`,
+  funciona offline) e a fonte do sistema no texto.
+- Ilustrações vetoriais em `src/components/Art.tsx` (boi nelore, paisagem, curvas de nível):
+  sem imagens para baixar e sem representar dados da fazenda.
+- Animações curtas (entrada de tela, indicadores, folhas) usam `animation-fill-mode: backwards`
+  (não deixam `transform` ativo, o que quebraria elementos `position: fixed`) e respeitam
+  "Reduzir movimento" do iPhone.
+- Painel: o cabeçalho é parte da tela (sem faixa); sino rola até a Central de Pendências;
+  engrenagem abre Configurações. "Despesa" nas ações rápidas abre só os lançamentos que já existem
+  (diesel, insumo, manutenção, diarista); despesa avulsa continua "Em breve".
+
 ## Tarefas (aba própria)
 
 - Usa a mesma tabela `pastureTasks` dos serviços de pasto (sem nova versão do banco: os campos novos não são indexados).

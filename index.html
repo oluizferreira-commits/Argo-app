@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>ARGO — Gestão Pecuária</title>
     <meta name="description" content="ARGO — Gestão Pecuária" />
-    <meta name="theme-color" content="#276153" />
+    <meta name="theme-color" content="#102F26" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- iPhone: instalação na tela inicial -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,7 +16,13 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" aria-label="Carregando o ARGO"><img src="/logo-mark.svg" alt="" width="72" height="72" /></div></div>
+    <style>
+      html, body { margin: 0; background: #102f26; }
+      .boot { min-height: 100vh; display: grid; place-items: center; background: radial-gradient(90% 50% at 50% 30%, #1a4838, #102f26 70%); }
+      .boot img { animation: boot 1.4s ease-in-out infinite; }
+      @keyframes boot { 0%, 100% { opacity: .4; transform: scale(.95) } 50% { opacity: 1; transform: scale(1) } }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

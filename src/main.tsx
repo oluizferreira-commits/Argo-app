@@ -7,6 +7,7 @@ import { getDeviceId } from './db/device'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { FarmGate } from './modules/fazendas/FarmGate'
 import { requestPersistentStorage } from './platform/storage'
+import '@fontsource-variable/fraunces/wght.css'
 import './styles/global.css'
 
 async function boot() {

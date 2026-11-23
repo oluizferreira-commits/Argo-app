@@ -39,8 +39,8 @@ export default defineConfig({
         scope: base,
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#276153',
-        theme_color: '#276153',
+        background_color: '#102F26',
+        theme_color: '#102F26',
         categories: ['business', 'productivity'],
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
@@ -49,7 +49,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,woff2}'],
         // a imagem de prévia do link é só para o WhatsApp: não precisa ficar no aparelho
         // og-acesso.jpg: só para a prévia do WhatsApp. html2canvas/purify/canvg (index.es): partes opcionais
         // do gerador de PDF que o ARGO não usa (HTML/SVG para PDF) — nunca são carregadas.

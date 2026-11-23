@@ -3,6 +3,7 @@
  * Agenda Operacional e Atividades recentes. Tudo vem de dados reais já lançados nos módulos.
  */
 import { formatMoney } from '../../core/money'
+import { category, type CategoryId } from '../../domain/categories'
 import type {
   AuditEntry,
   Client,
@@ -111,6 +112,12 @@ export interface Indicators {
   /** saldo da reserva (conta separada) */
   reserveCents: number
   reservePendingCents: number
+  /** composição do rebanho (pastos ativos): machos, fêmeas e contagem a especificar */
+  herdMales: number
+  herdFemales: number
+  herdUnspecified: number
+  /** categorias com animais, da maior para a menor */
+  herdCategories: { id: CategoryId; label: string; count: number }[]
 }
 
 export function computeIndicators(d: DashboardData, today: string): Indicators {
@@ -123,6 +130,24 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
   }
   const animals = pastures.reduce((a, p) => a + (perPasture.get(p.id) ?? 0), 0)
   const occupied = pastures.filter((p) => (perPasture.get(p.id) ?? 0) > 0).length
+  const alivePastures = new Set(pastures.map((p) => p.id))
+  const perCategory = new Map<CategoryId, number>()
+  for (const [k, v] of balances) {
+    const [pid, cat] = k.split('|') as [string, CategoryId]
+    if (alivePastures.has(pid) && v > 0) perCategory.set(cat, (perCategory.get(cat) ?? 0) + v)
+  }
+  let herdMales = 0
+  let herdFemales = 0
+  let herdUnspecified = 0
+  const herdCategories: Indicators['herdCategories'] = []
+  for (const [id, count] of perCategory) {
+    const c = category(id)
+    if (c.unspecified) herdUnspecified += count
+    else if (c.sex === 'M') herdMales += count
+    else herdFemales += count
+    herdCategories.push({ id, label: c.plural, count })
+  }
+  herdCategories.sort((a, b) => b.count - a.count)
 
   const paymentsBySale = new Map<string, Payment[]>()
   for (const p of d.payments) paymentsBySale.set(p.saleId, [...(paymentsBySale.get(p.saleId) ?? []), p])
@@ -159,6 +184,10 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
     workerExpenseCents,
     reserveCents: reserve.balanceCents,
     reservePendingCents: reserve.pendingCents,
+    herdMales,
+    herdFemales,
+    herdUnspecified,
+    herdCategories,
   }
 }
 

@@ -95,6 +95,15 @@ describe('indicadores', () => {
     expect(ind.expensesMonthCents).toBe(75000)
     expect(ind.reserveCents).toBe(0) // nada depositado: a receber não entra no saldo
     expect(ind.reservePendingCents).toBe(35000)
+    // composição do rebanho (painel do rebanho): soma igual ao total, sem inventar categoria
+    expect(ind.herdMales).toBe(8)
+    expect(ind.herdFemales).toBe(0)
+    expect(ind.herdUnspecified).toBe(20)
+    expect(ind.herdCategories.map((c) => [c.id, c.count])).toEqual([
+      ['femea-a-especificar', 20],
+      ['boi', 8],
+    ])
+    expect(ind.herdMales + ind.herdFemales + ind.herdUnspecified).toBe(ind.animals)
   })
 })
 

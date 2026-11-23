@@ -14,32 +14,23 @@ export function Layout() {
 
   return (
     <div className="app">
-      <header className="header">
-        {isHome ? (
-          <div className="brand">
-            <img src={`${import.meta.env.BASE_URL}logo-mark.svg`} alt="" />
-            <div style={{ minWidth: 0 }}>
-              <div className="brand-name">ARGO</div>
-              <div className="brand-sub">Gestão Pecuária</div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {!isTab && (
-              <button className="header-back" onClick={() => navigate(-1)} aria-label="Voltar">
-                <Icon name="chevronLeft" size={26} />
-              </button>
-            )}
-            <h1 className="header-title">{title}</h1>
-          </>
-        )}
-        <span className={`net-pill${online ? '' : ' offline'}`} aria-live="polite">
-          <Icon name={online ? 'cloud' : 'cloudOff'} size={16} />
-          {online ? 'Online' : 'Offline'}
-        </span>
-      </header>
+      {/* no Painel o cabeçalho faz parte da própria tela (integrado ao fundo) */}
+      {!isHome && (
+        <header className="header">
+          {!isTab && (
+            <button className="header-back" onClick={() => navigate(-1)} aria-label="Voltar">
+              <Icon name="chevronLeft" size={24} />
+            </button>
+          )}
+          <h1 className="header-title">{title}</h1>
+          <span className={`net-pill${online ? '' : ' offline'}`} aria-live="polite">
+            <Icon name={online ? 'cloud' : 'cloudOff'} size={15} />
+            {online ? 'Online' : 'Offline'}
+          </span>
+        </header>
+      )}
 
-      <main className="main">
+      <main className={`main${isHome ? ' is-home' : ''}`} key={pathname}>
         <Outlet />
       </main>
 
