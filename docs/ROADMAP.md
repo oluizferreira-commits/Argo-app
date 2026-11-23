@@ -30,6 +30,7 @@
 | 9.3 | Diaristas: calendário, fechamento, pagamentos, vínculo com operações; relatórios de máquinas e diaristas | **concluída** (v0.17.0) |
 | 9.4 | Aba Tarefas: anotar rápido, detalhes, prazo, responsável, prioridade, integração com Painel | **concluída** (v0.18.0) |
 | 10.1 | Reformulação visual "Terra & Tecnologia": design system, cabeçalho, navegação e Painel | **concluída** (v0.19.0) |
+| 10.1b | Clima (fazenda e onde estou), tarefa por voz, paisagem com gado e vaqueiro animados | **concluída** (v0.20.0) |
 | 10.2 | Layouts próprios de Rebanho, Pastos, Financeiro e demais módulos (após aprovação do Painel) | próxima |
 | 9.5 | Próximos passos possíveis: depreciação de máquinas, feriados no calendário, sincronização em nuvem | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |

@@ -4,7 +4,9 @@ import { FarmLandscape } from '../../components/Art'
 import { Icon } from '../../components/Icon'
 import { useOnline } from '../../hooks/useOnline'
 import { isStandalone } from '../../platform/storage'
+import { HeroWeather } from '../clima/WeatherWidgets'
 import { useFarm } from '../fazendas/FarmContext'
+import { VoiceTaskButton } from '../tarefas/VoiceTask'
 import { AgendaSection, IndicatorsSection, PendingCenter, RecentActivity } from './DashboardSections'
 import { QuickLaunch } from './QuickLaunch'
 import { RunningServicesBanner } from '../maquinas/RunningServicesBanner'
@@ -64,6 +66,7 @@ export function DashboardPage() {
 
       <section className="home-hero" data-testid="welcome">
         <FarmLandscape className="home-hero-art" />
+        <HeroWeather farm={farm} />
         <div className="home-hero-body">
           <p className="hero-eyebrow">
             {greeting(now.getHours())} · <span>{today}</span>
@@ -91,6 +94,8 @@ export function DashboardPage() {
           )}
         </div>
       </section>
+
+      <VoiceTaskButton />
 
       <RunningServicesBanner />
 

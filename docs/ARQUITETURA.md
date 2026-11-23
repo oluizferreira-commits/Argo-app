@@ -234,6 +234,23 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
   engrenagem abre Configurações. "Despesa" nas ações rápidas abre só os lançamentos que já existem
   (diesel, insumo, manutenção, diarista); despesa avulsa continua "Em breve".
 
+## Clima e tarefa por voz (Painel)
+
+- **Clima** (`src/modules/clima/`): Open-Meteo (gratuito, sem chave). Região da fazenda = entrada de
+  "Como chegar" ou, sem ela, a cidade da fazenda (localizada uma vez e guardada). "Onde estou" usa o GPS
+  só depois que a pessoa toca no botão; nas próximas aberturas só atualiza sozinho se a permissão já
+  estiver dada. A coordenada enviada é arredondada (~1 km). Última leitura guardada no aparelho
+  (`localStorage`) e mostrada offline com a hora; atualiza quando passar de 30 min. Nome da cidade:
+  Photon/Nominatim (OpenStreetMap). Nada disso vai para o banco.
+- **Tarefa por voz** (`src/modules/tarefas/voice.ts`, `speech.ts`, `VoiceTask.tsx`): reconhecimento de
+  fala do próprio navegador (pt-BR), iniciado dentro do toque (exigência do iPhone). O texto é interpretado
+  (`parseSpokenTask`: prazo, pasto pelo nome, responsável com "pro/para o", "urgente" → alta) e a tarefa
+  é criada na hora pela mesma `createTask` (com "Desfazer" = exclusão lógica). Se a voz do app não
+  existir ou falhar (ex.: sem internet), a folha abre o campo para ditar pelo microfone do teclado do
+  iPhone, que funciona offline nos modelos com ditado no aparelho — o texto passa pela mesma interpretação.
+- **Paisagem animada**: gado nelore e vaqueiro a cavalo andando de lá para cá só com CSS `transform`
+  (`.walk-*`), desligado em "Reduzir movimento".
+
 ## Tarefas (aba própria)
 
 - Usa a mesma tabela `pastureTasks` dos serviços de pasto (sem nova versão do banco: os campos novos não são indexados).

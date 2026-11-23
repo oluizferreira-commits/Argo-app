@@ -45,10 +45,39 @@ function CerradoTree({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   )
 }
 
-function Cow({ x, y, s, flip, opacity = 1 }: { x: number; y: number; s: number; flip?: boolean; opacity?: number }) {
-  // (x, y) = ponto no chão sob o meio do animal
-  const k = flip ? -s : s
-  return <path d={ZEBU_PATH} fill="currentColor" opacity={opacity} transform={`translate(${x - 60 * k} ${y - 70 * s}) scale(${k} ${s})`} />
+/** Cavalo com vaqueiro (chapéu de aba larga), de perfil, voltado para a esquerda. viewBox 0 0 100 90, chão em y=86. */
+const HORSE_PATH =
+  'M9 41C6 41 4.5 39 5 37C6 34 10 29 14 24L15.5 18L18.5 22.5C22 24 25 27 28 30C31 33 35 35 40 35.5C50 36 60 35.5 68 35C75 34.5 80 36 82 39C83.5 41 84 44 83.8 47C87.5 50 89.5 57 88 66C86 62 85 56 83 52C82 55 81 58 80 60L79 70L80 86L76 86L75 71L74 62C72 60 70 59 68 59L69 70L70 86L66 86L65 70L64 60C56 61 46 61 40 60L39 72L40 86L36 86L35 72L34 60L32 60L31 72L32 86L28 86L27 72L28 58C27 54 26.5 51 25 48C23 44 20.5 39 18.5 36.5C17.5 37.5 16 38.5 14.5 39.2C12.5 40.2 11 41 9 41Z' +
+  'M44 35L45 22C45 19 47 17 49 17C52 17 53 19 53 22L54 35Z' +
+  'M52.3 13A3.3 3.3 0 1 1 45.7 13A3.3 3.3 0 1 1 52.3 13Z' +
+  'M41.5 10.2C44 9.2 46 9 46.5 6C47 4.6 51 4.6 51.5 6C52 9 54 9.2 56.5 10.2C52 11.3 46 11.3 41.5 10.2Z' +
+  'M48 33L54 34L51 46L50.6 59L47 61.5L44.5 61.5L46.8 58.5L47 46Z'
+
+type Walk = 'a' | 'b' | 'c' | 'parado'
+
+/**
+ * Animal andando de lá para cá: (x, y) = ponto no chão. A ida e a volta (com a virada) são feitas em CSS
+ * (`.walk-*`), só com transform — leve, sem JavaScript; desligada em "Reduzir movimento".
+ */
+function Walker({ x, y, s, walk, dur, delay, opacity = 1, horse }: { x: number; y: number; s: number; walk: Walk; dur: number; delay: number; opacity?: number; horse?: boolean }) {
+  const body = horse ? (
+    <g transform={`scale(${s}) translate(-47 -86)`}>
+      <path d={HORSE_PATH} fill="currentColor" />
+      <path d="M47 21L41 28L36 30" stroke="currentColor" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M36 30L10 39" stroke="currentColor" strokeWidth="0.6" fill="none" />
+    </g>
+  ) : (
+    <path d={ZEBU_PATH} fill="currentColor" transform={`scale(${s}) translate(-60 -70)`} />
+  )
+  return (
+    <g transform={`translate(${x} ${y})`} opacity={opacity}>
+      <g className={`walk walk-${walk}`} style={{ animationDuration: `${dur}s`, animationDelay: `${delay}s` }}>
+        <g className={walk === 'parado' ? 'graze' : 'bob'} style={{ animationDelay: `${delay / 7}s` }}>
+          {body}
+        </g>
+      </g>
+    </g>
+  )
 }
 
 /**
@@ -86,7 +115,7 @@ export function FarmLandscape({ className }: { className?: string }) {
       </defs>
 
       <rect width="400" height="230" fill="url(#ls-sky)" />
-      <g transform="translate(0 -44)">
+      <g transform="translate(0 -54)">
       <circle cx="292" cy="112" r="70" fill="url(#ls-sun)" />
       <circle cx="292" cy="114" r="13" fill="#f3dca4" opacity="0.9" />
 
@@ -111,13 +140,13 @@ export function FarmLandscape({ className }: { className?: string }) {
         <path d="M0 166c90-6 180-2 270 2s100-2 130-6" />
       </g>
 
-      {/* gado nelore no pasto */}
-      <g color="#e8d9b9">
-        <Cow x={200} y={145} s={0.22} opacity={0.82} />
-        <Cow x={226} y={147} s={0.24} flip opacity={0.85} />
-        <Cow x={262} y={151} s={0.3} opacity={0.92} />
-        <Cow x={128} y={150} s={0.26} flip opacity={0.88} />
-        <Cow x={318} y={160} s={0.4} opacity={0.96} />
+      {/* gado nelore no pasto, andando de lá para cá, e o vaqueiro tocando a boiada */}
+      <g color="#e8d9b9" className="herd-scene">
+        <Walker x={205} y={146} s={0.21} walk="c" dur={38} delay={-11} opacity={0.82} />
+        <Walker x={242} y={149} s={0.25} walk="parado" dur={9} delay={-2} opacity={0.86} />
+        <Walker x={268} y={153} s={0.29} walk="a" dur={44} delay={-20} opacity={0.92} />
+        <Walker x={302} y={160} s={0.35} walk="c" dur={40} delay={-30} opacity={0.95} />
+        <Walker x={128} y={168} s={0.44} walk="b" dur={52} delay={-14} opacity={0.97} horse />
       </g>
 
       {/* cerca em primeiro plano */}
@@ -131,7 +160,7 @@ export function FarmLandscape({ className }: { className?: string }) {
       </g>
 
       </g>
-      <rect y="150" width="400" height="80" fill="#1d4634" />
+      <rect y="140" width="400" height="90" fill="#1d4634" />
 
       <rect width="400" height="230" fill="url(#ls-side)" />
       <rect width="400" height="230" fill="url(#ls-shade)" />

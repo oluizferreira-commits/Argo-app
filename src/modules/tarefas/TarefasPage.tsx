@@ -10,6 +10,7 @@ import { removeTask, setTaskDone } from '../pastos/pastures'
 import { formatDay, todayLocal } from '../rebanho/herd'
 import { usePastures } from '../rebanho/useHerd'
 import { useResponsibles } from '../responsaveis/useResponsibles'
+import { VoiceTaskButton } from './VoiceTask'
 import { addDaysIso, createTask, editTask, sortTasks, TASK_GROUPS, taskGroup, type TaskInput } from './tasks'
 
 type Filter = 'pendentes' | 'concluidas' | 'todas'
@@ -147,12 +148,16 @@ function QuickAdd({ today }: { today: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="card stack" data-testid="quick-task">
+    <div className="card stack" data-testid="quick-task">
       <div className="row">
-        <input className="input" aria-label="Nova tarefa" placeholder="O que precisa ser feito?" maxLength={200} value={text} onChange={(e) => setText(e.target.value)} />
-        <button type="submit" className="btn btn-primary btn-icon" style={{ minHeight: 56, width: 56 }} aria-label="Adicionar tarefa" disabled={!text.trim()}>
-          <Icon name="plus" />
-        </button>
+        {/* o botão de voz fica fora do formulário (a folha de voz tem o próprio formulário) */}
+        <form onSubmit={submit} className="row" style={{ flex: 1, minWidth: 0 }}>
+          <input className="input" aria-label="Nova tarefa" placeholder="O que precisa ser feito?" maxLength={200} value={text} onChange={(e) => setText(e.target.value)} />
+          <button type="submit" className="btn btn-primary btn-icon" style={{ minHeight: 56, width: 56, flex: 'none' }} aria-label="Adicionar tarefa" disabled={!text.trim()}>
+            <Icon name="plus" />
+          </button>
+        </form>
+        <VoiceTaskButton variant="icon" />
       </div>
       {more ? (
         <TaskFields value={fields} onChange={setFields} today={today} />
@@ -162,7 +167,7 @@ function QuickAdd({ today }: { today: string }) {
         </button>
       )}
       {error && <div style={{ color: 'var(--danger)' }}>{error}</div>}
-    </form>
+    </div>
   )
 }
 
