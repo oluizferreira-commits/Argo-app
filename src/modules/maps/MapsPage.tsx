@@ -6,6 +6,7 @@ import { useOnline } from '../../hooks/useOnline'
 import { useFarm } from '../fazendas/FarmContext'
 import { formatDay } from '../rebanho/herd'
 import { formatHa } from './geo'
+import { drawIllustrated } from './illustrated'
 import { drawShapes, initialView, MAP_COLORS, shapesBounds } from './layers'
 import { MapCanvas, type BaseLayer } from './MapCanvas'
 import { useMapData } from './useMapData'
@@ -19,19 +20,20 @@ export function MapsPage() {
   const online = useOnline()
   const navigate = useNavigate()
   const [map, setMap] = useState<L.Map | null>(null)
-  const [base, setBase] = useState<BaseLayer>('satelite')
+  const [base, setBase] = useState<BaseLayer>('ilustrado')
   const [selected, setSelected] = useState<string | null>(null)
   const [q, setQ] = useState('')
-  const effectiveBase: BaseLayer = online ? base : 'desenho'
+  const effectiveBase: BaseLayer = online ? base : 'ilustrado'
 
   const views = d?.views
   useEffect(() => {
     if (!map || !views) return
-    const g = drawShapes(map, views, { selectedId: selected, onSelect: setSelected })
+    // ilustrado (semi-realista) ou satélite com os contornos por cima
+    const g = effectiveBase === 'ilustrado' ? drawIllustrated(map, views, { selectedId: selected, onSelect: setSelected }) : drawShapes(map, views, { selectedId: selected, onSelect: setSelected })
     return () => {
       g.remove()
     }
-  }, [map, views, selected])
+  }, [map, views, selected, effectiveBase])
 
   // enquadra a fazenda ao abrir
   const framed = useRef(false)
@@ -80,11 +82,11 @@ export function MapsPage() {
     <div className="maps-screen">
       <div className="maps-top">
         <div className="seg" role="group" aria-label="Tipo de mapa">
+          <button type="button" className={effectiveBase === 'ilustrado' ? 'on' : ''} aria-pressed={effectiveBase === 'ilustrado'} onClick={() => setBase('ilustrado')}>
+            Ilustrado
+          </button>
           <button type="button" className={effectiveBase === 'satelite' ? 'on' : ''} aria-pressed={effectiveBase === 'satelite'} disabled={!online} onClick={() => setBase('satelite')}>
             Satélite
-          </button>
-          <button type="button" className={effectiveBase === 'desenho' ? 'on' : ''} aria-pressed={effectiveBase === 'desenho'} onClick={() => setBase('desenho')}>
-            Desenho
           </button>
         </div>
         <span className={`map-status ${d.farmMap?.status === 'confirmado' ? 'ok' : 'draft'}`} data-testid="map-status">
@@ -132,7 +134,7 @@ export function MapsPage() {
             <Icon name="edit" size={22} />
           </button>
         </div>
-        {!online && <div className="maps-offline">Sem internet: o satélite fica indisponível; os contornos da fazenda continuam aqui.</div>}
+        {!online && <div className="maps-offline">Sem internet: o satélite fica indisponível; o mapa ilustrado continua funcionando.</div>}
       </div>
 
       {sel ? (
@@ -194,11 +196,18 @@ export function MapsPage() {
             <i style={{ background: MAP_COLORS.pastoVazio }} /> Pasto vazio
           </span>
           <span>
-            <i style={{ background: MAP_COLORS.naoProdutiva }} /> Área não produtiva
+            <i style={{ background: '#3c7343' }} /> Mata
+          </span>
+          <span>
+            <i style={{ background: '#74B8CE' }} /> Água
+          </span>
+          <span>
+            <i style={{ background: '#b4946a' }} /> Sede
           </span>
           <span>
             <i className="line" style={{ borderColor: MAP_COLORS.perimetro }} /> Perímetro
           </span>
+          {effectiveBase === 'ilustrado' && <span className="muted">O gado desenhado é ilustrativo: aparece nos pastos que têm animais no Rebanho, sem mostrar a posição real.</span>}
           {d.farmMap?.confirmedAt && <span className="muted">Confirmado em {formatDay(d.farmMap.confirmedAt.slice(0, 10))}</span>}
         </section>
       )}

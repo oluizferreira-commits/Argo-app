@@ -252,7 +252,14 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 - Cabeças por pasto vêm sempre do Rebanho (`computeBalances`); o mapa não guarda contagem.
 - Telas: `/maps` (satélite Esri com internet; "Desenho" offline; busca; painel do pasto) e
   `/maps/editar?etapa=local|perimetro|pastos|estruturas|revisao`. Encaixe automático em cantos e cercas já
-  desenhadas (18 px / 12 px). Estruturas, mapa ilustrado e animações: fases seguintes.
+  desenhadas (18 px / 12 px). Estruturas: fase seguinte.
+- **Mapa ilustrado** (`illustrated.ts`, padrão da tela): SVG gerado a partir dos contornos a cada movimento/zoom
+  (sem imagem fixa): capim com textura (tom mais seco no pasto vazio), cercas com arame e mourões, perímetro
+  marcado, fora da fazenda escurecido, luz e sombra. Áreas não produtivas pelo tipo escolhido pelo
+  proprietário (`areaType`: mata, água, sede, outra — campo sem índice, banco não muda). Placas com nome
+  (área e cabeças quando cabe), sem sobrepor uma à outra. Gado ilustrativo, visto de cima: só em pastos com
+  cabeças no Rebanho, no máximo 6 por pasto e 40 no total, posição fixa por pasto (não é rastreamento),
+  animação discreta desligada em "Reduzir movimento" e em aparelhos fracos. Funciona offline.
 
 ## Clima e tarefa por voz (Painel)
 

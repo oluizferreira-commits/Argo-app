@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { db } from '../../db/database'
-import type { MapShape } from '../../db/types'
+import type { MapAreaType, MapShape } from '../../db/types'
 import { Icon } from '../../components/Icon'
 import { useOnline } from '../../hooks/useOnline'
 import { searchPlaces, type PlaceResult } from '../acesso/geocode'
@@ -35,6 +35,7 @@ interface Draft {
   pastureId: string
   newName: string
   name: string
+  areaType: MapAreaType
 }
 
 /** Assistente de mapeamento: Local → Perímetro → Pastos → (Estruturas) → Revisão e confirmação. */
@@ -48,7 +49,7 @@ export function MapEditorPage() {
   const go = (s: Step) => setParams({ etapa: s }, { replace: true })
   const [map, setMap] = useState<L.Map | null>(null)
   const [base, setBase] = useState<BaseLayer>('satelite')
-  const effectiveBase: BaseLayer = online ? base : 'desenho'
+  const effectiveBase: BaseLayer = online ? base : 'ilustrado'
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -92,13 +93,13 @@ export function MapEditorPage() {
 
   function startEdit(s: MapShape) {
     setError(null)
-    setDraft({ id: s.id, rev: s.rev, kind: s.kind === 'nao-produtiva' ? 'nao-produtiva' : 'pasto', pastureId: s.pastureId ?? '', newName: '', name: s.name })
+    setDraft({ id: s.id, rev: s.rev, kind: s.kind === 'nao-produtiva' ? 'nao-produtiva' : 'pasto', pastureId: s.pastureId ?? '', newName: '', name: s.name, areaType: s.areaType ?? 'outra' })
     editor.reset(fromGeometry(s.geometry))
   }
   function startNew(kind: Draft['kind']) {
     setError(null)
     const free = d!.pastures.find((p) => !drawnPastures.has(p.id))
-    setDraft({ kind, pastureId: kind === 'pasto' ? (free?.id ?? 'novo') : '', newName: '', name: '' })
+    setDraft({ kind, pastureId: kind === 'pasto' ? (free?.id ?? 'novo') : '', newName: '', name: '', areaType: 'mata' })
     editor.reset([])
   }
 
@@ -132,7 +133,7 @@ export function MapEditorPage() {
           pastureId = (await createPasture(db, farm.id, { name: draft.newName, areaHa: editor.centiHa / 100, notes: '' })).id
         } else pastureId = draft.pastureId
       }
-      await saveShape(db, farm.id, { id: draft.id, kind: draft.kind, pastureId, name: draft.name, ring: editor.ring, expectedRev: draft.rev }, draft.id ? undefined : newId())
+      await saveShape(db, farm.id, { id: draft.id, kind: draft.kind, pastureId, name: draft.name, areaType: draft.areaType, ring: editor.ring, expectedRev: draft.rev }, draft.id ? undefined : newId())
       setDraft(null)
       editor.reset([])
     })
@@ -153,7 +154,7 @@ export function MapEditorPage() {
       <div className="maps-stage">
         <MapCanvas base={effectiveBase} center={view.center} zoom={view.zoom} onReady={setMap} testId="editor-map" />
         <div className="maps-fabs">
-          <button type="button" className="round-btn" aria-label={effectiveBase === 'satelite' ? 'Ver só o desenho' : 'Ver satélite'} disabled={!online} onClick={() => setBase(effectiveBase === 'satelite' ? 'desenho' : 'satelite')}>
+          <button type="button" className="round-btn" aria-label={effectiveBase === 'satelite' ? 'Ver só o desenho' : 'Ver satélite'} disabled={!online} onClick={() => setBase(effectiveBase === 'satelite' ? 'ilustrado' : 'satelite')}>
             <Icon name="layers" size={22} />
           </button>
         </div>
@@ -200,7 +201,23 @@ export function MapEditorPage() {
                   )}
                 </div>
               ) : (
-                <input className="input" aria-label="Nome da área" placeholder="Ex.: Reserva legal, Sede, Represa" maxLength={60} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                <>
+                  <div className="chips chips-wrap" role="group" aria-label="Tipo de área">
+                    {(
+                      [
+                        ['mata', 'Mata / reserva'],
+                        ['agua', 'Água / represa'],
+                        ['sede', 'Sede / curral'],
+                        ['outra', 'Outra'],
+                      ] as const
+                    ).map(([k, t]) => (
+                      <button key={k} type="button" className={`chip${draft.areaType === k ? ' active' : ''}`} aria-pressed={draft.areaType === k} onClick={() => setDraft({ ...draft, areaType: k })}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <input className="input" aria-label="Nome da área" placeholder="Ex.: Reserva legal, Sede, Represa" maxLength={60} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                </>
               )}
               <DrawTools editor={editor} />
               {error && <div className="notice notice-error">{error}</div>}

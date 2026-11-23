@@ -703,6 +703,9 @@ export interface Sale extends BaseRecord {
 
 // ------------------------------------------------------------------ ARGO Maps (v14)
 
+/** Tipo de área não produtiva, escolhido pelo proprietário (o mapa nunca inventa mata ou água). */
+export type MapAreaType = 'mata' | 'agua' | 'sede' | 'outra'
+
 /** Polígono GeoJSON ([longitude, latitude], WGS 84), anel externo fechado. */
 export interface MapPolygon {
   type: 'Polygon'
@@ -720,6 +723,8 @@ export interface MapShape extends BaseRecord {
   pastureId: string | null
   /** nome para área não produtiva (ex.: "Reserva legal"); pasto usa o nome do cadastro */
   name: string
+  /** tipo da área não produtiva (define o desenho no mapa ilustrado). Sem índice: não muda o banco. */
+  areaType?: MapAreaType
   geometry: MapPolygon
   /** estimativa cartográfica, centésimos de hectare */
   areaCentiHa: number

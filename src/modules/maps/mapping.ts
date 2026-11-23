@@ -4,7 +4,7 @@
  */
 import type { ArgoDatabase } from '../../db/database'
 import { ConflictError, Repository } from '../../db/repository'
-import type { FarmMap, GeoPoint, MapShape, MapVersion, Pasture } from '../../db/types'
+import type { FarmMap, GeoPoint, MapAreaType, MapShape, MapVersion, Pasture } from '../../db/types'
 import { nowIso } from '../../core/ids'
 import { updatePasture } from '../pastos/pastures'
 import { areaM2, formatHa, fromGeometry, m2ToCentiHa, perimeterM, ringInside, ringProblem, ringsOverlap, RING_PROBLEM_TEXT, toGeometry, type Ring } from './geo'
@@ -59,6 +59,8 @@ export interface ShapeInput {
   kind: MapShape['kind']
   pastureId: string | null
   name: string
+  /** só área não produtiva */
+  areaType?: MapAreaType
   ring: Ring
   /** revisão que a tela tinha ao começar a editar (evita sobrescrever edição feita em outro lugar) */
   expectedRev?: number
@@ -99,6 +101,7 @@ export async function saveShape(db: ArgoDatabase, farmId: string, input: ShapeIn
       kind: input.kind,
       pastureId: input.kind === 'pasto' ? input.pastureId : null,
       name: input.kind === 'nao-produtiva' ? name : '',
+      areaType: input.kind === 'nao-produtiva' ? (input.areaType ?? 'outra') : undefined,
       geometry: toGeometry(input.ring),
       areaCentiHa: m2ToCentiHa(areaM2(input.ring)),
       perimeterM: Math.round(perimeterM(input.ring)),

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 export const SATELLITE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 export const SATELLITE_ATTRIBUTION = 'Imagens © Esri, Maxar, Earthstar Geographics'
 
-export type BaseLayer = 'satelite' | 'desenho'
+export type BaseLayer = 'satelite' | 'ilustrado'
 
 /**
  * Mapa base do ARGO Maps. Satélite (com internet) ou "Desenho" (só os contornos da fazenda, funciona offline).
