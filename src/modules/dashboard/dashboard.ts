@@ -289,6 +289,20 @@ export function computePendencies(d: DashboardData, today: string, ind = compute
     out.push({ id: `inspecao:${eq.id}:${today}`, priority: 2, icon: 'clipboard', title: `Inspeção diária não feita · ${eq.name}`, detail: 'A máquina trabalhou hoje e ainda não tem checklist', to: `/maquinas/${eq.id}/checklist` })
   }
 
+  // tarefas atrasadas (prazo vencido e não concluídas)
+  for (const t of d.tasks.filter(alive)) {
+    if (t.done || !t.dueDate || t.dueDate >= today) continue
+    if (t.pastureId && !pastureName.get(t.pastureId)) continue
+    out.push({
+      id: `tarefa:${t.id}`,
+      priority: t.priority === 'alta' ? 1 : 2,
+      icon: 'clipboard',
+      title: `Tarefa atrasada · ${t.description}`,
+      detail: [`prazo ${t.dueDate.split('-').reverse().join('/')}`, t.pastureId ? pastureName.get(t.pastureId) : '', t.responsibleId ? people.get(t.responsibleId) : ''].filter(Boolean).join(' · '),
+      to: '/tarefas',
+    })
+  }
+
   // reserva a separar
   if (ind.reservePendingCents > 0)
     out.push({ id: 'reserva', priority: 2, icon: 'vault', title: 'Reserva financeira a separar', detail: `Separe ${formatMoney(ind.reservePendingCents)} do que já foi recebido`, to: '/reserva' })
@@ -388,20 +402,22 @@ export function computeAgenda(d: DashboardData, today: string): AgendaItem[] {
     })
   }
   for (const t of d.tasks.filter(alive)) {
-    const pasture = pastureName.get(t.pastureId)
-    if (!pasture) continue
+    const pasture = t.pastureId ? pastureName.get(t.pastureId) : null
+    if (t.pastureId && !pasture) continue // pasto arquivado
     const doneToday = t.done && t.doneAt !== null && t.doneAt.slice(0, 10) === today
     if (t.done && !doneToday) continue
+    if (!t.done && t.dueDate && t.dueDate > limit) continue // prazo longe: fica só na aba Tarefas
+    const late = !t.done && !!t.dueDate && t.dueDate < today
     out.push({
       id: `tarefa:${t.id}`,
       kind: 'tarefa',
-      title: t.description,
-      detail: `Serviço no ${pasture}${t.notes ? ` · ${t.notes}` : ''}`,
-      date: null,
-      responsible: null,
-      status: t.done ? 'concluida' : 'pendente',
-      group: t.done ? 'concluidas' : 'sem-data',
-      to: `/pastos/${t.pastureId}`,
+      title: `${t.priority === 'alta' ? '⚑ ' : ''}${t.description}`,
+      detail: `${pasture ? `Serviço no ${pasture}` : 'Tarefa'}${t.notes ? ` · ${t.notes}` : ''}`,
+      date: t.dueDate ?? null,
+      responsible: t.responsibleId ? (people.get(t.responsibleId) ?? null) : null,
+      status: t.done ? 'concluida' : late ? 'atrasada' : 'pendente',
+      group: t.done ? 'concluidas' : !t.dueDate ? 'sem-data' : late ? 'atrasadas' : t.dueDate === today ? 'hoje' : 'proximos',
+      to: '/tarefas',
       taskId: t.id,
     })
   }

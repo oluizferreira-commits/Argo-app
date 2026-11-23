@@ -33,6 +33,7 @@ export const MODULES: readonly ModuleDef[] = [
   { id: 'acesso', title: 'Como chegar à fazenda', description: 'Mapa, rotas e guia de acesso', path: '/acesso', icon: 'map', status: 'disponivel' },
   { id: 'relatorios', title: 'Relatórios', description: 'Mês a mês ou por ano, em PDF', path: '/relatorios', icon: 'chart', status: 'disponivel' },
   { id: 'maquinas', title: 'Máquinas', description: 'Horímetro digital, serviços e histórico de cada máquina', path: '/maquinas', icon: 'clock', status: 'disponivel' },
+  { id: 'tarefas', title: 'Tarefas', description: 'Anotar o que precisa ser feito, com prazo e responsável', path: '/tarefas', icon: 'clipboard', status: 'disponivel' },
   { id: 'diaristas', title: 'Diaristas', description: 'Calendário de diárias, fechamento e pagamentos', path: '/diaristas', icon: 'people', status: 'disponivel' },
   { id: 'manejo', title: 'Manejo de pastagens', description: 'Herbicidas, plantio, máquinas e custo por pasto', path: '/manejo', icon: 'pasture', status: 'disponivel' },
   { id: 'vacinacao', title: 'Vacinação', description: 'Por pasto e lote, com cobertura e pendentes', path: '/vacinacao', icon: 'syringe', status: 'disponivel' },

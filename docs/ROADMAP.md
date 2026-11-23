@@ -28,7 +28,8 @@
 | 9.1 | Máquinas: cadastro completo, página da máquina, horímetro digital (iniciar/pausar/encerrar), integração com operações | **concluída** (v0.15.0) |
 | 9.2 | Manutenção programada, checklist diário e alertas | **concluída** (v0.16.0) |
 | 9.3 | Diaristas: calendário, fechamento, pagamentos, vínculo com operações; relatórios de máquinas e diaristas | **concluída** (v0.17.0) |
-| 9.4 | Próximos passos possíveis: depreciação de máquinas, feriados no calendário, sincronização em nuvem | planejada |
+| 9.4 | Aba Tarefas: anotar rápido, detalhes, prazo, responsável, prioridade, integração com Painel | **concluída** (v0.18.0) |
+| 9.5 | Próximos passos possíveis: depreciação de máquinas, feriados no calendário, sincronização em nuvem | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |
 
 Observação: os itens "Controle de pastos" e "Nascimentos e mortes" do plano original foram incorporados à Etapa 2,

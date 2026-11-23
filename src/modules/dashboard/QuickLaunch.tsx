@@ -25,7 +25,7 @@ const QUICK_OPTIONS: Option[] = [
   { label: 'Registrar vacinação', detail: 'Por pasto e lote, com aplicação parcial', icon: 'syringe', to: '/vacinacao/nova' },
   { label: 'Registrar pesagem', detail: 'Em breve. Hoje a pesagem é feita dentro da venda por arroba', icon: 'scale', to: null },
   { label: 'Registrar manutenção', detail: 'Escolha a máquina e registre a manutenção', icon: 'gear', to: '/maquinas' },
-  { label: 'Criar tarefa', detail: 'Escolha o pasto e anote o serviço', icon: 'clipboard', to: '/pastos' },
+  { label: 'Criar tarefa', detail: 'Anotar com prazo, responsável e pasto', icon: 'clipboard', to: '/tarefas' },
 ]
 
 export function QuickLaunch() {

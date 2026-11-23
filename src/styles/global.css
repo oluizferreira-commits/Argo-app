@@ -1999,3 +1999,92 @@ input[type='date'].input {
 .day-opt.current {
   outline: 2px solid var(--gold-500);
 }
+
+/* ---------------------------------------------------------------- tarefas */
+.task-list {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+}
+.task-row + .task-row,
+.task-row + .task-edit,
+.task-edit + .task-row {
+  border-top: 1px solid var(--line);
+}
+.task-edit {
+  padding: 12px 0;
+}
+.task-check {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 2px solid var(--green-700);
+  background: var(--surface);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+}
+.task-check.checked {
+  background: var(--green-700);
+}
+.task-row.is-high .task-check {
+  border-color: var(--danger);
+}
+.task-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.task-title {
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.task-row.is-done .task-title {
+  text-decoration: line-through;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+.tk-notes {
+  font-size: 14.5px;
+  line-height: 1.35;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.title-warn {
+  color: var(--warn);
+}
+/* 6 abas na barra de baixo: rótulos menores em telas estreitas */
+.tabbar {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+@media (max-width: 400px) {
+  .tab {
+    font-size: 10.5px;
+    padding: 0 1px;
+  }
+}

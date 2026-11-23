@@ -37,6 +37,7 @@ import { MaquinasPage } from '../modules/maquinas/MaquinasPage'
 import { IniciarServicoPage, ServicoPage } from '../modules/maquinas/ServicoPages'
 import { DiaristaPage } from '../modules/diaristas/DiaristaPage'
 import { DiaristasPage } from '../modules/diaristas/DiaristasPage'
+import { TarefasPage } from '../modules/tarefas/TarefasPage'
 import { InsumoPage } from '../modules/insumos/InsumoPage'
 import { InsumosPage } from '../modules/insumos/InsumosPage'
 import { ResponsaveisPage } from '../modules/responsaveis/ResponsaveisPage'
@@ -94,6 +95,7 @@ const implemented: RouteObject[] = [
   { path: '/manejo/:id', element: <OperacaoPage />, handle: t('Operação de campo') },
   { path: '/diaristas', element: <DiaristasPage />, handle: t('Diaristas') },
   { path: '/diaristas/:id', element: <DiaristaPage />, handle: t('Diarista') },
+  { path: '/tarefas', element: <TarefasPage />, handle: t('Tarefas') },
   { path: '/responsaveis', element: <ResponsaveisPage />, handle: t('Responsáveis') },
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <FinanceiroPage />, handle: t('Financeiro') },

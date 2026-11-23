@@ -587,6 +587,10 @@ export interface Pasture extends BaseRecord {
 }
 
 /** Serviço/pendência de um pasto (ex.: "cerca a ser feita"). */
+/**
+ * Tarefa (aba Tarefas). Com `pastureId` = serviço de um pasto; '' = tarefa geral da fazenda.
+ * Prazo, responsável e prioridade são opcionais (campos sem índice: o banco não muda de versão).
+ */
 export interface PastureTask extends BaseRecord {
   farmId: string
   pastureId: string
@@ -595,6 +599,9 @@ export interface PastureTask extends BaseRecord {
   notes?: string
   done: boolean
   doneAt: string | null
+  dueDate?: string | null
+  responsibleId?: string | null
+  priority?: 'normal' | 'alta'
 }
 
 /** Uma linha de movimentação: soma (+) ou tira (−) animais de uma categoria num pasto. */

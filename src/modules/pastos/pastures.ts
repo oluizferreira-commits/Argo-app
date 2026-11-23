@@ -91,7 +91,7 @@ export async function archivePasture(db: ArgoDatabase, id: string): Promise<Past
 
 // ------------------------------------------------------------------ serviços
 
-const TASK_NOTES_MAX = 2000
+export const TASK_NOTES_MAX = 2000
 
 function cleanTask(description: string, notes: string) {
   const text = description.trim()

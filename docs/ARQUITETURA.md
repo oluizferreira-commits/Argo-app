@@ -216,6 +216,15 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 - Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
 - **Relatório do diesel** (em Relatórios, id `diesel`; atalho `/relatorios?r=diesel`): resumo (comprado, consumido, custo, custo médio e estoque no fim do período), por semana (período mensal, semanas de segunda a domingo) ou por mês (período anual), por equipamento (litros, custo, horas/km trabalhados e média L/h ou km/L), por responsável, compras e abastecimentos. Média do medidor: litros de cada abastecimento com leitura ÷ horas (ou km) desde o abastecimento anterior do mesmo equipamento.
 
+## Tarefas (aba própria)
+
+- Usa a mesma tabela `pastureTasks` dos serviços de pasto (sem nova versão do banco: os campos novos não são indexados).
+  Tarefa geral tem `pastureId: ''`; os serviços anotados num pasto aparecem também na aba Tarefas e vice-versa.
+- Campos opcionais: `dueDate` (prazo), `responsibleId`, `priority` (`normal` | `alta`) e `notes` (detalhes, várias linhas).
+- Lógica em `src/modules/tarefas/tasks.ts`: criação/edição via `Repository`, exclusão lógica, agrupamento
+  (atrasadas, hoje, próximos 7 dias, mais adiante, sem prazo) e ordenação (prioridade alta primeiro).
+- Painel: tarefa atrasada vira pendência na Central (`tarefa:<id>`); tarefa com prazo entra na Agenda com o responsável.
+
 ## Esquema do banco
 
 | Versão | Tabelas adicionadas |
