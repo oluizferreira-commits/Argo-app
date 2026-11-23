@@ -701,6 +701,56 @@ export interface Sale extends BaseRecord {
   cancelReason: string
 }
 
+// ------------------------------------------------------------------ ARGO Maps (v14)
+
+/** Polígono GeoJSON ([longitude, latitude], WGS 84), anel externo fechado. */
+export interface MapPolygon {
+  type: 'Polygon'
+  coordinates: [number, number][][]
+}
+
+/**
+ * Desenho do mapa da fazenda: perímetro, pasto ou área não produtiva.
+ * A geometria é só desenho: a contagem de animais continua vindo do Rebanho.
+ */
+export interface MapShape extends BaseRecord {
+  farmId: string
+  kind: 'perimetro' | 'pasto' | 'nao-produtiva'
+  /** pasto do cadastro (só kind = 'pasto') */
+  pastureId: string | null
+  /** nome para área não produtiva (ex.: "Reserva legal"); pasto usa o nome do cadastro */
+  name: string
+  geometry: MapPolygon
+  /** estimativa cartográfica, centésimos de hectare */
+  areaCentiHa: number
+  perimeterM: number
+  /** incrementa a cada alteração do desenho */
+  geometryVersion: number
+}
+
+/** Situação do mapeamento da fazenda e enquadramento do mapa. Um por fazenda. */
+export interface FarmMap extends BaseRecord {
+  farmId: string
+  /** rascunho = há alterações ainda não confirmadas pelo proprietário */
+  status: 'rascunho' | 'confirmado'
+  /** número da última versão confirmada (0 = nunca confirmado) */
+  version: number
+  confirmedAt: string | null
+  center: GeoPoint | null
+  zoom: number | null
+}
+
+/** Versão confirmada do mapeamento (cópia imutável, para histórico e recuperação). */
+export interface MapVersion extends BaseRecord {
+  farmId: string
+  version: number
+  confirmedAt: string
+  shapes: { kind: MapShape['kind']; pastureId: string | null; name: string; geometry: MapPolygon; areaCentiHa: number; perimeterM: number }[]
+  totalCentiHa: number
+  /** alertas que existiam no momento da confirmação */
+  warnings: string[]
+}
+
 /**
  * Mapa de entidades de negócio sincronizáveis.
  * Novos módulos (animais, pastos, vendas...) entram aqui.
@@ -733,11 +783,14 @@ export interface EntityMap {
   pastures: Pasture
   pastureTasks: PastureTask
   movements: Movement
+  mapShapes: MapShape
+  farmMaps: FarmMap
+  mapVersions: MapVersion
 }
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments', 'maintenancePlans', 'maintenanceRecords', 'machineChecklists', 'workers', 'workDays', 'workerPayments']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments', 'maintenancePlans', 'maintenanceRecords', 'machineChecklists', 'workers', 'workDays', 'workerPayments', 'mapShapes', 'farmMaps', 'mapVersions']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>

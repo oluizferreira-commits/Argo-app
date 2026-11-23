@@ -107,6 +107,14 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     workerPayments: 'id, farmId, workerId, date, createdAt, updatedAt',
   })
 
+  // v14 — ARGO Maps: desenho da fazenda (perímetro, pastos, áreas), situação do mapeamento e versões.
+  // Só tabelas novas: nenhum dado existente é alterado.
+  db.version(14).stores({
+    mapShapes: 'id, farmId, pastureId, kind, createdAt, updatedAt',
+    farmMaps: 'id, farmId, createdAt, updatedAt',
+    mapVersions: 'id, farmId, version, createdAt, updatedAt',
+  })
+
   return db
 }
 

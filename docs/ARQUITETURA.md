@@ -234,6 +234,26 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
   engrenagem abre Configurações. "Despesa" nas ações rápidas abre só os lançamentos que já existem
   (diesel, insumo, manutenção, diarista); despesa avulsa continua "Em breve".
 
+## ARGO Maps (Fase 1 — cartografia)
+
+- Tabelas novas na versão 14 do banco (nenhum dado existente muda): `mapShapes` (perímetro, pastos e
+  áreas não produtivas; GeoJSON `Polygon` em [longitude, latitude] WGS 84, `areaCentiHa`, `perimeterM`,
+  `geometryVersion`), `farmMaps` (situação rascunho/confirmado, número da versão, enquadramento) e
+  `mapVersions` (cópia imutável de cada confirmação, com os alertas da época). Entram no backup e na fila
+  de sincronização como as demais entidades.
+- `src/modules/maps/geo.ts`: área geodésica (esfera, raio médio 6.371.008,8 m), perímetro (haversine),
+  cruzamento do contorno, sobreposição (dividir cerca é permitido; tolerância de 30 cm para diferenças de
+  encaixe), "dentro do perímetro", ponto interno para o nome. Tudo é estimativa cartográfica, não
+  georreferenciamento legal.
+- `mapping.ts`: gravação só pelo Repository; recusa contorno em "8", dois perímetros, pasto desenhado duas
+  vezes e sobreposição. Edição usa `expectedRev` (conflito → mensagem para reabrir). Qualquer alteração
+  volta o mapeamento para "rascunho"; "Confirmar" (com PIN, se a fazenda tiver) grava nova versão.
+  A área do cadastro do pasto só muda quando a pessoa toca em "Usar área do mapa".
+- Cabeças por pasto vêm sempre do Rebanho (`computeBalances`); o mapa não guarda contagem.
+- Telas: `/maps` (satélite Esri com internet; "Desenho" offline; busca; painel do pasto) e
+  `/maps/editar?etapa=local|perimetro|pastos|estruturas|revisao`. Encaixe automático em cantos e cercas já
+  desenhadas (18 px / 12 px). Estruturas, mapa ilustrado e animações: fases seguintes.
+
 ## Clima e tarefa por voz (Painel)
 
 - **Clima** (`src/modules/clima/`): Open-Meteo (gratuito, sem chave). Região da fazenda = entrada de

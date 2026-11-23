@@ -31,6 +31,10 @@
 | 9.4 | Aba Tarefas: anotar rápido, detalhes, prazo, responsável, prioridade, integração com Painel | **concluída** (v0.18.0) |
 | 10.1 | Reformulação visual "Terra & Tecnologia": design system, cabeçalho, navegação e Painel | **concluída** (v0.19.0) |
 | 10.1b | Clima (fazenda e onde estou), tarefa por voz, paisagem com gado e vaqueiro animados | **concluída** (v0.20.0) |
+| 10.1c | Tela "Mais" em apps por pastas; ARGO Maps Fase 1 (perímetro, pastos, áreas, revisão e versões) | **concluída** (v0.21.0) |
+| 11.2 | ARGO Maps Fase 2: painel completo do pasto (abas Resumo, Rebanho, Operações, Custos, Pastagem) | próxima |
+| 11.3 | ARGO Maps Fase 3: mapa ilustrado semi-realista, estruturas (sede, curral, cochos, porteiras, água, estradas) | planejada |
+| 11.4 | ARGO Maps Fase 4: gado animado no mapa, alertas de lotação configuráveis | planejada |
 | 10.2 | Layouts próprios de Rebanho, Pastos, Financeiro e demais módulos (após aprovação do Painel) | próxima |
 | 9.5 | Próximos passos possíveis: depreciação de máquinas, feriados no calendário, sincronização em nuvem | planejada |
 | 7 | Sincronização em nuvem (Supabase), login entre aparelhos e possível integração com Mercado Pago | próxima |

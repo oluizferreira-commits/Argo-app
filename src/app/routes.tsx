@@ -8,6 +8,8 @@ import { ReceberPage } from '../modules/receber/ReceberPage'
 import { ReservaPage } from '../modules/reserva/ReservaPage'
 import { RelatoriosPage } from '../modules/relatorios/RelatoriosPage'
 import { HubPage } from '../modules/hub/HubPage'
+import { MapEditorPage } from '../modules/maps/MapEditorPage'
+import { MapsPage } from '../modules/maps/MapsPage'
 import { ClienteFormPage } from '../modules/clientes/ClienteFormPage'
 import { ClientePage } from '../modules/clientes/ClientePage'
 import { ClientesPage } from '../modules/clientes/ClientesPage'
@@ -59,6 +61,8 @@ const implemented: RouteObject[] = [
   { path: '/rebanho/movimentar/:tipo', element: <MovimentarTipoPage />, handle: t('Nova movimentação') },
   { path: '/rebanho/historico', element: <HistoricoPage />, handle: t('Histórico do rebanho') },
   { path: '/rebanho/movimentacao/:id', element: <MovimentacaoPage />, handle: t('Movimentação') },
+  { path: '/maps', element: <MapsPage />, handle: t('ARGO Maps') },
+  { path: '/maps/editar', element: <MapEditorPage />, handle: t('Mapear a fazenda') },
   { path: '/pastos', element: <PastosPage />, handle: t('Pastos') },
   { path: '/pastos/novo', element: <PastoFormPage />, handle: t('Novo pasto') },
   { path: '/pastos/:id', element: <PastoPage />, handle: t('Pasto') },
