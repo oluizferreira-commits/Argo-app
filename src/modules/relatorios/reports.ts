@@ -11,7 +11,7 @@ import { monthSummary } from '../diaristas/workers'
 import { computeBalances, formatDay, todayLocal } from '../rebanho/herd'
 import { activePayments, METHOD_LABELS, saleBalance } from '../receber/receivables'
 import { rateOn, reserveShare } from '../reserva/reserve'
-import { formatSaleNumber } from '../vendas/sales'
+import { formatSaleNumber, salePurpose } from '../vendas/sales'
 
 // ------------------------------------------------------------------ período
 
@@ -138,19 +138,21 @@ function vendas(d: ReportData, p: Period): Report {
   const total = list.reduce((a, s) => a + s.totalCents, 0)
   const tables: ReportTable[] = [
     {
-      columns: [{ label: 'Data' }, { label: 'Nº' }, { label: 'Cliente' }, { label: 'Tipo' }, { label: 'Cab.', align: R }, { label: 'Arrobas', align: R }, { label: 'Valor', align: R }],
+      columns: [{ label: 'Data' }, { label: 'Nº' }, { label: 'Cliente' }, { label: 'Tipo' }, { label: 'Destino' }, { label: 'Cab.', align: R }, { label: 'Arrobas', align: R }, { label: 'Valor', align: R }],
       rows: list.map((s) => [
         formatDay(s.date),
         formatSaleNumber(s.number),
         clients.get(s.clientId) ?? '-',
         s.mode === 'arroba' ? 'Por arroba' : 'Por cabeça',
+        salePurpose(s) === 'pessoal' ? 'Pessoal' : 'Fazenda',
         n(heads(s)),
         s.mode === 'arroba' ? arr(s.arrobasHundredths) : '-',
         formatMoney(s.totalCents),
       ]),
-      foot: ['Total', '', '', '', n(list.reduce((a, s) => a + heads(s), 0)), '', formatMoney(total)],
+      foot: ['Total', '', '', '', '', n(list.reduce((a, s) => a + heads(s), 0)), '', formatMoney(total)],
     },
   ]
+  const personal = list.filter((s) => salePurpose(s) === 'pessoal').reduce((a, s) => a + s.totalCents, 0)
   // por cliente (mês ou ano)
   if (list.length) {
     const byClient = new Map<string, Sale[]>()
@@ -179,6 +181,8 @@ function vendas(d: ReportData, p: Period): Report {
       { label: 'Vendas', value: n(list.length) },
       { label: 'Cabeças vendidas', value: n(list.reduce((a, s) => a + heads(s), 0)) },
       { label: 'Valor total', value: formatMoney(total) },
+      { label: 'Para a fazenda', value: formatMoney(total - personal) },
+      { label: 'Para gastos pessoais', value: formatMoney(personal) },
     ],
     tables,
     notes: canceled ? [`${canceled} venda(s) cancelada(s) no período não entram nos totais.`] : [],

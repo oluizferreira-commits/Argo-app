@@ -7,7 +7,7 @@ import { ensureDefaultSupplies, recordMixture, recordSupplyMovement } from '../i
 import { addTask, createPasture, setTaskDone } from '../pastos/pastures'
 import { entriesIn, recordMovement, todayLocal } from '../rebanho/herd'
 import { recordPayment } from '../receber/receivables'
-import { addDays, buildInstallments, createClient, createSale } from '../vendas/sales'
+import { addDays, buildInstallments, createClient, createSale, setSalePurpose } from '../vendas/sales'
 import { createResponsible } from '../responsaveis/responsibles'
 import { addApplication, createVaccination } from '../vacinacao/vaccination'
 import { computeAgenda, computeIndicators, computePendencies, recentActivities, type DashboardData } from './dashboard'
@@ -104,6 +104,20 @@ describe('indicadores', () => {
       ['boi', 8],
     ])
     expect(ind.herdMales + ind.herdFemales + ind.herdUnspecified).toBe(ind.animals)
+  })
+})
+
+describe('venda para a fazenda × para gastos pessoais', () => {
+  it('o recebido de venda pessoal fica fora das receitas da fazenda (despesas não descontam dele)', async () => {
+    const { farm, sale } = await setup()
+    const s1 = await sale(addDays(today, -20), 1, 300000, 30)
+    const s2 = await sale(addDays(today, -20), 1, 200000, 30)
+    await recordPayment(db, farm.id, { saleId: s1.id, date: today, amountCents: 300000, method: 'pix', notes: '' })
+    await recordPayment(db, farm.id, { saleId: s2.id, date: today, amountCents: 200000, method: 'pix', notes: '' })
+    expect(computeIndicators(await load(farm.id), today)).toMatchObject({ receivedMonthCents: 500000, personalMonthCents: 0 })
+    await setSalePurpose(db, s2.id, 'pessoal')
+    expect(computeIndicators(await load(farm.id), today)).toMatchObject({ receivedMonthCents: 300000, personalMonthCents: 200000 })
+    expect((await db.sales.get(s1.id))!.purpose ?? 'fazenda').toBe('fazenda')
   })
 })
 

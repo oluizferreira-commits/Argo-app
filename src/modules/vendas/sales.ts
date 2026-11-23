@@ -1,7 +1,7 @@
 import { newId, nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { Client, Installment, PaymentKind, PaymentMethod, Sale, SaleItem, WeighedAnimal } from '../../db/types'
+import type { Client, Installment, PaymentKind, PaymentMethod, Sale, SaleItem, SalePurpose, WeighedAnimal } from '../../db/types'
 import { category, type CategoryId } from '../../domain/categories'
 import { isValidCnpj, isValidCpf } from '../../domain/pix'
 import { entriesOut, HerdError, recordMovement, reverseMovement, todayLocal } from '../rebanho/herd'
@@ -145,6 +145,17 @@ export interface SaleInput {
   notes: string
   /** Venda à vista já recebida: registra o recebimento junto com a venda. */
   receivedNow?: { method: PaymentMethod } | null
+  /** Para a fazenda (padrão) ou para gastos pessoais. */
+  purpose?: SalePurpose
+}
+
+export const PURPOSE_LABEL: Record<SalePurpose, string> = { fazenda: 'Para a fazenda', pessoal: 'Para gastos pessoais' }
+export const salePurpose = (s: Pick<Sale, 'purpose'>): SalePurpose => s.purpose ?? 'fazenda'
+
+/** Muda o destino da venda (fica no histórico). Não mexe em animais, parcelas nem recebimentos. */
+export async function setSalePurpose(db: ArgoDatabase, id: string, purpose: SalePurpose): Promise<Sale> {
+  if (purpose !== 'fazenda' && purpose !== 'pessoal') throw new SaleError('Destino inválido.')
+  return new Repository(db, 'sales').update(id, { purpose })
 }
 
 function validateSale(input: SaleInput): { items: SaleItem[]; totals: Totals } {
@@ -239,6 +250,7 @@ export async function createSale(db: ArgoDatabase, farmId: string, input: SaleIn
         status: 'ativa',
         canceledAt: null,
         cancelReason: '',
+        purpose: input.purpose === 'pessoal' ? 'pessoal' : 'fazenda',
       },
       id,
     )

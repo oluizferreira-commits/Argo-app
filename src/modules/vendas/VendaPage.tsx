@@ -9,7 +9,7 @@ import { useFarm } from '../fazendas/FarmContext'
 import { formatDay } from '../rebanho/herd'
 import { usePastureMap } from '../rebanho/useHerd'
 import { PAYMENT_LABEL, renderReceipt, salePixPayload } from './receipt'
-import { cancelSale, formatSaleNumber, SaleError } from './sales'
+import { cancelSale, formatSaleNumber, PURPOSE_LABEL, SaleError, salePurpose, setSalePurpose } from './sales'
 import { PaymentsSection } from '../receber/PaymentsSection'
 import { saleBalance } from '../receber/receivables'
 
@@ -112,6 +112,30 @@ export function VendaPage() {
           {sale.status === 'cancelada' ? <span className="badge badge-warn">Cancelada</span> : <span className="num">{formatMoney(sale.totalCents)}</span>}
         </div>
         {sale.status === 'cancelada' && sale.cancelReason && <p className="muted">Motivo do cancelamento: {sale.cancelReason}</p>}
+        {sale.status === 'ativa' && (
+          <div className="stack" style={{ gap: 6 }} data-testid="sale-purpose-view">
+            <div className="label" style={{ margin: 0 }}>
+              Destino do dinheiro
+            </div>
+            <div className="chips chips-wrap" role="radiogroup" aria-label="Destino do dinheiro">
+              {(['fazenda', 'pessoal'] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={salePurpose(sale) === k}
+                  className={`chip${salePurpose(sale) === k ? ' active' : ''}`}
+                  data-testid={`set-purpose-${k}`}
+                  onClick={() => {
+                    if (salePurpose(sale) !== k) void setSalePurpose(db, sale.id, k)
+                  }}
+                >
+                  {PURPOSE_LABEL[k]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {sale.status === 'ativa' && <PaymentsSection sale={sale} payments={payments} />}

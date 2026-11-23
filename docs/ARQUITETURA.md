@@ -216,6 +216,14 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 - Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
 - **Relatório do diesel** (em Relatórios, id `diesel`; atalho `/relatorios?r=diesel`): resumo (comprado, consumido, custo, custo médio e estoque no fim do período), por semana (período mensal, semanas de segunda a domingo) ou por mês (período anual), por equipamento (litros, custo, horas/km trabalhados e média L/h ou km/L), por responsável, compras e abastecimentos. Média do medidor: litros de cada abastecimento com leitura ÷ horas (ou km) desde o abastecimento anterior do mesmo equipamento.
 
+## Destino da venda e valor das diárias
+
+- `Sale.purpose` (`fazenda` | `pessoal`, sem índice; ausente = fazenda). Recebimentos de venda pessoal ficam
+  fora de "Receitas" e do saldo da fazenda no Painel (aparecem à parte); o relatório de vendas mostra o destino
+  e os totais. A reserva continua valendo para todas as vendas.
+- Diárias: o valor de cada dia é guardado na marcação. `outdatedDays` lista dias com valor diferente da diária
+  atual e `applyCurrentRate` corrige (com histórico) quando a pessoa pede — nunca automaticamente.
+
 ## Lembrete de backup (12 horas)
 
 - `src/backup/exportNow.ts`: `backupDue` (há lançamentos e o último backup tem ≥ 12 h ou nunca foi feito) e

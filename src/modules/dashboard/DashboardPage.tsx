@@ -39,6 +39,7 @@ export function DashboardPage() {
 
   return (
     <>
+      <h1 className="visually-hidden">Painel · {farm.name}</h1>
       <header className="home-top">
         <div className="home-brand">
           <img src={`${import.meta.env.BASE_URL}logo-mark.svg`} alt="" />

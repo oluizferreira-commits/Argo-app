@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { formatDecimal, formatMoney, parseDecimal, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
-import type { PaymentKind, PaymentMethod, SaleItem, WeighedAnimal } from '../../db/types'
+import type { PaymentKind, PaymentMethod, SaleItem, SalePurpose, WeighedAnimal } from '../../db/types'
 import { METHOD_LABELS } from '../receber/receivables'
 import { category, type CategoryId } from '../../domain/categories'
 import { CategoryQuantities } from '../../components/CategoryQuantities'
@@ -13,7 +13,7 @@ import { ClientFields } from '../clientes/ClienteForm'
 import { useFarm } from '../fazendas/FarmContext'
 import { balanceOf, formatDay, todayLocal } from '../rebanho/herd'
 import { useBalances, usePastures } from '../rebanho/useHerd'
-import { buildInstallments, computeTotals, createClient, createSale, EMPTY_CLIENT, SaleError, type ClientInput } from './sales'
+import { buildInstallments, computeTotals, createClient, createSale, EMPTY_CLIENT, PURPOSE_LABEL, SaleError, type ClientInput } from './sales'
 import { useClients } from './useSales'
 
 const NEW_CLIENT = '__novo__'
@@ -77,6 +77,7 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
   const [count, setCount] = useState('2')
   const [interval, setIntervalDays] = useState('30')
   const [notes, setNotes] = useState('')
+  const [purpose, setPurpose] = useState<SalePurpose>('fazenda')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -153,6 +154,7 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
           installments,
           receivedNow: paymentKind === 'avista' && receivedNow ? { method: receivedMethod } : null,
           notes,
+          purpose,
         },
         saleKey,
       )
@@ -387,6 +389,26 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {heads > 0 && (
+        <div className="card stack" style={{ gap: 8 }} data-testid="sale-purpose">
+          <div className="label" style={{ margin: 0 }}>
+            Para que é o dinheiro desta venda?
+          </div>
+          <div className="chips chips-wrap" role="radiogroup" aria-label="Destino do dinheiro">
+            {(['fazenda', 'pessoal'] as const).map((k) => (
+              <button key={k} type="button" role="radio" aria-checked={purpose === k} className={`chip${purpose === k ? ' active' : ''}`} onClick={() => setPurpose(k)} data-testid={`purpose-${k}`}>
+                {PURPOSE_LABEL[k]}
+              </button>
+            ))}
+          </div>
+          <p className="muted" style={{ fontSize: 14 }}>
+            {purpose === 'fazenda'
+              ? 'Entra no caixa da fazenda e cobre as despesas (diesel, sal, manutenção, diaristas).'
+              : 'Fica fora do caixa da fazenda: as despesas da fazenda não são descontadas deste dinheiro.'}
+          </p>
         </div>
       )}
 

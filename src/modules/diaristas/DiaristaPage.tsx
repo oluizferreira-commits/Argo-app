@@ -12,7 +12,7 @@ import { formatDay, todayLocal } from '../rebanho/herd'
 import { MONTHS } from '../relatorios/reports'
 import { WorkerForm } from './DiaristasPage'
 import { useDiaristas } from './useDiaristas'
-import { clearDay, dayState, defaultKind, halfValue, KIND_LABEL, markDay, monthSummary, recordWorkerPayment, reverseWorkerPayment, setWorkerActive, workDayId, workerBalance, type DayState } from './workers'
+import { applyCurrentRate, clearDay, currentValue, dayState, defaultKind, halfValue, KIND_LABEL, markDay, monthSummary, outdatedDays, recordWorkerPayment, reverseWorkerPayment, setWorkerActive, workDayId, workerBalance, type DayState } from './workers'
 
 const WEEK = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 const SHORT: Partial<Record<DayState, string>> = { integral: '✓', meia: '½', falta: '✕', 'nao-marcado': '✕', 'falta-justificada': 'J', folga: 'F' }
@@ -38,6 +38,7 @@ export function DiaristaPage() {
   const byDate = new Map(data.days.filter((d) => d.workerId === w.id && d.deletedAt === null).map((d) => [d.date, d]))
   const sum = monthSummary(w, data.days, data.payments, month)
   const all = workerBalance(w, data.days, data.payments)
+  const outdated = outdatedDays(w, data.days)
   const [y, mo] = month.split('-').map(Number)
   const lastDay = new Date(Date.UTC(y, mo, 0)).getUTCDate()
   const lead = new Date(Date.UTC(y, mo - 1, 1)).getUTCDay()
@@ -65,7 +66,35 @@ export function DiaristaPage() {
         <p>
           saldo a pagar · diária {formatMoney(w.dailyCents)} · meia {formatMoney(halfValue(w))}
         </p>
+        <p style={{ fontSize: 14 }} data-testid="balance-breakdown">
+          Total das diárias marcadas {formatMoney(all.dueCents)} − pagamentos {formatMoney(all.paidCents)}
+        </p>
       </section>
+      {outdated.length > 0 && (
+        <div className="notice notice-warn" data-testid="outdated-days">
+          <Icon name="alert" />
+          <div className="stack" style={{ gap: 8 }}>
+            <div>
+              <strong>
+                {outdated.length} dia{outdated.length > 1 ? 's' : ''} marcado{outdated.length > 1 ? 's' : ''} com valor antigo
+              </strong>{' '}
+              ({[...new Set(outdated.map((d) => formatMoney(d.valueCents)))].join(', ')}). A diária foi alterada depois que esses dias foram marcados. Pelo valor atual, o saldo seria{' '}
+              <strong>{formatMoney(all.balanceCents + outdated.reduce((a, d) => a + currentValue(w, d.kind) - d.valueCents, 0))}</strong>.
+            </div>
+            <button
+              type="button"
+              className="btn btn-gold"
+              data-testid="apply-rate"
+              onClick={() => {
+                if (window.confirm(`Usar a diária atual (${formatMoney(w.dailyCents)} / meia ${formatMoney(halfValue(w))}) nesses ${outdated.length} dia(s)? Fica registrado no histórico.`))
+                  void applyCurrentRate(db, w.id).catch((e: Error) => setMsg(e.message))
+              }}
+            >
+              Usar o valor atual nesses dias
+            </button>
+          </div>
+        </div>
+      )}
       {msg && (
         <div className="notice notice-error" role="alert">
           <Icon name="alert" />

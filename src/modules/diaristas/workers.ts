@@ -155,6 +155,31 @@ export function monthSummary(w: Worker, days: readonly WorkDay[], payments: read
   return { month, daysWorked: s.integral + s.half, ...s, paidCents, balanceCents: s.dueCents - paidCents }
 }
 
+/** Valor que o dia teria pela diária atual. */
+export const currentValue = (w: Pick<Worker, 'dailyCents' | 'halfCents'>, kind: WorkDayKind) => (kind === 'integral' ? w.dailyCents : kind === 'meia' ? halfValue(w) : 0)
+
+/**
+ * Dias marcados com valor diferente da diária atual (o valor é guardado na marcação: se a diária foi
+ * alterada depois, os dias já marcados continuam com o valor antigo). `month` limita a um mês.
+ */
+export function outdatedDays(w: Worker, days: readonly WorkDay[], month?: string): WorkDay[] {
+  return days.filter(
+    (d) => d.workerId === w.id && d.deletedAt === null && (d.kind === 'integral' || d.kind === 'meia') && (!month || d.date.startsWith(month)) && d.valueCents !== currentValue(w, d.kind),
+  )
+}
+
+/** Passa os dias com valor antigo para o valor da diária atual (cada alteração fica no histórico). */
+export async function applyCurrentRate(db: ArgoDatabase, workerId: string, month?: string): Promise<number> {
+  return db.transaction('rw', [db.workDays, db.workers, db.auditLog, db.outbox, db.meta], async () => {
+    const w = await db.workers.get(workerId)
+    if (!w) throw new WorkerError('Trabalhador não encontrado.')
+    const list = outdatedDays(w, await db.workDays.where('workerId').equals(workerId).toArray(), month)
+    const repo = new Repository(db, 'workDays')
+    for (const d of list) await repo.update(d.id, { valueCents: currentValue(w, d.kind) })
+    return list.length
+  })
+}
+
 /** Saldo geral (todos os meses): devido − pago. */
 export function workerBalance(w: Worker, days: readonly WorkDay[], payments: readonly WorkerPayment[]) {
   const due = days.filter((d) => d.workerId === w.id && d.deletedAt === null).reduce((a, d) => a + d.valueCents, 0)

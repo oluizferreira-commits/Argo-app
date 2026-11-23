@@ -6,7 +6,7 @@ import { cancelOperation, createOperation, type OperationInput } from '../manejo
 import { createPasture } from '../pastos/pastures'
 import { computeIndicators } from '../dashboard/dashboard'
 import { buildReports } from '../relatorios/reports'
-import { clearDay, createWorker, dayState, defaultKind, markDay, monthSummary, recordWorkerPayment, reverseWorkerPayment, WorkerError, workerBalance, workDayId } from './workers'
+import { applyCurrentRate, clearDay, createWorker, dayState, defaultKind, markDay, monthSummary, outdatedDays, recordWorkerPayment, reverseWorkerPayment, updateWorker, WorkerError, workerBalance, workDayId } from './workers'
 
 let db: ArgoDatabase
 afterEach(async () => db?.delete())
@@ -103,5 +103,25 @@ describe('relatório de diaristas', () => {
     expect(row.slice(0, 4)).toEqual(['João da Silva', '2', '1', '1'])
     expect(row.slice(6)).toEqual(['R$ 150,00', 'R$ 100,00', 'R$ 50,00'])
     expect(r.tables[1].rows).toHaveLength(1)
+  })
+})
+
+describe('diária alterada depois de marcar os dias', () => {
+  it('mostra os dias com valor antigo e passa para o valor atual só quando pedido', async () => {
+    const { farm, w, all } = await setup()
+    await markDay(db, farm.id, w.id, '2026-10-05', 'integral') // R$ 100
+    await markDay(db, farm.id, w.id, '2026-10-10', 'meia') // R$ 50
+    await updateWorker(db, w.id, { name: w.name, dailyCents: 15000, halfCents: null, halfReason: '', startDate: w.startDate, notes: '' })
+    await markDay(db, farm.id, w.id, '2026-10-06', 'integral') // já no valor novo: R$ 150
+    const w2 = (await db.workers.get(w.id))!
+    let d = await all()
+    expect(workerBalance(w2, d.days, d.pays).balanceCents).toBe(10000 + 5000 + 15000) // nada muda sozinho
+    expect(outdatedDays(w2, d.days).map((x) => x.date).sort()).toEqual(['2026-10-05', '2026-10-10'])
+    expect(await applyCurrentRate(db, w.id)).toBe(2)
+    d = await all()
+    expect(workerBalance(w2, d.days, d.pays).balanceCents).toBe(15000 + 7500 + 15000)
+    expect(outdatedDays(w2, d.days)).toHaveLength(0)
+    const hist = await db.auditLog.where('[entity+entityId]').equals(['workDays', workDayId(w.id, '2026-10-05')]).toArray()
+    expect(hist.length).toBeGreaterThanOrEqual(2) // a correção fica no histórico
   })
 })

@@ -100,8 +100,10 @@ export interface Indicators {
   /** a receber (parcelas em aberto, já descontados os recebimentos parciais) */
   openCents: number
   overdueCents: number
-  /** receitas do mês = dinheiro efetivamente recebido no mês (recebimentos ativos) */
+  /** receitas do mês = dinheiro recebido no mês das vendas PARA A FAZENDA (recebimentos ativos) */
   receivedMonthCents: number
+  /** recebido no mês de vendas para gastos pessoais (fora do caixa da fazenda) */
+  personalMonthCents: number
   /** despesas do mês = compras de diesel e de insumos lançadas no mês */
   expensesMonthCents: number
   fuelExpenseCents: number
@@ -160,7 +162,11 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
     overdueCents += b.overdueCents
   }
   const month = today.slice(0, 7)
-  const receivedMonthCents = d.payments.filter((p) => p.status === 'ativo' && p.deletedAt === null && p.date.startsWith(month)).reduce((a, p) => a + p.amountCents, 0)
+  // recebimentos do mês, separados pelo destino da venda (fazenda × gastos pessoais)
+  const personalSales = new Set(d.sales.filter((s) => s.purpose === 'pessoal').map((s) => s.id))
+  const monthPayments = d.payments.filter((p) => p.status === 'ativo' && p.deletedAt === null && p.date.startsWith(month))
+  const receivedMonthCents = monthPayments.filter((p) => !personalSales.has(p.saleId)).reduce((a, p) => a + p.amountCents, 0)
+  const personalMonthCents = monthPayments.filter((p) => personalSales.has(p.saleId)).reduce((a, p) => a + p.amountCents, 0)
   const fuelExpenseCents = d.fuelMovements
     .filter((m) => m.type === 'compra' && m.status === 'ativo' && m.deletedAt === null && m.date.startsWith(month))
     .reduce((a, m) => a + (m.totalCents ?? 0), 0)
@@ -177,6 +183,7 @@ export function computeIndicators(d: DashboardData, today: string): Indicators {
     openCents,
     overdueCents,
     receivedMonthCents,
+    personalMonthCents,
     expensesMonthCents: fuelExpenseCents + supplyExpenseCents + maintenanceExpenseCents + workerExpenseCents,
     fuelExpenseCents,
     supplyExpenseCents,

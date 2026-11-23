@@ -13,6 +13,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.25.0',
+    date: '2026-11-24',
+    title: 'Venda para a fazenda ou para gastos pessoais; conta do diarista',
+    items: [
+      'Na venda de gado, escolha: "Para a fazenda" ou "Para gastos pessoais". Dá para mudar depois na página da venda.',
+      'Venda para gastos pessoais fica fora do caixa da fazenda: diesel, sal, manutenção e diaristas não descontam desse dinheiro. O Painel mostra as duas coisas separadas.',
+      'Relatório de vendas com a coluna Destino e os totais "Para a fazenda" e "Para gastos pessoais".',
+      'Diaristas: o saldo mostra a conta (diárias marcadas − pagamentos). Se a diária foi alterada depois de marcar os dias, o app avisa quais dias ficaram com o valor antigo e corrige com um toque.',
+      'Botões de filtro maiores (44 px) e campos de busca que aceitam o toque na caixa inteira.',
+    ],
+  },
+  {
     version: '0.24.0',
     date: '2026-11-24',
     title: 'Lembrete de backup a cada 12 horas',

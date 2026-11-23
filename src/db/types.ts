@@ -699,7 +699,14 @@ export interface Sale extends BaseRecord {
   status: 'ativa' | 'cancelada'
   canceledAt: string | null
   cancelReason: string
+  /**
+   * Destino do dinheiro: para a fazenda (entra no caixa e cobre diesel, sal…) ou para gastos pessoais
+   * (fica fora do caixa da fazenda). Ausente = fazenda (vendas antigas). Sem índice: o banco não muda.
+   */
+  purpose?: SalePurpose
 }
+
+export type SalePurpose = 'fazenda' | 'pessoal'
 
 // ------------------------------------------------------------------ ARGO Maps (v14)
 

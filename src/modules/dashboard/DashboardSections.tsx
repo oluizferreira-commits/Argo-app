@@ -123,7 +123,7 @@ export function IndicatorsSection({ ind, today }: { ind: Indicators; today: stri
             <span className="flow-bar">
               <i className="flow-in" style={{ width: `${pct(ind.receivedMonthCents, flowMax)}%` }} />
             </span>
-            <span className="ind-detail">dinheiro recebido no mês</span>
+            <span className="ind-detail">recebido no mês das vendas para a fazenda</span>
           </Link>
           <Link to={ind.supplyExpenseCents > ind.fuelExpenseCents ? '/insumos' : '/diesel'} className="flow-line" data-testid="kpi-despesas">
             <span className="flow-head">
@@ -138,8 +138,15 @@ export function IndicatorsSection({ ind, today }: { ind: Indicators; today: stri
             <span className="ind-detail">{expenseParts.length ? expenseParts.join(' · ') : 'compras de diesel e insumos'}</span>
           </Link>
           <span className="flow-balance">
-            Saldo do mês <b className={balance < 0 ? 'neg' : 'pos'}>{formatMoney(balance)}</b>
+            Saldo da fazenda no mês <b className={balance < 0 ? 'neg' : 'pos'}>{formatMoney(balance)}</b>
           </span>
+          {ind.personalMonthCents > 0 && (
+            <Link to="/vendas" className="flow-personal" data-testid="kpi-pessoal">
+              <span>Vendas para gastos pessoais</span>
+              <b>{formatMoney(ind.personalMonthCents)}</b>
+              <small>fora do caixa da fazenda: diesel, sal e outras despesas não descontam daqui</small>
+            </Link>
+          )}
         </div>
 
         <Link to="/reserva" className="ind ind-reserva" data-testid="kpi-reserva">
