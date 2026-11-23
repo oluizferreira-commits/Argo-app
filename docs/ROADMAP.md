@@ -34,6 +34,7 @@
 | 10.1c | Tela "Mais" em apps por pastas; ARGO Maps Fase 1 (perímetro, pastos, áreas, revisão e versões) | **concluída** (v0.21.0) |
 | 11.2 | ARGO Maps Fase 2: painel completo do pasto (abas Resumo, Rebanho, Operações, Custos, Pastagem) | próxima |
 | 11.3a | ARGO Maps: mapa ilustrado semi-realista (capim, cercas, mata, água, sede, placas, gado ilustrativo) | **concluída** (v0.22.0) |
+| 11.3c | Tela Novidades (notas de atualização) e aviso após atualizar | **concluída** (v0.23.0) |
 | 11.3b | ARGO Maps: estruturas pontuais (curral, cochos, porteiras, estradas) | planejada |
 | 11.4 | ARGO Maps Fase 4: gado animado no mapa, alertas de lotação configuráveis | planejada |
 | 10.2 | Layouts próprios de Rebanho, Pastos, Financeiro e demais módulos (após aprovação do Painel) | próxima |

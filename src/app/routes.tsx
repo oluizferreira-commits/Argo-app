@@ -8,6 +8,7 @@ import { ReceberPage } from '../modules/receber/ReceberPage'
 import { ReservaPage } from '../modules/reserva/ReservaPage'
 import { RelatoriosPage } from '../modules/relatorios/RelatoriosPage'
 import { HubPage } from '../modules/hub/HubPage'
+import { NovidadesPage } from '../modules/novidades/NovidadesPage'
 import { MapEditorPage } from '../modules/maps/MapEditorPage'
 import { MapsPage } from '../modules/maps/MapsPage'
 import { ClienteFormPage } from '../modules/clientes/ClienteFormPage'
@@ -104,6 +105,7 @@ const implemented: RouteObject[] = [
   { path: '/configuracoes', element: <SettingsPage />, handle: t('Configurações') },
   { path: '/financeiro', element: <FinanceiroPage />, handle: t('Financeiro') },
   { path: '/financeiro/dados', element: <DadosResponsavelPage />, handle: t('Dados do responsável') },
+  { path: '/novidades', element: <NovidadesPage />, handle: t('Novidades') },
   { path: '/mais', element: <HubPage intro="Todos os módulos do ARGO." />, handle: t('Módulos') },
 ]
 

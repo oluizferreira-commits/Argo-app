@@ -216,6 +216,13 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 - Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
 - **Relatório do diesel** (em Relatórios, id `diesel`; atalho `/relatorios?r=diesel`): resumo (comprado, consumido, custo, custo médio e estoque no fim do período), por semana (período mensal, semanas de segunda a domingo) ou por mês (período anual), por equipamento (litros, custo, horas/km trabalhados e média L/h ou km/L), por responsável, compras e abastecimentos. Média do medidor: litros de cada abastecimento com leitura ÷ horas (ou km) desde o abastecimento anterior do mesmo equipamento.
 
+## Novidades (notas de atualização)
+
+- `src/app/changelog.ts`: lista de versões (mais nova primeiro). **A cada versão publicada, acrescente uma
+  entrada no topo** — o teste `changelog.test.ts` falha se a versão do `package.json` não tiver nota.
+- Tela `/novidades` (Mais › Fazenda e sistema, e Configurações). Depois de uma atualização, o Painel mostra
+  uma vez "ARGO atualizado para a versão X" (versão vista guardada no aparelho; instalação nova não avisa).
+
 ## Identidade visual "Terra & Tecnologia" (design system)
 
 - Tudo em `src/styles/global.css`, por tokens no `:root`: fundo verde-floresta em camadas

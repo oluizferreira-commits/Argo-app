@@ -343,6 +343,9 @@ function AboutSection() {
           <dd>{isStandalone() ? 'App instalado' : 'Navegador'}</dd>
         </dl>
       </div>
+      <Link to="/novidades" className="btn btn-outline btn-block" data-testid="settings-novidades">
+        <Icon name="sparkle" /> Novidades: o que mudou em cada versão
+      </Link>
     </>
   )
 }

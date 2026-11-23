@@ -55,6 +55,7 @@ export const MODULES: readonly ModuleDef[] = [
   { id: 'insumos', title: 'Insumos', description: 'Sal e outros produtos em sacos, consumo no cocho', path: '/insumos', icon: 'sack', status: 'disponivel', short: 'Insumos', group: 'campo' },
   { id: 'diesel', title: 'Diesel', description: 'Compras, abastecimentos e custo médio', path: '/diesel', icon: 'fuel', status: 'disponivel', short: 'Diesel', group: 'maquinas' },
   { id: 'responsaveis', title: 'Responsáveis', description: 'Quem opera máquinas e aplica vacinas', path: '/responsaveis', icon: 'user', status: 'disponivel', short: 'Responsáveis', group: 'maquinas' },
+  { id: 'novidades', title: 'Novidades', description: 'O que mudou em cada versão do ARGO', path: '/novidades', icon: 'sparkle', status: 'disponivel', short: 'Novidades', group: 'fazenda' },
   { id: 'configuracoes', title: 'Configurações', description: 'Backup, armazenamento e sistema', path: '/configuracoes', icon: 'gear', status: 'disponivel', short: 'Ajustes', group: 'fazenda' },
 ]
 

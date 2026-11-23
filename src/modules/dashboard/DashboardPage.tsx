@@ -6,6 +6,7 @@ import { useOnline } from '../../hooks/useOnline'
 import { isStandalone } from '../../platform/storage'
 import { HeroWeather } from '../clima/WeatherWidgets'
 import { useFarm } from '../fazendas/FarmContext'
+import { UpdatedNotice } from '../novidades/UpdatedNotice'
 import { VoiceTaskButton } from '../tarefas/VoiceTask'
 import { AgendaSection, IndicatorsSection, PendingCenter, RecentActivity } from './DashboardSections'
 import { QuickLaunch } from './QuickLaunch'
@@ -94,6 +95,8 @@ export function DashboardPage() {
           )}
         </div>
       </section>
+
+      <UpdatedNotice createdAt={farm.createdAt} />
 
       <VoiceTaskButton />
 
