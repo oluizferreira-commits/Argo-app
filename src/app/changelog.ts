@@ -13,6 +13,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.24.0',
+    date: '2026-11-24',
+    title: 'Lembrete de backup a cada 12 horas',
+    items: [
+      'A cada 12 horas aparece o aviso "Hora de fazer o backup" com o botão "Fazer backup agora".',
+      'Se ninguém abrir o app nesse tempo, o aviso aparece assim que abrir.',
+      'O backup abre a folha do iPhone: escolha "Salvar em Arquivos" › iCloud Drive.',
+      '"Depois" esconde o aviso até a próxima abertura do app (ou por 1 hora).',
+      'Corrigido no ARGO Maps: ao encaixar um pasto na cerca, o ponto podia ficar até 1 metro fora e o pasto aparecia como "fora do perímetro".',
+    ],
+  },
+  {
     version: '0.23.1',
     date: '2026-11-23',
     title: 'Tarefa por voz corrigida no iPhone',

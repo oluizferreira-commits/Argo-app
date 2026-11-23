@@ -4025,3 +4025,40 @@ i.flow-out,
   vertical-align: -3px;
   color: var(--gold-300);
 }
+
+/* lembrete de backup (a cada 12 horas) */
+.backup-reminder {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgb(236 198 110 / 45%);
+  border-left: 4px solid var(--warn);
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgb(236 198 110 / 14%), transparent 60%),
+    linear-gradient(165deg, var(--layer-2), var(--layer-1));
+  animation: rise-in 0.4s var(--ease) backwards;
+}
+.backup-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: #10261e;
+  background: var(--warn);
+}
+.backup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.backup-body > span {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.backup-msg {
+  color: var(--warn) !important;
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { BackupReminder } from '../../backup/BackupReminder'
 import { FarmLandscape } from '../../components/Art'
 import { Icon } from '../../components/Icon'
 import { useOnline } from '../../hooks/useOnline'
@@ -64,6 +65,8 @@ export function DashboardPage() {
           <Icon name="gear" size={22} />
         </Link>
       </header>
+
+      <BackupReminder />
 
       <section className="home-hero" data-testid="welcome">
         <FarmLandscape className="home-hero-art" />

@@ -11,30 +11,27 @@ const SNAP_EDGE_PX = 12
  * para que pastos vizinhos dividam exatamente a mesma cerca.
  */
 export function snap(map: L.Map, ll: L.LatLng, targets: readonly Ring[]): LngLat {
-  const p = map.latLngToContainerPoint(ll)
-  let best: { d: number; pt: L.Point } | null = null
+  // pixels SEM arredondamento (latLngToContainerPoint arredonda e deslocaria o encaixe ~1 m)
+  const z = map.getZoom()
+  const px = (lng: number, lat: number) => map.project([lat, lng], z)
+  const p = map.project(ll, z)
+  let best: { d: number; pt: L.Point; exact?: LngLat } | null = null
   for (const r of targets)
     for (const v of r) {
-      const q = map.latLngToContainerPoint([v[1], v[0]])
-      const d = q.distanceTo(p)
-      if (d <= SNAP_VERTEX_PX && (!best || d < best.d)) best = { d, pt: q }
+      const d = px(v[0], v[1]).distanceTo(p)
+      if (d <= SNAP_VERTEX_PX && (!best || d < best.d)) best = { d, pt: px(v[0], v[1]), exact: v }
     }
-  if (!best) {
-    for (const r of targets)
-      for (let i = 0; i < r.length; i++) {
-        const a = map.latLngToContainerPoint([r[i][1], r[i][0]])
-        const b = map.latLngToContainerPoint([r[(i + 1) % r.length][1], r[(i + 1) % r.length][0]])
-        const [c] = closestOnSegment([p.x, p.y], [a.x, a.y], [b.x, b.y])
-        const q = L.point(c[0], c[1])
-        const d = q.distanceTo(p)
-        if (d <= SNAP_EDGE_PX && (!best || d < best.d)) best = { d, pt: q }
-      }
-  }
-  const out = best ? map.containerPointToLatLng(best.pt) : ll
-  // quando encaixa num canto, usa a coordenada exata (cerca comum idêntica)
-  if (best)
-    for (const r of targets)
-      for (const v of r) if (map.latLngToContainerPoint([v[1], v[0]]).distanceTo(best.pt) < 0.5) return [v[0], v[1]]
+  if (best?.exact) return [best.exact[0], best.exact[1]] // canto: coordenada idêntica (cerca comum)
+  for (const r of targets)
+    for (let i = 0; i < r.length; i++) {
+      const a = px(r[i][0], r[i][1])
+      const b = px(r[(i + 1) % r.length][0], r[(i + 1) % r.length][1])
+      const [c] = closestOnSegment([p.x, p.y], [a.x, a.y], [b.x, b.y])
+      const q = L.point(c[0], c[1])
+      const d = q.distanceTo(p)
+      if (d <= SNAP_EDGE_PX && (!best || d < best.d)) best = { d, pt: q }
+    }
+  const out = best ? map.unproject(best.pt, z) : ll
   return [out.lng, out.lat]
 }
 

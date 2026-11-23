@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { backupFileName, BackupError, createBackup, importBackup, markBackupDone, parseBackup } from '../../backup/backup'
+import { BackupError, importBackup, parseBackup } from '../../backup/backup'
+import { exportBackupNow } from '../../backup/exportNow'
 import { formatBytes, formatDateTime } from '../../core/format'
 import { newId } from '../../core/ids'
 import { db } from '../../db/database'
@@ -10,7 +11,7 @@ import { Icon } from '../../components/Icon'
 import { StatusItem } from '../../components/StatusItem'
 import { useOnline } from '../../hooks/useOnline'
 import { useStorageStatus } from '../../hooks/useStorageStatus'
-import { readFileText, saveFile } from '../../platform/files'
+import { readFileText } from '../../platform/files'
 import { isStandalone, requestPersistentStorage } from '../../platform/storage'
 import { useFarm } from '../fazendas/FarmContext'
 
@@ -122,12 +123,7 @@ function BackupSection() {
     setBusy(true)
     setMsg(null)
     try {
-      const backup = await createBackup(db, __APP_VERSION__)
-      const saved = await saveFile(backupFileName(backup), JSON.stringify(backup, null, 2))
-      if (saved) {
-        await markBackupDone(db, backup)
-        setMsg({ kind: 'ok', text: 'Backup gerado. Guarde o arquivo em local seguro (ex.: iCloud Drive).' })
-      }
+      if ((await exportBackupNow(db)) === 'feito') setMsg({ kind: 'ok', text: 'Backup gerado. Guarde o arquivo em local seguro (ex.: iCloud Drive). O próximo lembrete aparece em 12 horas.' })
     } catch (e) {
       setMsg({ kind: 'error', text: `Falha ao gerar backup: ${(e as Error).message}` })
     } finally {
@@ -167,7 +163,7 @@ function BackupSection() {
         <StatusItem
           icon="clock"
           label="Último backup exportado"
-          detail={lastBackupAt ? formatDateTime(lastBackupAt) : 'Nenhum'}
+          detail={lastBackupAt ? `${formatDateTime(lastBackupAt)} · lembrete a cada 12 horas` : 'Nenhum · o ARGO lembra a cada 12 horas'}
         />
         <button className="btn btn-gold btn-block" onClick={exportNow} disabled={busy}>
           <Icon name="download" /> Exportar backup

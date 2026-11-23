@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation, useMatches, useNavigate } from 'react-router'
 import { TABS } from '../app/navigation'
 import { useOnline } from '../hooks/useOnline'
+import { BackupReminder } from '../backup/BackupReminder'
 import { Icon } from './Icon'
 
 export function Layout() {
@@ -31,6 +32,8 @@ export function Layout() {
       )}
 
       <main className={`main${isHome ? ' is-home' : ''}`} key={pathname}>
+        {/* no Painel o lembrete fica logo abaixo do cabeçalho da própria tela */}
+        {!isHome && <BackupReminder />}
         <Outlet />
       </main>
 

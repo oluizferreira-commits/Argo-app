@@ -216,6 +216,14 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 - Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
 - **Relatório do diesel** (em Relatórios, id `diesel`; atalho `/relatorios?r=diesel`): resumo (comprado, consumido, custo, custo médio e estoque no fim do período), por semana (período mensal, semanas de segunda a domingo) ou por mês (período anual), por equipamento (litros, custo, horas/km trabalhados e média L/h ou km/L), por responsável, compras e abastecimentos. Média do medidor: litros de cada abastecimento com leitura ÷ horas (ou km) desde o abastecimento anterior do mesmo equipamento.
 
+## Lembrete de backup (12 horas)
+
+- `src/backup/exportNow.ts`: `backupDue` (há lançamentos e o último backup tem ≥ 12 h ou nunca foi feito) e
+  `exportBackupNow` (gera, abre a folha do iPhone, marca `lastBackupAt` só se não cancelar).
+- `BackupReminder`: no Painel logo abaixo do cabeçalho e no topo das demais telas; confere a cada minuto com o
+  app aberto; "Depois" adia na sessão (sessionStorage) por até 1 hora. Um app web no iPhone não consegue
+  salvar arquivo sem um toque — backup 100% automático só com a nuvem.
+
 ## Novidades (notas de atualização)
 
 - `src/app/changelog.ts`: lista de versões (mais nova primeiro). **A cada versão publicada, acrescente uma
