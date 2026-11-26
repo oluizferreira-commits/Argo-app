@@ -50,8 +50,8 @@ export function NovaVendaPage() {
             <div className="tile-icon">
               <Icon name="tag" />
             </div>
-            <div className="tile-title">Por cabeça</div>
-            <div className="tile-desc">Lote com preço por cabeça</div>
+            <div className="tile-title">Na perna</div>
+            <div className="tile-desc">Sem pesar, preço por cabeça</div>
           </Link>
         </div>
       </>
@@ -374,7 +374,7 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
     <form onSubmit={submit} className="stack">
       <div className="row" style={{ margin: '0 4px' }}>
         <Icon name={mode === 'cabeca' ? 'tag' : 'scale'} />
-        <div className="status-label">{mode === 'arroba' ? 'Venda por arroba' : mode === 'kg' ? 'Venda por kg' : 'Venda por cabeça'}</div>
+        <div className="status-label">{mode === 'arroba' ? 'Venda por arroba' : mode === 'kg' ? 'Venda por kg' : 'Venda na perna'}</div>
       </div>
 
       {/* Cliente e data */}

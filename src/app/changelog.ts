@@ -13,13 +13,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
-    version: '0.31.0',
+    version: '0.31.1',
     date: '2026-11-27',
-    title: 'Reserva só das vendas pessoais',
+    title: 'Reserva só das vendas pessoais e venda na perna',
     items: [
       'Venda "para a fazenda" não entra mais na reserva: o dinheiro fica na fazenda. Não aparece "Separe para a reserva" nem o botão de transferência nesses recebimentos.',
       'Só as vendas "para gastos pessoais" geram a parte da reserva.',
       'Se mudar o destino de uma venda na página dela, a reserva recalcula na hora. Depósitos já feitos continuam no saldo da reserva.',
+      '"Venda por lote" agora se chama "Venda na perna" (sem pesar, preço por cabeça), no menu, nas vendas, no comprovante e nos relatórios.',
     ],
   },
   {

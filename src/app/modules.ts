@@ -42,7 +42,7 @@ export const MODULES: readonly ModuleDef[] = [
   { id: 'pesagens', title: 'Pesagem de lote', description: 'Pesar primeiro, vender depois (sem comprador)', path: '/pesagens', icon: 'scale', status: 'disponivel', short: 'Pesagem', group: 'vendas' },
   { id: 'vendas-kg', title: 'Vendas por kg', description: 'Pesagens de 1 a 4 cabeças, preço do quilo', path: '/vendas/nova/kg', icon: 'scale', status: 'disponivel', short: 'Venda por kg', group: 'vendas' },
   { id: 'vendas-arroba', title: 'Vendas por arroba', description: 'Peso vivo (kg ÷ 30) ou abate (@)', path: '/vendas/nova/arroba', icon: 'scale', status: 'disponivel', short: 'Venda por @', group: 'vendas' },
-  { id: 'vendas-lote', title: 'Vendas por lote', description: 'Lote com preço por cabeça', path: '/vendas/nova/cabeca', icon: 'tag', status: 'disponivel', short: 'Venda por lote', group: 'vendas' },
+  { id: 'vendas-lote', title: 'Venda na perna', description: 'Sem pesar, preço por cabeça', path: '/vendas/nova/cabeca', icon: 'tag', status: 'disponivel', short: 'Venda na perna', group: 'vendas' },
   { id: 'clientes', title: 'Clientes', description: 'Compradores e contatos', path: '/clientes', icon: 'handshake', status: 'disponivel', short: 'Clientes', group: 'vendas' },
   { id: 'contas-receber', title: 'Contas a receber', description: 'Parcelas em aberto e vencidas', path: '/receber', icon: 'hourglass', status: 'disponivel', short: 'A receber', group: 'vendas' },
   { id: 'pagamentos', title: 'Pagamentos parciais', description: 'Histórico de recebimentos', path: '/pagamentos', icon: 'cash', status: 'disponivel', short: 'Recebimentos', group: 'vendas' },

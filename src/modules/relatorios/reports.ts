@@ -143,7 +143,7 @@ function vendas(d: ReportData, p: Period): Report {
         formatDay(s.date),
         formatSaleNumber(s.number),
         clients.get(s.clientId) ?? '-',
-        s.mode === 'arroba' ? 'Por arroba' : s.mode === 'kg' ? 'Por kg' : 'Por cabeça',
+        s.mode === 'arroba' ? 'Por arroba' : s.mode === 'kg' ? 'Por kg' : 'Na perna',
         salePurpose(s) === 'pessoal' ? 'Pessoal' : 'Fazenda',
         n(heads(s)),
         s.mode !== 'cabeca' ? arr(s.arrobasHundredths) : '-',

@@ -130,7 +130,7 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
 
   // ---------- animais
   const modeLabel =
-    sale.mode === 'cabeca' ? 'VENDA POR CABEÇA' : sale.mode === 'kg' ? 'VENDA POR KG · PESO VIVO' : sale.weighing === 'vivo' ? 'VENDA POR ARROBA · PESO VIVO (kg ÷ 30)' : 'VENDA POR ARROBA · ABATE'
+    sale.mode === 'cabeca' ? 'VENDA NA PERNA (POR CABEÇA)' : sale.mode === 'kg' ? 'VENDA POR KG · PESO VIVO' : sale.weighing === 'vivo' ? 'VENDA POR ARROBA · PESO VIVO (kg ÷ 30)' : 'VENDA POR ARROBA · ABATE'
   text(modeLabel, M, y, 20, 700, C.gold)
   y += 46
   const pastureName = (id: string) => d.pastures.get(id)?.name ?? ''

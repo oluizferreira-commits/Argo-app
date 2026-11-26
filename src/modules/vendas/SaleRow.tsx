@@ -19,7 +19,7 @@ export function SaleRow({ sale, clientName }: { sale: Sale; clientName?: string 
           {sale.status === 'cancelada' && <span className="badge badge-warn" style={{ marginLeft: 8 }}>Cancelada</span>}
         </div>
         <div className="status-detail">
-          {formatDay(sale.date)} · {heads} cab. · {sale.mode === 'arroba' ? 'por arroba' : sale.mode === 'kg' ? 'por kg' : 'por cabeça'}
+          {formatDay(sale.date)} · {heads} cab. · {sale.mode === 'arroba' ? 'por arroba' : sale.mode === 'kg' ? 'por kg' : 'na perna'}
         </div>
       </div>
       <span className="num" style={{ whiteSpace: 'nowrap' }}>

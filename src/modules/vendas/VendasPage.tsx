@@ -38,7 +38,7 @@ export function VendasPage() {
           <Icon name="scale" /> Por arroba
         </Link>
         <Link to="/vendas/nova/cabeca" className="btn btn-outline" style={{ flex: 1 }}>
-          <Icon name="tag" /> Por cabeça
+          <Icon name="tag" /> Na perna
         </Link>
       </div>
       <div className="row">
