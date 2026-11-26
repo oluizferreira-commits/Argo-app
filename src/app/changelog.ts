@@ -13,6 +13,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.30.1',
+    date: '2026-11-26',
+    title: 'Venda cancelada devolve a pesagem',
+    items: [
+      'Corrigido: ao cancelar uma venda feita a partir de uma pesagem de lote, a pesagem ficava presa como "vendida". Agora ela volta sozinha para "a vender", com todas as pesagens.',
+      'Pesagem cuja venda já tinha sido cancelada antes desta correção: abra em Pesagens (aparece "Venda cancelada") e toque em "Usar esta pesagem de novo".',
+    ],
+  },
+  {
     version: '0.30.0',
     date: '2026-11-26',
     title: 'Dois preços pelo corte de peso',

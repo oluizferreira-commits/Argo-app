@@ -75,6 +75,23 @@ export async function renameLot(db: ArgoDatabase, lotId: string, name: string, n
   return new Repository(db, 'weighingLots').update(lotId, { name: name.trim().slice(0, 60), notes: notes.trim().slice(0, 300) })
 }
 
+/**
+ * Reabre a pesagem cuja venda foi cancelada (vendas canceladas antes desta correção não reabriam o lote).
+ * Só funciona se a venda ligada estiver mesmo cancelada.
+ */
+export async function reopenLot(db: ArgoDatabase, lotId: string): Promise<WeighingLot> {
+  return db.transaction('rw', [db.weighingLots, db.sales, db.auditLog, db.outbox, db.meta], async () => {
+    const lot = await db.weighingLots.get(lotId)
+    if (!lot || lot.deletedAt !== null) throw new LotError('Pesagem não encontrada.')
+    if (lot.status === 'aberta') return lot
+    if (lot.status === 'vendida') {
+      const sale = lot.saleId ? await db.sales.get(lot.saleId) : undefined
+      if (sale && sale.status !== 'cancelada') throw new LotError('Este lote tem uma venda ativa. Cancele a venda primeiro.')
+    }
+    return new Repository(db, 'weighingLots').update(lotId, { status: 'aberta', saleId: null })
+  })
+}
+
 export async function cancelLot(db: ArgoDatabase, lotId: string): Promise<WeighingLot> {
   return db.transaction('rw', TABLES(db), async () => {
     await openLot(db, lotId)

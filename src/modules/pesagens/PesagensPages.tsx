@@ -14,13 +14,18 @@ import { useFarm } from '../fazendas/FarmContext'
 import { balanceOf, formatDay } from '../rebanho/herd'
 import { useBalances, usePastures } from '../rebanho/useHerd'
 import { WeightSplit } from './WeightSplit'
-import { addWeighing, MAX_HEADS_PER_WEIGHING, cancelLot, compositionHeads, createLot, LotError, lotSummary, removeWeighing, renameLot, setComposition } from './lots'
+import { addWeighing, MAX_HEADS_PER_WEIGHING, cancelLot, reopenLot, compositionHeads, createLot, LotError, lotSummary, removeWeighing, renameLot, setComposition } from './lots'
 
 const kg = (tenths: number) => `${formatDecimal(tenths, 1)} kg`
 
 function useLots() {
   const { farm } = useFarm()
-  return useLiveQuery(async () => (await db.weighingLots.where('farmId').equals(farm.id).toArray()).filter((l) => l.deletedAt === null).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [farm.id])
+  return useLiveQuery(async () => {
+    const lots = (await db.weighingLots.where('farmId').equals(farm.id).toArray()).filter((l) => l.deletedAt === null).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    const canceled = new Set((await db.sales.where('farmId').equals(farm.id).toArray()).filter((s) => s.status === 'cancelada').map((s) => s.id))
+    // lote "vendido" cuja venda foi cancelada: volta a ser vendável (com um toque em "Usar esta pesagem de novo")
+    return lots.map((l) => ({ lot: l, saleCanceled: l.status === 'vendida' && !!l.saleId && canceled.has(l.saleId) }))
+  }, [farm.id])
 }
 
 /** Lista de pesagens de lote: abertas (para vender) e já vendidas. */
@@ -30,8 +35,8 @@ export function PesagensPage() {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   if (!lots) return null
-  const open = lots.filter((l) => l.status === 'aberta')
-  const sold = lots.filter((l) => l.status === 'vendida')
+  const open = lots.filter((x) => x.lot.status === 'aberta' || x.saleCanceled)
+  const sold = lots.filter((x) => x.lot.status === 'vendida' && !x.saleCanceled)
 
   async function start() {
     setBusy(true)
@@ -55,8 +60,8 @@ export function PesagensPage() {
         <>
           <h2 className="section-title">Lotes pesados (a vender)</h2>
           <div className="card shape-list" data-testid="open-lots">
-            {open.map((l) => (
-              <LotRow key={l.id} lot={l} />
+            {open.map((x) => (
+              <LotRow key={x.lot.id} lot={x.lot} saleCanceled={x.saleCanceled} />
             ))}
           </div>
         </>
@@ -65,8 +70,8 @@ export function PesagensPage() {
         <>
           <h2 className="section-title">Vendidos</h2>
           <div className="card shape-list">
-            {sold.slice(0, 20).map((l) => (
-              <LotRow key={l.id} lot={l} />
+            {sold.slice(0, 20).map((x) => (
+              <LotRow key={x.lot.id} lot={x.lot} saleCanceled={false} />
             ))}
           </div>
         </>
@@ -76,17 +81,17 @@ export function PesagensPage() {
   )
 }
 
-function LotRow({ lot }: { lot: WeighingLot }) {
+function LotRow({ lot, saleCanceled }: { lot: WeighingLot; saleCanceled: boolean }) {
   const s = lotSummary(lot)
   return (
-    <Link to={lot.status === 'vendida' && lot.saleId ? `/vendas/${lot.saleId}` : `/pesagens/${lot.id}`} className="shape-row" style={{ textDecoration: 'none' }} data-testid="lot-row">
+    <Link to={lot.status === 'vendida' && lot.saleId && !saleCanceled ? `/vendas/${lot.saleId}` : `/pesagens/${lot.id}`} className="shape-row" style={{ textDecoration: 'none' }} data-testid="lot-row">
       <span className="status-body">
         <span className="status-label">{lot.name || `Pesagem de ${formatDay(lot.date)}`}</span>
         <span className="status-detail">
           {s.heads} cab. · {kg(s.kgTenths)} · média {kg(s.avgTenths)}/cab.
         </span>
       </span>
-      {lot.status === 'vendida' ? <span className="badge badge-ok">Vendido</span> : <Icon name="chevronRight" size={20} className="muted" />}
+      {saleCanceled ? <span className="badge badge-warn">Venda cancelada</span> : lot.status === 'vendida' ? <span className="badge badge-ok">Vendido</span> : <Icon name="chevronRight" size={20} className="muted" />}
     </Link>
   )
 }
@@ -98,6 +103,7 @@ function LotRow({ lot }: { lot: WeighingLot }) {
 export function PesagemPage() {
   const { id = '' } = useParams()
   const lot = useLiveQuery(() => db.weighingLots.get(id), [id])
+  const sale = useLiveQuery(async () => (lot?.saleId ? ((await db.sales.get(lot.saleId)) ?? null) : null), [lot?.saleId])
   const pastures = usePastures()
   const { balances, ready } = useBalances()
   const navigate = useNavigate()
@@ -160,7 +166,20 @@ export function PesagemPage() {
         </div>
       </section>
 
-      {lot.status === 'vendida' && lot.saleId && (
+      {lot.status === 'vendida' && lot.saleId && sale?.status === 'cancelada' && (
+        <div className="notice notice-warn" data-testid="lot-sale-canceled">
+          <Icon name="alert" />
+          <div className="stack" style={{ gap: 8 }}>
+            <div>
+              <strong>A venda deste lote foi cancelada.</strong> As pesagens continuam aqui: use de novo para fazer a venda certa.
+            </div>
+            <button type="button" className="btn btn-gold" onClick={() => void reopenLot(db, lot.id).catch((e: Error) => setErr(e.message))} data-testid="reopen-lot">
+              <Icon name="refresh" size={20} /> Usar esta pesagem de novo
+            </button>
+          </div>
+        </div>
+      )}
+      {lot.status === 'vendida' && lot.saleId && sale?.status !== 'cancelada' && (
         <Link to={`/vendas/${lot.saleId}`} className="notice notice-ok" style={{ textDecoration: 'none' }}>
           <Icon name="check" />
           <div>Lote vendido. Toque para ver a venda.</div>

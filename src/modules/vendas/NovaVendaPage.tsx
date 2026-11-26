@@ -71,7 +71,11 @@ function SaleFormRoute({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
       <div className="notice notice-warn">
         <Icon name="alert" />
         <div>
-          Este lote não está mais disponível para venda. <Link to="/pesagens">Ver pesagens</Link>
+          Este lote não está disponível para venda agora.{' '}
+          <Link to={lotId ? `/pesagens/${lotId}` : '/pesagens'} className="inline-link">
+            Abrir a pesagem
+          </Link>{' '}
+          (se a venda foi cancelada, toque em “Usar esta pesagem de novo”).
         </div>
       </div>
     )

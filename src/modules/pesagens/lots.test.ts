@@ -4,8 +4,9 @@ import { createDatabase, type ArgoDatabase } from '../../db/database'
 import { createFarm } from '../fazendas/farms'
 import { createPasture } from '../pastos/pastures'
 import { balanceOf, computeBalances, entriesIn, recordMovement, todayLocal } from '../rebanho/herd'
-import { buildInstallments, createClient, createSale, type SaleInput } from '../vendas/sales'
-import { addWeighing, cancelLot, compositionOf, createLot, lotSummary, removeWeighing, setComposition } from './lots'
+import { buildInstallments, cancelSale, createClient, createSale, type SaleInput } from '../vendas/sales'
+import { Repository } from '../../db/repository'
+import { reopenLot, addWeighing, cancelLot, compositionOf, createLot, lotSummary, removeWeighing, setComposition } from './lots'
 
 let db: ArgoDatabase
 afterEach(async () => db?.delete())
@@ -112,5 +113,38 @@ describe('média acima e abaixo de um peso', () => {
     expect(r.above).toEqual({ weighings: 2, heads: 5, kgTenths: 18100, avgTenths: 3620 })
     expect(r.below).toEqual({ weighings: 2, heads: 5, kgTenths: 16200, avgTenths: 3240 })
     expect(splitByWeight([], 3500).above.avgTenths).toBe(0)
+  })
+})
+
+describe('venda do lote cancelada', () => {
+  it('cancelar a venda reabre a pesagem, devolve os animais e deixa vender de novo', async () => {
+    const { farm, p, client } = await setup()
+    const lot = await createLot(db, farm.id)
+    await addWeighing(db, lot.id, { heads: 3, kgTenths: 10500 })
+    await setComposition(db, lot.id, [{ pastureId: p.id, category: 'garrote', quantity: 3 }])
+    const l = (await db.weighingLots.get(lot.id))!
+    const ws = l.weighings.map((w) => ({ heads: w.heads, kgTenths: w.kgTenths }))
+    const s1 = await createSale(db, farm.id, saleInput(client.id, compositionOf(l), ws, 1050 * 1250, lot.id))
+    await cancelSale(db, s1.id, 'valor errado')
+    expect((await db.weighingLots.get(lot.id))!).toMatchObject({ status: 'aberta', saleId: null })
+    expect(balanceOf(computeBalances(await db.movements.toArray()), p.id, 'garrote')).toBe(50) // animais voltaram
+    const s2 = await createSale(db, farm.id, saleInput(client.id, compositionOf(l), ws, 1050 * 1250, lot.id))
+    expect((await db.weighingLots.get(lot.id))!).toMatchObject({ status: 'vendida', saleId: s2.id })
+    expect(balanceOf(computeBalances(await db.movements.toArray()), p.id, 'garrote')).toBe(47)
+  })
+
+  it('lote que ficou "vendido" com a venda já cancelada (antes da correção) pode ser reaberto', async () => {
+    const { farm, p, client } = await setup()
+    const lot = await createLot(db, farm.id)
+    await addWeighing(db, lot.id, { heads: 3, kgTenths: 10500 })
+    await setComposition(db, lot.id, [{ pastureId: p.id, category: 'garrote', quantity: 3 }])
+    const l = (await db.weighingLots.get(lot.id))!
+    const s1 = await createSale(db, farm.id, saleInput(client.id, compositionOf(l), [{ heads: 3, kgTenths: 10500 }], 1050 * 1250, lot.id))
+    await expect(reopenLot(db, lot.id)).rejects.toThrow('venda ativa')
+    await cancelSale(db, s1.id, 'x')
+    // simula o estado antigo: lote continuou "vendido"
+    await new Repository(db, 'weighingLots').update(lot.id, { status: 'vendida', saleId: s1.id })
+    await reopenLot(db, lot.id)
+    expect((await db.weighingLots.get(lot.id))!).toMatchObject({ status: 'aberta', saleId: null })
   })
 })

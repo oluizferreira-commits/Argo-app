@@ -352,7 +352,7 @@ export async function createSale(db: ArgoDatabase, farmId: string, input: SaleIn
 /** Cancela a venda: devolve os animais ao rebanho (estorno) e marca a venda como cancelada. */
 export async function cancelSale(db: ArgoDatabase, id: string, reason: string): Promise<Sale> {
   const sales = new Repository(db, 'sales')
-  return db.transaction('rw', [db.sales, db.movements, db.pastures, db.payments, db.auditLog, db.outbox, db.meta], async () => {
+  return db.transaction('rw', [db.sales, db.movements, db.pastures, db.payments, db.weighingLots, db.auditLog, db.outbox, db.meta], async () => {
     const sale = await db.sales.get(id)
     if (!sale) throw new SaleError('Venda não encontrada.')
     if (sale.status === 'cancelada') throw new SaleError('Esta venda já foi cancelada.')
@@ -361,6 +361,9 @@ export async function cancelSale(db: ArgoDatabase, id: string, reason: string): 
     await reverseMovement(db, sale.movementId, `Cancelamento da venda nº ${sale.number}${reason ? ` — ${reason}` : ''}`, {
       fromSale: true,
     })
+    // a pesagem de lote usada nesta venda volta a ficar disponível para vender de novo
+    const lots = (await db.weighingLots.where('farmId').equals(sale.farmId).toArray()).filter((l) => l.saleId === id && l.status === 'vendida' && l.deletedAt === null)
+    for (const l of lots) await new Repository(db, 'weighingLots').update(l.id, { status: 'aberta', saleId: null })
     return sales.update(id, { status: 'cancelada', canceledAt: nowIso(), cancelReason: reason.trim() })
   })
 }
