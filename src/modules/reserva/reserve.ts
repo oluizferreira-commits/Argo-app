@@ -54,6 +54,18 @@ export function reserveShare(amountCents: number, percent = DEFAULT_RESERVE_PERC
   return Math.round((amountCents * Math.round(percent * 100)) / 10000)
 }
 
+/**
+ * Só as vendas para GASTOS PESSOAIS entram na reserva. O dinheiro da venda para a fazenda fica na fazenda
+ * (diesel, sal etc.) e não gera nada a separar.
+ */
+export const countsForReserve = (sale: Pick<Sale, 'purpose'> | undefined): boolean => sale?.purpose === 'pessoal'
+
+/** Recebimentos que geram reserva (os de vendas para gastos pessoais). */
+export function reservePayments(payments: readonly Payment[], sales: readonly Sale[]): Payment[] {
+  const ids = new Set(sales.filter(countsForReserve).map((s) => s.id))
+  return payments.filter((p) => ids.has(p.saleId))
+}
+
 export interface ReserveSummary {
   /** Meta: percentual da reserva sobre o total das vendas ativas. */
   targetCents: number
@@ -79,8 +91,8 @@ export function reserveSummary(
   entries: readonly ReserveEntry[],
   farm?: RateFarm,
 ): ReserveSummary {
-  const targetCents = sales.filter((s) => s.status === 'ativa').reduce((a, s) => a + reserveShare(s.totalCents, rateOn(farm, s.date)), 0)
-  const dueCents = payments.filter(active).reduce((a, p) => a + reserveShare(p.amountCents, rateOn(farm, p.date)), 0)
+  const targetCents = sales.filter((s) => s.status === 'ativa' && countsForReserve(s)).reduce((a, s) => a + reserveShare(s.totalCents, rateOn(farm, s.date)), 0)
+  const dueCents = reservePayments(payments, sales).filter(active).reduce((a, p) => a + reserveShare(p.amountCents, rateOn(farm, p.date)), 0)
   const depositedCents = entries.filter((e) => active(e) && e.type === 'deposito').reduce((a, e) => a + e.amountCents, 0)
   const withdrawnCents = entries.filter((e) => active(e) && e.type === 'retirada').reduce((a, e) => a + e.amountCents, 0)
   return {

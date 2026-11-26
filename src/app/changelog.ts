@@ -13,6 +13,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.31.0',
+    date: '2026-11-27',
+    title: 'Reserva só das vendas pessoais',
+    items: [
+      'Venda "para a fazenda" não entra mais na reserva: o dinheiro fica na fazenda. Não aparece "Separe para a reserva" nem o botão de transferência nesses recebimentos.',
+      'Só as vendas "para gastos pessoais" geram a parte da reserva.',
+      'Se mudar o destino de uma venda na página dela, a reserva recalcula na hora. Depósitos já feitos continuam no saldo da reserva.',
+    ],
+  },
+  {
     version: '0.30.2',
     date: '2026-11-27',
     title: 'Comprovante sem Pix na venda para a fazenda',

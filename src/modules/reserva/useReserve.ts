@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo } from 'react'
 import { db } from '../../db/database'
 import { useFarm } from '../fazendas/FarmContext'
-import { reservePendingByPayment, reserveSummary } from './reserve'
+import { reservePayments, reservePendingByPayment, reserveSummary } from './reserve'
 
 /** Situação da reserva financeira da fazenda aberta. */
 export function useReserve() {
@@ -20,7 +20,7 @@ export function useReserve() {
   return useMemo(() => {
     if (!data) return undefined
     const summary = reserveSummary(data.sales, data.payments, data.entries, farm)
-    const byPayment = reservePendingByPayment(data.payments, data.entries, farm)
+    const byPayment = reservePendingByPayment(reservePayments(data.payments, data.sales), data.entries, farm)
     const pendingPayments = data.payments
       .map((p) => ({ payment: p, pendingCents: byPayment.get(p.id) ?? 0 }))
       .filter((x) => x.pendingCents > 0)

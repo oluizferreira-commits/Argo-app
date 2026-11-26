@@ -696,8 +696,8 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
           </div>
           <p className="muted" style={{ fontSize: 14 }}>
             {purpose === 'fazenda'
-              ? 'Entra no caixa da fazenda e cobre as despesas (diesel, sal, manutenção, diaristas).'
-              : 'Fica fora do caixa da fazenda: as despesas da fazenda não são descontadas deste dinheiro.'}
+              ? 'Entra no caixa da fazenda e cobre as despesas (diesel, sal, manutenção, diaristas). Não vai para a reserva, e o comprovante sai sem Pix.'
+              : 'Fica fora do caixa da fazenda: as despesas não são descontadas deste dinheiro. Entra na reserva, e o comprovante sai com o seu Pix.'}
           </p>
         </div>
       )}

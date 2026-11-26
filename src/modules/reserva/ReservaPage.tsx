@@ -52,7 +52,7 @@ export function ReservaPage() {
           {formatMoney(s.balanceCents)}
         </div>
         <p>
-          {pct} de cada venda, separado conforme o dinheiro é recebido.
+          {pct} de cada venda <strong>para gastos pessoais</strong>, separado conforme o dinheiro é recebido. Venda para a fazenda não entra na reserva: o dinheiro fica na fazenda.
         </p>
       </section>
 
@@ -92,7 +92,7 @@ export function ReservaPage() {
 
       <div className="card">
         <dl className="kv" data-testid="reserve-kv">
-          <dt>Meta (reserva sobre as vendas)</dt>
+          <dt>Meta (reserva sobre as vendas pessoais)</dt>
           <dd>{formatMoney(s.targetCents)}</dd>
           <dt>Reserva sobre o que já foi recebido</dt>
           <dd>{formatMoney(s.dueCents)}</dd>

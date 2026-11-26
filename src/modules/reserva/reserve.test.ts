@@ -5,8 +5,8 @@ import { createFarm } from '../fazendas/farms'
 import { createPasture } from '../pastos/pastures'
 import { entriesIn, recordMovement, todayLocal } from '../rebanho/herd'
 import { recordPayment, reversePayment } from '../receber/receivables'
-import { addDays, buildInstallments, createClient, createSale } from '../vendas/sales'
-import { pendingForPayment, recordReserveEntry, reservePendingByPayment, reserveShare, reserveSummary, reverseReserveEntry } from './reserve'
+import { addDays, buildInstallments, createClient, createSale, setSalePurpose } from '../vendas/sales'
+import { pendingForPayment, recordReserveEntry, reservePayments, reservePendingByPayment, reserveShare, reserveSummary, reverseReserveEntry } from './reserve'
 
 let db: ArgoDatabase
 afterEach(async () => db?.delete())
@@ -29,6 +29,7 @@ async function setup() {
     paymentKind: 'prazo',
     installments: buildInstallments('prazo', todayLocal(), 1000000, { days: 30 }),
     notes: '',
+    purpose: 'pessoal', // só venda pessoal gera reserva
   })
   const summary = async () =>
     reserveSummary(
@@ -54,6 +55,17 @@ describe('reserva financeira (35%)', () => {
     expect(await summary()).toMatchObject({ dueCents: 17500, pendingCents: 17500 })
     await pay(950000)
     expect(await summary()).toMatchObject({ dueCents: 350000, pendingCents: 350000 })
+  })
+
+  it('venda para a fazenda não entra na reserva; só a pessoal (e mudar o destino muda a conta)', async () => {
+    const { sale, summary, pay } = await setup()
+    await setSalePurpose(db, sale.id, 'fazenda')
+    await pay(100000)
+    expect(await summary()).toMatchObject({ targetCents: 0, dueCents: 0, pendingCents: 0 })
+    expect(reservePayments(await db.payments.toArray(), await db.sales.toArray())).toHaveLength(0)
+    await setSalePurpose(db, sale.id, 'pessoal')
+    expect(await summary()).toMatchObject({ targetCents: 350000, dueCents: 35000, pendingCents: 35000 })
+    expect(reservePayments(await db.payments.toArray(), await db.sales.toArray())).toHaveLength(1)
   })
 
   it('depósito ligado ao recebimento abate o que falta separar', async () => {
@@ -152,6 +164,7 @@ describe('percentual da reserva definido pelo responsável', () => {
       paymentKind: 'prazo',
       installments: buildInstallments('prazo', addDays(todayLocal(), -5), 100000, { days: 30 }),
       notes: '',
+      purpose: 'pessoal', // só venda pessoal gera reserva
     })
     await recordPayment(db, farm.id, { saleId: antiga.id, date: ontem, amountCents: 100000, method: 'pix', notes: '' })
     const f30 = await setReserveRate(db, farm, 30, todayLocal())

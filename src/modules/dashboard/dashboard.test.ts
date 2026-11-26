@@ -94,7 +94,7 @@ describe('indicadores', () => {
     expect(ind.supplyExpenseCents).toBe(15000)
     expect(ind.expensesMonthCents).toBe(75000)
     expect(ind.reserveCents).toBe(0) // nada depositado: a receber não entra no saldo
-    expect(ind.reservePendingCents).toBe(35000)
+    expect(ind.reservePendingCents).toBe(0) // venda para a fazenda: o dinheiro fica na fazenda, nada a separar
     // composição do rebanho (painel do rebanho): soma igual ao total, sem inventar categoria
     expect(ind.herdMales).toBe(8)
     expect(ind.herdFemales).toBe(0)
@@ -132,6 +132,7 @@ describe('Central de Pendências', () => {
   it('reúne vencidas, estoque negativo, especificação e reserva, sem duplicar, por prioridade', async () => {
     const { farm, b, sale } = await setup()
     const s = await sale(addDays(today, -40), 1, 400000, 30) // venceu há 10 dias
+    await setSalePurpose(db, s.id, 'pessoal') // só venda pessoal gera reserva
     await recordPayment(db, farm.id, { saleId: s.id, date: addDays(today, -5), amountCents: 100000, method: 'pix', notes: '' })
     await ensureDefaultSupplies(db, farm.id)
     const mix = (await db.supplies.toArray()).find((z) => z.name === 'Mistura de sal')!

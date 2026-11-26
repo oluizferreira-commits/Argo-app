@@ -8,7 +8,7 @@ import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { formatDay, todayLocal } from '../rebanho/herd'
 import { METHOD_LABELS, PaymentError, recordPayment, reversePayment, saleBalance, STATUS_BADGE, STATUS_LABEL } from './receivables'
-import { formatPercent, rateOn, recordReserveEntry, reservePendingByPayment, reserveShare } from '../reserva/reserve'
+import { countsForReserve, formatPercent, rateOn, recordReserveEntry, reservePayments, reservePendingByPayment, reserveShare } from '../reserva/reserve'
 
 
 /** Recebimentos da venda: saldo, parcelas, registrar e estornar. */
@@ -24,12 +24,14 @@ export function PaymentsSection({ sale, payments }: { sale: Sale; payments: Paym
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const reserveData = useLiveQuery(async () => {
-    const [entries, allPayments] = await Promise.all([
+    const [entries, allPayments, sales] = await Promise.all([
       db.reserveEntries.where('farmId').equals(farm.id).toArray(),
       db.payments.where('farmId').equals(farm.id).toArray(),
+      db.sales.where('farmId').equals(farm.id).toArray(),
     ])
-    return reservePendingByPayment(allPayments, entries, farm)
-  }, [farm, payments])
+    return reservePendingByPayment(reservePayments(allPayments, sales), entries, farm)
+  }, [farm, payments, sale.purpose])
+  const forReserve = countsForReserve(sale)
   const reserveEntries = reserveData
   const reserveOf = (p: Payment) => reserveData?.get(p.id) ?? 0
 
@@ -58,7 +60,9 @@ export function PaymentsSection({ sale, payments }: { sale: Sale; payments: Paym
       setOpen(false)
       setMsg({
         kind: 'ok',
-        text: `Recebimento de ${formatMoney(cents)} registrado. Separe ${formatMoney(reserveShare(cents, rateOn(farm, date)))} (${formatPercent(rateOn(farm, date))}) para a reserva.`,
+        text: forReserve
+          ? `Recebimento de ${formatMoney(cents)} registrado. Separe ${formatMoney(reserveShare(cents, rateOn(farm, date)))} (${formatPercent(rateOn(farm, date))}) para a reserva.`
+          : `Recebimento de ${formatMoney(cents)} registrado. Venda para a fazenda: o dinheiro fica na fazenda, não vai para a reserva.`,
       })
     } catch (err) {
       setMsg({ kind: 'error', text: err instanceof PaymentError ? err.message : (err as Error).message })
@@ -197,7 +201,7 @@ export function PaymentsSection({ sale, payments }: { sale: Sale; payments: Paym
                     {p.notes && ` · ${p.notes}`}
                     {p.status === 'estornado' && p.reverseReason && ` · estorno: ${p.reverseReason}`}
                   </div>
-                  {p.status === 'ativo' && reserveEntries && (
+                  {p.status === 'ativo' && forReserve && reserveEntries && (
                     reserveOf(p) > 0 ? (
                       <button type="button" className="btn btn-gold" style={{ minHeight: 40, marginTop: 6, fontSize: 14 }} onClick={() => separate(p)} data-testid="separate">
                         Já transferi {formatMoney(reserveOf(p))} para a reserva

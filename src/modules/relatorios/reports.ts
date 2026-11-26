@@ -10,7 +10,7 @@ import { planStatus } from '../maquinas/maintenance'
 import { monthSummary } from '../diaristas/workers'
 import { computeBalances, formatDay, todayLocal } from '../rebanho/herd'
 import { activePayments, METHOD_LABELS, saleBalance } from '../receber/receivables'
-import { rateOn, reserveShare } from '../reserva/reserve'
+import { rateOn, reservePayments, reserveShare } from '../reserva/reserve'
 import { formatSaleNumber, salePurpose } from '../vendas/sales'
 
 // ------------------------------------------------------------------ período
@@ -267,7 +267,7 @@ function recebimentos(d: ReportData, p: Period): Report {
     summary: [
       { label: 'Recebimentos', value: n(list.length) },
       { label: 'Total recebido', value: formatMoney(total) },
-      { label: 'Parte da reserva', value: formatMoney(list.reduce((a, x) => a + reserveShare(x.amountCents, rateOn(d.farm, x.date)), 0)) },
+      { label: 'Parte da reserva (vendas pessoais)', value: formatMoney(reservePayments(list, d.sales).reduce((a, x) => a + reserveShare(x.amountCents, rateOn(d.farm, x.date)), 0)) },
     ],
     tables: [
       {
@@ -345,7 +345,7 @@ function reserva(d: ReportData, p: Period): Report {
   const list = active.filter((e) => inPeriod(e.date, p)).sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
   const dep = list.filter((e) => e.type === 'deposito').reduce((a, e) => a + e.amountCents, 0)
   const ret = list.filter((e) => e.type === 'retirada').reduce((a, e) => a + e.amountCents, 0)
-  const due = activePayments(d.payments.filter((x) => inPeriod(x.date, p))).reduce((a, x) => a + reserveShare(x.amountCents, rateOn(d.farm, x.date)), 0)
+  const due = reservePayments(activePayments(d.payments.filter((x) => inPeriod(x.date, p))), d.sales).reduce((a, x) => a + reserveShare(x.amountCents, rateOn(d.farm, x.date)), 0)
   let running = opening
   return {
     id: 'reserva',
@@ -355,7 +355,7 @@ function reserva(d: ReportData, p: Period): Report {
       { label: 'Depósitos', value: formatMoney(dep) },
       { label: 'Retiradas', value: formatMoney(ret) },
       { label: 'Saldo final', value: formatMoney(opening + dep - ret) },
-      { label: 'Reserva sobre os recebimentos do período', value: formatMoney(due) },
+      { label: 'Reserva sobre os recebimentos pessoais do período', value: formatMoney(due) },
     ],
     tables: [
       {
