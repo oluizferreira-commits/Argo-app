@@ -13,6 +13,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.28.1',
+    date: '2026-11-26',
+    title: 'Até 4 cabeças por pesagem',
+    items: ['Na pesagem de lote e na venda por kg, agora dá para lançar 1, 2, 3 ou 4 cabeças por vez na balança.'],
+  },
+  {
     version: '0.28.0',
     date: '2026-11-26',
     title: 'Pesagem com animais misturados',

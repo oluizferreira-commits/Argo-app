@@ -81,7 +81,8 @@ describe('pesagem de lote com animais misturados na balança', () => {
   it('valida as pesagens e permite cancelar o lote', async () => {
     const { farm } = await setup()
     const lot = await createLot(db, farm.id)
-    await expect(addWeighing(db, lot.id, { heads: 4, kgTenths: 14000 })).rejects.toThrow('de 1 a 3')
+    await addWeighing(db, lot.id, { heads: 4, kgTenths: 14000 }) // 4 cabeças: aceito
+    await expect(addWeighing(db, lot.id, { heads: 5, kgTenths: 17500 })).rejects.toThrow('de 1 a 4')
     await expect(addWeighing(db, lot.id, { heads: 3, kgTenths: 100 })).rejects.toThrow('fora do normal')
     await cancelLot(db, lot.id)
     await expect(addWeighing(db, lot.id, { heads: 1, kgTenths: 3600 })).rejects.toThrow('cancelada')

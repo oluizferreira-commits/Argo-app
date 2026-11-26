@@ -13,7 +13,7 @@ import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { balanceOf, formatDay } from '../rebanho/herd'
 import { useBalances, usePastures } from '../rebanho/useHerd'
-import { addWeighing, cancelLot, compositionHeads, createLot, LotError, lotSummary, removeWeighing, renameLot, setComposition } from './lots'
+import { addWeighing, MAX_HEADS_PER_WEIGHING, cancelLot, compositionHeads, createLot, LotError, lotSummary, removeWeighing, renameLot, setComposition } from './lots'
 
 const kg = (tenths: number) => `${formatDecimal(tenths, 1)} kg`
 
@@ -91,7 +91,7 @@ function LotRow({ lot }: { lot: WeighingLot }) {
 }
 
 /**
- * Tela de pesar: em cada pesagem só quantas cabeças subiram (1 a 3, podem ser misturadas) e o peso.
+ * Tela de pesar: em cada pesagem só quantas cabeças subiram (1 a 4, podem ser misturadas) e o peso.
  * O que tem no lote (quantos de cada categoria e de qual pasto) é informado uma vez, quando quiser.
  */
 export function PesagemPage() {
@@ -168,7 +168,7 @@ export function PesagemPage() {
             Cabeças na balança (podem estar misturadas)
           </div>
           <div className="chips" role="radiogroup" aria-label="Cabeças nesta pesagem">
-            {[1, 2, 3].map((n) => (
+            {Array.from({ length: MAX_HEADS_PER_WEIGHING }, (_, i) => i + 1).map((n) => (
               <button key={n} type="button" role="radio" aria-checked={heads === n} className={`chip kg-heads${heads === n ? ' active' : ''}`} onClick={() => setHeads(n)} data-testid={`lot-heads-${n}`}>
                 {n}
               </button>

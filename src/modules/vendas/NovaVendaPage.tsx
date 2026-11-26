@@ -5,7 +5,9 @@ import { newId } from '../../core/ids'
 import { formatDecimal, formatMoney, parseDecimal, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
 import type { PaymentKind, PaymentMethod, SaleItem, SalePurpose, WeighedAnimal, WeighingLot } from '../../db/types'
-import { lotSummary } from '../pesagens/lots'
+import { lotSummary, MAX_HEADS_PER_WEIGHING } from '../pesagens/lots'
+
+const HEAD_OPTIONS = Array.from({ length: MAX_HEADS_PER_WEIGHING }, (_, i) => i + 1)
 import { METHOD_LABELS } from '../receber/receivables'
 import { category, type CategoryId } from '../../domain/categories'
 import { CategoryQuantities } from '../../components/CategoryQuantities'
@@ -34,7 +36,7 @@ export function NovaVendaPage() {
               <Icon name="scale" />
             </div>
             <div className="tile-title">Por kg</div>
-            <div className="tile-desc">Pesagens de 1 a 3 cabeças na balança, preço do quilo</div>
+            <div className="tile-desc">Pesagens de 1 a 4 cabeças na balança, preço do quilo</div>
           </Link>
           <Link to="/vendas/nova/arroba" className="type-tile">
             <div className="tile-icon">
@@ -75,7 +77,7 @@ function SaleFormRoute({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
   return <SaleForm key={`${mode}:${lotId ?? ''}`} mode={mode} lot={lot ?? null} />
 }
 
-/** Uma subida na balança: 1 a 3 cabeças do mesmo pasto e categoria, peso total. */
+/** Uma subida na balança: 1 a 4 cabeças (podem estar misturadas), peso total. */
 export interface Weighing {
   id: string
   heads: number
@@ -98,7 +100,7 @@ function KgWeighings({ totalHeads, weighings, onChange }: { totalHeads: number; 
   const weighedHeads = weighings.reduce((a, w) => a + w.heads, 0)
   const totalKg = weighings.reduce((a, w) => a + w.kgTenths, 0)
   const left = totalHeads - weighedHeads
-  const h = Math.max(1, Math.min(heads, 3, left))
+  const h = Math.max(1, Math.min(heads, MAX_HEADS_PER_WEIGHING, left))
   const t = parseDecimal(kg, 1)
 
   function add() {
@@ -135,7 +137,7 @@ function KgWeighings({ totalHeads, weighings, onChange }: { totalHeads: number; 
             Cabeças na balança (podem estar misturadas)
           </div>
           <div className="chips" role="radiogroup" aria-label="Cabeças nesta pesagem">
-            {[1, 2, 3].map((n) => (
+            {HEAD_OPTIONS.map((n) => (
               <button key={n} type="button" role="radio" aria-checked={h === n} disabled={n > left} className={`chip kg-heads${h === n ? ' active' : ''}`} onClick={() => setHeads(n)} data-testid={`kg-heads-${n}`}>
                 {n}
               </button>

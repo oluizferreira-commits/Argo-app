@@ -32,13 +32,16 @@ async function openLot(db: ArgoDatabase, id: string): Promise<WeighingLot> {
   return lot
 }
 
+/** Máximo de cabeças por subida na balança. */
+export const MAX_HEADS_PER_WEIGHING = 4
+
 export function validateWeighing(heads: number, kgTenths: number) {
-  if (!Number.isInteger(heads) || heads < 1 || heads > 3) throw new LotError('Cada pesagem deve ter de 1 a 3 cabeças.')
+  if (!Number.isInteger(heads) || heads < 1 || heads > MAX_HEADS_PER_WEIGHING) throw new LotError(`Cada pesagem deve ter de 1 a ${MAX_HEADS_PER_WEIGHING} cabeças.`)
   if (!Number.isInteger(kgTenths) || kgTenths <= 0) throw new LotError('Digite o peso da balança.')
   if (kgTenths < 200 * heads || kgTenths > 15000 * heads) throw new LotError(`Peso fora do normal para ${heads} cabeça(s). Confira.`)
 }
 
-/** Lança uma subida na balança: só quantas cabeças (1 a 3, podem ser misturadas) e o peso. */
+/** Lança uma subida na balança: só quantas cabeças (1 a 4, podem ser misturadas) e o peso. */
 export async function addWeighing(db: ArgoDatabase, lotId: string, w: KgWeighing): Promise<WeighingLot> {
   validateWeighing(w.heads, w.kgTenths)
   return db.transaction('rw', TABLES(db), async () => {

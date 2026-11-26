@@ -4118,7 +4118,7 @@ i.flow-out,
   background: rgb(201 164 106 / 7%);
 }
 .chip.kg-heads {
-  min-width: 64px;
+  min-width: 56px;
   font-size: 19px;
   font-weight: 800;
 }

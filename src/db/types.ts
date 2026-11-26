@@ -662,7 +662,7 @@ export interface WeighedAnimal {
   /** Peso vivo: kg × 10 (décimos de kg). Carcaça: arrobas × 100 (centésimos de @). */
   amount: number
   /**
-   * Venda por kg: quantas cabeças subiram juntas na balança nesta pesagem (1 a 3); `amount` é o peso
+   * Venda por kg: quantas cabeças subiram juntas na balança nesta pesagem (1 a 4); `amount` é o peso
    * total da pesagem. Ausente = 1 (vendas por arroba: um animal por pesagem).
    */
   heads?: number
@@ -696,7 +696,7 @@ export interface Sale extends BaseRecord {
   /** Venda por kg: preço do quilo vivo (centavos). Sem índice: o banco não muda. */
   pricePerKgCents?: number | null
   /**
-   * Venda por kg: pesagens (1 a 3 cabeças cada, podem ser misturadas). Vendas por kg da versão 0.26/0.27
+   * Venda por kg: pesagens (1 a 4 cabeças cada, podem ser misturadas). Vendas por kg da versão 0.26/0.27
    * guardavam as pesagens em `animals` (com pasto/categoria); veja `kgWeighingsOf`.
    */
   weighings?: KgWeighing[]
@@ -777,7 +777,7 @@ export interface MapVersion extends BaseRecord {
 }
 
 /**
- * Uma subida na balança: 1 a 3 cabeças (podem ser de categorias diferentes, misturadas) e o peso total.
+ * Uma subida na balança: 1 a 4 cabeças (podem ser de categorias diferentes, misturadas) e o peso total.
  * Pasto/categoria só existiam na versão 0.27.0 (antes de a pesagem aceitar animais misturados).
  */
 export interface KgWeighing {
@@ -792,7 +792,7 @@ export interface LotWeighing {
   /** só em lotes da versão 0.27.0 */
   pastureId?: string
   category?: CategoryId
-  /** 1 a 3 cabeças juntas na balança */
+  /** 1 a 4 cabeças juntas na balança */
   heads: number
   /** peso total da balança, kg × 10 */
   kgTenths: number

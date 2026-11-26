@@ -212,7 +212,7 @@ describe('venda e rebanho', () => {
   })
 })
 
-describe('venda por kg (pesagens de 1 a 3 cabeças)', () => {
+describe('venda por kg (pesagens de 1 a 4 cabeças)', () => {
   it('soma as pesagens, multiplica pelo preço do kg e tira as cabeças do rebanho', async () => {
     const { farm, p, client, bal } = await setup()
     // 7 bois: 3 + 3 + 1 na balança; 2 vacas: 2 juntas
@@ -261,7 +261,7 @@ describe('venda por kg (pesagens de 1 a 3 cabeças)', () => {
       pricePerHeadCents: {},
       installments: buildInstallments('avista', todayLocal(), 100000),
     })
-    await expect(createSale(db, farm.id, input([{ amount: 14000, heads: 4 }], 1200))).rejects.toThrow('de 1 a 3 cabeças')
+    await expect(createSale(db, farm.id, input([{ amount: 17500, heads: 5 }], 1200, 5))).rejects.toThrow('de 1 a 4 cabeças')
     await expect(createSale(db, farm.id, input([{ amount: 10500, heads: 3 }], 1200))).rejects.toThrow('Pesadas 3 cabeças, mas a venda tem 4')
     await expect(createSale(db, farm.id, input([{ amount: 10500, heads: 3 }, { amount: 3500, heads: 1 }], null))).rejects.toThrow('preço do kg')
     await expect(createSale(db, farm.id, input([{ amount: 100, heads: 3 }, { amount: 3500, heads: 1 }], 1200))).rejects.toThrow('fora do normal')

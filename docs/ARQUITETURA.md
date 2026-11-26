@@ -226,8 +226,8 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 ## Pesagem de lote (v15)
 
 - Tabela nova `weighingLots` (versão 15 do banco; nada existente muda): data, nome, pesagens (pasto,
-  categoria, 1–3 cabeças, kg × 10), status aberta/vendida/cancelada e `saleId`. Cada lançamento grava na hora.
-- Na balança os animais sobem misturados: cada pesagem guarda só cabeças (1–3) e kg; a composição do lote
+  categoria, 1–4 cabeças, kg × 10), status aberta/vendida/cancelada e `saleId`. Cada lançamento grava na hora.
+- Na balança os animais sobem misturados: cada pesagem guarda só cabeças (1–4, `MAX_HEADS_PER_WEIGHING`) e kg; a composição do lote
   (`composition`: cabeças por pasto × categoria) é informada uma vez. Na venda, `Sale.weighings` guarda as
   pesagens e `items` os animais; a validação exige Σ cabeças pesadas = Σ cabeças vendidas. Vendas/lotes da
   0.26–0.27 (pesagem com pasto/categoria em `animals`/`weighings`) são lidos por `kgWeighingsOf`/`compositionOf`.

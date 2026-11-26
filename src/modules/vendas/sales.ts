@@ -1,7 +1,7 @@
 import { newId, nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import { sameWeighings } from '../pesagens/lots'
+import { MAX_HEADS_PER_WEIGHING, sameWeighings } from '../pesagens/lots'
 import type { Client, Installment, KgWeighing, PaymentKind, PaymentMethod, Sale, SaleItem, SalePurpose, WeighedAnimal } from '../../db/types'
 import { category, type CategoryId } from '../../domain/categories'
 import { isValidCnpj, isValidCpf } from '../../domain/pix'
@@ -165,7 +165,7 @@ export interface SaleInput {
   purpose?: SalePurpose
   /** Venda por kg de um lote pesado antes (Pesagem de lote): o lote fica marcado como vendido. */
   weighingLotId?: string
-  /** Venda por kg: pesagens (1 a 3 cabeças cada, podem ser misturadas). Os animais vendidos vêm de `items`. */
+  /** Venda por kg: pesagens (1 a 4 cabeças cada, podem ser misturadas). Os animais vendidos vêm de `items`. */
   weighings?: KgWeighing[]
 }
 
@@ -199,9 +199,9 @@ function validateSale(input: SaleInput): { items: SaleItem[]; totals: Totals } {
   } else if (input.mode === 'kg') {
     if (items.length === 0) throw new SaleError('Informe quantos animais de cada categoria estão sendo vendidos.')
     const ws = kgWeighingsOf(input)
-    if (ws.length === 0) throw new SaleError('Lance as pesagens (até 3 cabeças por vez na balança).')
+    if (ws.length === 0) throw new SaleError(`Lance as pesagens (até ${MAX_HEADS_PER_WEIGHING} cabeças por vez na balança).`)
     for (const w of ws) {
-      if (!Number.isInteger(w.heads) || w.heads < 1 || w.heads > 3) throw new SaleError('Cada pesagem deve ter de 1 a 3 cabeças.')
+      if (!Number.isInteger(w.heads) || w.heads < 1 || w.heads > MAX_HEADS_PER_WEIGHING) throw new SaleError(`Cada pesagem deve ter de 1 a ${MAX_HEADS_PER_WEIGHING} cabeças.`)
       if (!Number.isInteger(w.kgTenths) || w.kgTenths <= 0) throw new SaleError('Informe o peso de todas as pesagens.')
       // 20 a 1.500 kg por cabeça (média da pesagem)
       if (w.kgTenths < 200 * w.heads || w.kgTenths > 15000 * w.heads) throw new SaleError(`Pesagem fora do normal (${w.heads} cab. com ${(w.kgTenths / 10).toLocaleString('pt-BR')} kg). Confira.`)
