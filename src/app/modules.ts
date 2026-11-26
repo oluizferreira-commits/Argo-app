@@ -39,6 +39,7 @@ export const MODULES: readonly ModuleDef[] = [
   { id: 'pastos', title: 'Pastos', description: 'Pastos, lotação e serviços', path: '/pastos', icon: 'pasture', status: 'disponivel', short: 'Pastos', group: 'campo' },
   { id: 'nascimentos-mortes', title: 'Nascimentos e mortes', description: 'Registrados em Nova movimentação', path: '/rebanho/movimentar', icon: 'calf', status: 'disponivel', short: 'Nascer e morrer', group: 'campo' },
   { id: 'vendas', title: 'Vendas', description: 'Histórico de vendas e comprovantes', path: '/vendas', icon: 'receipt', status: 'disponivel', short: 'Vendas', group: 'vendas' },
+  { id: 'vendas-kg', title: 'Vendas por kg', description: 'Pesagens de 1 a 3 cabeças, preço do quilo', path: '/vendas/nova/kg', icon: 'scale', status: 'disponivel', short: 'Venda por kg', group: 'vendas' },
   { id: 'vendas-arroba', title: 'Vendas por arroba', description: 'Peso vivo (kg ÷ 30) ou abate (@)', path: '/vendas/nova/arroba', icon: 'scale', status: 'disponivel', short: 'Venda por @', group: 'vendas' },
   { id: 'vendas-lote', title: 'Vendas por lote', description: 'Lote com preço por cabeça', path: '/vendas/nova/cabeca', icon: 'tag', status: 'disponivel', short: 'Venda por lote', group: 'vendas' },
   { id: 'clientes', title: 'Clientes', description: 'Compradores e contatos', path: '/clientes', icon: 'handshake', status: 'disponivel', short: 'Clientes', group: 'vendas' },

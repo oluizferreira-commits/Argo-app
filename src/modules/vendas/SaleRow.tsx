@@ -10,7 +10,7 @@ export function SaleRow({ sale, clientName }: { sale: Sale; clientName?: string 
   return (
     <Link to={`/vendas/${sale.id}`} className={`list-link${sale.status === 'cancelada' ? ' reversed' : ''}`}>
       <div className="status-icon">
-        <Icon name={sale.mode === 'arroba' ? 'scale' : 'tag'} />
+        <Icon name={sale.mode === 'cabeca' ? 'tag' : 'scale'} />
       </div>
       <div className="status-body">
         <div className="status-label">
@@ -19,7 +19,7 @@ export function SaleRow({ sale, clientName }: { sale: Sale; clientName?: string 
           {sale.status === 'cancelada' && <span className="badge badge-warn" style={{ marginLeft: 8 }}>Cancelada</span>}
         </div>
         <div className="status-detail">
-          {formatDay(sale.date)} · {heads} cab. · {sale.mode === 'arroba' ? 'por arroba' : 'por cabeça'}
+          {formatDay(sale.date)} · {heads} cab. · {sale.mode === 'arroba' ? 'por arroba' : sale.mode === 'kg' ? 'por kg' : 'por cabeça'}
         </div>
       </div>
       <span className="num" style={{ whiteSpace: 'nowrap' }}>

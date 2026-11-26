@@ -129,7 +129,7 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
 
   // ---------- animais
   const modeLabel =
-    sale.mode === 'cabeca' ? 'VENDA POR CABEÇA' : sale.weighing === 'vivo' ? 'VENDA POR ARROBA · PESO VIVO (kg ÷ 30)' : 'VENDA POR ARROBA · ABATE'
+    sale.mode === 'cabeca' ? 'VENDA POR CABEÇA' : sale.mode === 'kg' ? 'VENDA POR KG · PESO VIVO' : sale.weighing === 'vivo' ? 'VENDA POR ARROBA · PESO VIVO (kg ÷ 30)' : 'VENDA POR ARROBA · ABATE'
   text(modeLabel, M, y, 20, 700, C.gold)
   y += 46
   const pastureName = (id: string) => d.pastures.get(id)?.name ?? ''
@@ -152,6 +152,13 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
   y += 6
   rule(y)
   y += 50
+  if (sale.mode === 'kg') {
+    const kg = sale.animals.reduce((a, x) => a + x.amount, 0)
+    const cab = sale.animals.reduce((a, x) => a + (x.heads ?? 1), 0)
+    text(`${cab} cab. · ${formatDecimal(kg, 1)} kg · média ${formatDecimal(Math.round(kg / Math.max(1, cab)), 1)} kg`, M, y, 26, 600, C.ink2)
+    text(`${formatMoney(sale.pricePerKgCents ?? 0)} por kg`, W - M, y, 26, 400, C.ink2, 'right')
+    y += 56
+  }
   if (sale.mode === 'arroba') {
     const totalAnimals = sale.animals.length
     text(`${totalAnimals} animal(is) · ${formatDecimal(sale.arrobasHundredths, 2, 2)} @`, M, y, 28, 600, C.ink2)

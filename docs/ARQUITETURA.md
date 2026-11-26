@@ -216,6 +216,13 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
 - Estoque negativo só com autorização (mesmo fluxo dos insumos); correção por estorno.
 - **Relatório do diesel** (em Relatórios, id `diesel`; atalho `/relatorios?r=diesel`): resumo (comprado, consumido, custo, custo médio e estoque no fim do período), por semana (período mensal, semanas de segunda a domingo) ou por mês (período anual), por equipamento (litros, custo, horas/km trabalhados e média L/h ou km/L), por responsável, compras e abastecimentos. Média do medidor: litros de cada abastecimento com leitura ÷ horas (ou km) desde o abastecimento anterior do mesmo equipamento.
 
+## Venda por kg
+
+- `Sale.mode = 'kg'` (tipo ampliado; nenhum índice novo), `pricePerKgCents`, `weighing = 'vivo'`.
+  Cada item de `animals` é UMA pesagem: `amount` = kg × 10 do total da balança e `heads` = 1 a 3 cabeças.
+  Valor = Σ kg × preço do kg. As pesagens têm de bater com os animais escolhidos (pasto × categoria).
+  `arrobasHundredths` (kg ÷ 30) fica só para informação.
+
 ## Destino da venda e valor das diárias
 
 - `Sale.purpose` (`fazenda` | `pessoal`, sem índice; ausente = fazenda). Recebimentos de venda pessoal ficam

@@ -211,3 +211,60 @@ describe('venda e rebanho', () => {
     expect(ok.document).toBe('52998224725')
   })
 })
+
+describe('venda por kg (pesagens de 1 a 3 cabeças)', () => {
+  it('soma as pesagens, multiplica pelo preço do kg e tira as cabeças do rebanho', async () => {
+    const { farm, p, client, bal } = await setup()
+    // 7 bois: 3 + 3 + 1 na balança; 2 vacas: 2 juntas
+    const animals = [
+      { pastureId: p.id, category: 'boi' as const, amount: 10500, heads: 3 }, // 1.050 kg
+      { pastureId: p.id, category: 'boi' as const, amount: 10980, heads: 3 }, // 1.098 kg
+      { pastureId: p.id, category: 'boi' as const, amount: 3725, heads: 1 }, // 372,5 kg
+      { pastureId: p.id, category: 'vaca' as const, amount: 8000, heads: 2 }, // 800 kg
+    ]
+    const totalKg = 1050 + 1098 + 372.5 + 800 // 3.320,5 kg
+    const total = Math.round(totalKg * 1200) // R$ 12,00/kg
+    const s = await createSale(db, farm.id, {
+      ...base(client.id),
+      mode: 'kg',
+      items: [
+        { pastureId: p.id, category: 'boi', quantity: 7 },
+        { pastureId: p.id, category: 'vaca', quantity: 2 },
+      ],
+      weighing: null,
+      animals,
+      pricePerArrobaCents: null,
+      pricePerKgCents: 1200,
+      pricePerHeadCents: {},
+      installments: buildInstallments('avista', todayLocal(), total),
+    })
+    expect(s.totalCents).toBe(3984600) // 3.320,5 kg × R$ 12,00 = R$ 39.846,00
+    expect(s.pricePerKgCents).toBe(1200)
+    expect(s.weighing).toBe('vivo')
+    expect(s.items.find((i) => i.category === 'boi')!.quantity).toBe(7)
+    expect(s.animals.map((a) => a.heads)).toEqual([3, 3, 1, 2])
+    const b = await bal()
+    expect(balanceOf(b, p.id, 'boi')).toBe(30 - 7)
+    expect(balanceOf(b, p.id, 'vaca')).toBe(10 - 2)
+  })
+
+  it('recusa: mais de 3 cabeças por pesagem, pesagens que não batem com os animais, sem preço', async () => {
+    const { farm, p, client } = await setup()
+    const input = (animals: { amount: number; heads: number }[], price: number | null, qty = 4) => ({
+      ...base(client.id),
+      mode: 'kg' as const,
+      items: [{ pastureId: p.id, category: 'boi' as const, quantity: qty }],
+      weighing: null,
+      animals: animals.map((a) => ({ pastureId: p.id, category: 'boi' as const, ...a })),
+      pricePerArrobaCents: null,
+      pricePerKgCents: price,
+      pricePerHeadCents: {},
+      installments: buildInstallments('avista', todayLocal(), 100000),
+    })
+    await expect(createSale(db, farm.id, input([{ amount: 14000, heads: 4 }], 1200))).rejects.toThrow('de 1 a 3 cabeças')
+    await expect(createSale(db, farm.id, input([{ amount: 10500, heads: 3 }], 1200))).rejects.toThrow('3 de 4 cabeças pesadas')
+    await expect(createSale(db, farm.id, input([{ amount: 10500, heads: 3 }, { amount: 3500, heads: 1 }], null))).rejects.toThrow('preço do kg')
+    await expect(createSale(db, farm.id, input([{ amount: 100, heads: 3 }, { amount: 3500, heads: 1 }], 1200))).rejects.toThrow('fora do normal')
+    expect(await db.sales.count()).toBe(0)
+  })
+})

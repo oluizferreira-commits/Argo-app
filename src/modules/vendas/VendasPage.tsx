@@ -25,11 +25,14 @@ export function VendasPage() {
           {active.length} venda(s) · {heads} cabeça(s)
         </p>
       </section>
+      <Link to="/vendas/nova/kg" className="btn btn-gold btn-block" data-testid="new-sale-kg">
+        <Icon name="scale" /> Nova venda por kg
+      </Link>
       <div className="row">
-        <Link to="/vendas/nova/arroba" className="btn btn-gold" style={{ flex: 1 }}>
+        <Link to="/vendas/nova/arroba" className="btn btn-outline" style={{ flex: 1 }}>
           <Icon name="scale" /> Por arroba
         </Link>
-        <Link to="/vendas/nova/cabeca" className="btn btn-gold" style={{ flex: 1 }}>
+        <Link to="/vendas/nova/cabeca" className="btn btn-outline" style={{ flex: 1 }}>
           <Icon name="tag" /> Por cabeça
         </Link>
       </div>

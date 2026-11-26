@@ -20,13 +20,20 @@ const NEW_CLIENT = '__novo__'
 
 export function NovaVendaPage() {
   const { modo } = useParams()
-  if (modo !== 'arroba' && modo !== 'cabeca') {
+  if (modo !== 'arroba' && modo !== 'cabeca' && modo !== 'kg') {
     return (
       <>
         <p className="muted" style={{ margin: '0 4px' }}>
           Como será a venda?
         </p>
         <div className="type-grid">
+          <Link to="/vendas/nova/kg" className="type-tile" data-testid="sale-type-kg">
+            <div className="tile-icon">
+              <Icon name="scale" />
+            </div>
+            <div className="tile-title">Por kg</div>
+            <div className="tile-desc">Pesagens de 1 a 3 cabeças na balança, preço do quilo</div>
+          </Link>
           <Link to="/vendas/nova/arroba" className="type-tile">
             <div className="tile-icon">
               <Icon name="scale" />
@@ -48,12 +55,150 @@ export function NovaVendaPage() {
   return <SaleForm key={modo} mode={modo} />
 }
 
+/** Uma subida na balança: 1 a 3 cabeças do mesmo pasto e categoria, peso total. */
+export interface Weighing {
+  id: string
+  pastureId: string
+  category: CategoryId
+  heads: number
+  /** kg × 10 */
+  kgTenths: number
+}
+
+const kgText = (t: number) => `${formatDecimal(t, 1)} kg`
+
+/**
+ * Pesagens rápidas para lotes grandes (ex.: 100 cabeças): escolhe quantas subiram (1, 2 ou 3), digita o peso e
+ * toca em "Lançar" (ou Enter no teclado). Mostra o progresso, o total e a média por cabeça.
+ */
+function KgWeighings({ items, pastureName, weighings, onChange }: { items: SaleItem[]; pastureName: (id: string) => string; weighings: Weighing[]; onChange: (w: Weighing[]) => void }) {
+  const key = (i: { pastureId: string; category: CategoryId }) => `${i.pastureId}|${i.category}`
+  const done = (k: string) => weighings.filter((w) => key(w) === k).reduce((a, w) => a + w.heads, 0)
+  const groups = items.map((it) => ({ ...it, k: key(it), left: it.quantity - done(key(it)) }))
+  const firstOpen = groups.find((g) => g.left > 0)?.k ?? groups[0]?.k ?? ''
+  const [current, setCurrent] = useState(firstOpen)
+  const group = groups.find((g) => g.k === current && g.left > 0) ?? groups.find((g) => g.left > 0)
+  const [heads, setHeads] = useState(3)
+  const [kg, setKg] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const totalHeads = items.reduce((a, i) => a + i.quantity, 0)
+  const weighedHeads = weighings.reduce((a, w) => a + w.heads, 0)
+  const totalKg = weighings.reduce((a, w) => a + w.kgTenths, 0)
+  const maxHeads = Math.min(3, group?.left ?? 0)
+  const h = Math.min(heads, maxHeads)
+
+  function add() {
+    setErr(null)
+    if (!group) return
+    const t = parseDecimal(kg, 1)
+    if (!t || t <= 0) return setErr('Digite o peso da balança.')
+    if (t < 200 * h || t > 15000 * h) return setErr(`Peso fora do normal para ${h} cabeça(s). Confira.`)
+    onChange([...weighings, { id: newId(), pastureId: group.pastureId, category: group.category, heads: h, kgTenths: t }])
+    setKg('')
+  }
+
+  return (
+    <div className="card stack" data-testid="kg-weighings">
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div className="label" style={{ margin: 0 }}>
+          Pesagens na balança
+        </div>
+        <span className={`badge ${weighedHeads === totalHeads ? 'badge-ok' : 'badge-gold'}`} data-testid="kg-progress">
+          {weighedHeads} de {totalHeads} cab.
+        </span>
+      </div>
+      <div className="kg-total" data-testid="kg-total">
+        <span>
+          <b>{kgText(totalKg)}</b> pesados
+        </span>
+        <span>
+          <b>{weighedHeads ? kgText(Math.round(totalKg / weighedHeads)) : '—'}</b> média por cabeça
+        </span>
+      </div>
+
+      {group ? (
+        <div className="kg-entry">
+          {groups.length > 1 && (
+            <select className="input" aria-label="Animais desta pesagem" value={group.k} onChange={(e) => setCurrent(e.target.value)}>
+              {groups
+                .filter((g) => g.left > 0)
+                .map((g) => (
+                  <option key={g.k} value={g.k}>
+                    {category(g.category).plural} · {pastureName(g.pastureId)} (faltam {g.left})
+                  </option>
+                ))}
+            </select>
+          )}
+          <div className="label" style={{ margin: 0 }}>
+            Cabeças na balança
+          </div>
+          <div className="chips" role="radiogroup" aria-label="Cabeças nesta pesagem">
+            {[1, 2, 3].map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={h === n} disabled={n > maxHeads} className={`chip kg-heads${h === n ? ' active' : ''}`} onClick={() => setHeads(n)} data-testid={`kg-heads-${n}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <div className="row">
+            <input
+              className="input"
+              inputMode="decimal"
+              enterKeyHint="next"
+              placeholder="Peso da balança (kg)"
+              aria-label="Peso da balança em kg"
+              value={kg}
+              onChange={(e) => setKg(e.target.value.replace(/[^\d.,]/g, ''))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  add()
+                }
+              }}
+              data-testid="kg-input"
+            />
+            <button type="button" className="btn btn-gold" style={{ flex: 'none' }} onClick={add} data-testid="kg-add">
+              Lançar
+            </button>
+          </div>
+          {err && <div style={{ color: 'var(--danger)' }}>{err}</div>}
+        </div>
+      ) : (
+        <div className="notice notice-ok">
+          <Icon name="check" />
+          <div>Todas as cabeças pesadas.</div>
+        </div>
+      )}
+
+      {weighings.length > 0 && (
+        <ol className="kg-list" data-testid="kg-list">
+          {[...weighings].reverse().map((w, ri) => {
+            const n = weighings.length - ri
+            return (
+              <li key={w.id}>
+                <span className="kg-n">{n}</span>
+                <span className="kg-desc">
+                  {w.heads} {w.heads === 1 ? category(w.category).label.toLowerCase() : category(w.category).plural.toLowerCase()}
+                  {items.length > 1 ? ` · ${pastureName(w.pastureId)}` : ''}
+                </span>
+                <b>{kgText(w.kgTenths)}</b>
+                <button type="button" className="btn btn-outline btn-icon" aria-label={`Apagar pesagem ${n}`} onClick={() => onChange(weighings.filter((x) => x.id !== w.id))}>
+                  <Icon name="trash" size={18} />
+                </button>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </div>
+  )
+}
+
 interface Block {
   pastureId: string
   qty: QtyText
 }
 
-function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
+function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
   const navigate = useNavigate()
   const { farm } = useFarm()
   const pastures = usePastures()
@@ -69,6 +214,8 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
   const [weighing, setWeighing] = useState<'vivo' | 'carcaca'>('vivo')
   const [weights, setWeights] = useState<Record<string, string>>({})
   const [priceArroba, setPriceArroba] = useState('')
+  const [priceKg, setPriceKg] = useState('')
+  const [weighings, setWeighings] = useState<Weighing[]>([])
   const [priceHead, setPriceHead] = useState<Partial<Record<CategoryId, string>>>({})
   const [paymentKind, setPaymentKind] = useState<PaymentKind>('avista')
   const [receivedNow, setReceivedNow] = useState(true)
@@ -110,10 +257,14 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
   }
   const soldCategories = [...new Set(items.map((i) => i.category))]
 
+  const priceKgCents = parseMoney(priceKg)
+  const kgAnimals: WeighedAnimal[] = weighings.map((w) => ({ pastureId: w.pastureId, category: w.category, amount: w.kgTenths, heads: w.heads }))
+
   const totals = computeTotals({
     mode,
     weighing,
-    animals: filled,
+    animals: mode === 'kg' ? kgAnimals : filled,
+    pricePerKgCents: priceKgCents,
     pricePerArrobaCents: priceArrobaCents,
     pricePerHeadCents: priceHeadCents,
     items,
@@ -134,6 +285,11 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
     if (!clientId) return setError('Escolha o cliente.')
     if (heads === 0) return setError('Escolha os animais vendidos.')
     if (mode === 'arroba' && !allWeighed) return setError(`Informe o peso de todos os animais (${filled.length} de ${weightRows.length}).`)
+    if (mode === 'kg') {
+      const pesadas = weighings.reduce((a, w) => a + w.heads, 0)
+      if (pesadas !== heads) return setError(`Faltam pesagens: ${pesadas} de ${heads} cabeças pesadas.`)
+      if (!priceKgCents) return setError('Informe o preço do kg.')
+    }
     if (paymentKind === 'prazo' && !(Number(days) >= 1)) return setError('Informe em quantos dias vence.')
     setSaving(true)
     try {
@@ -147,8 +303,9 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
           mode,
           items,
           weighing: mode === 'arroba' ? weighing : null,
-          animals: filled,
+          animals: mode === 'kg' ? kgAnimals : filled,
           pricePerArrobaCents: mode === 'arroba' ? priceArrobaCents : null,
+          pricePerKgCents: mode === 'kg' ? priceKgCents : null,
           pricePerHeadCents: mode === 'cabeca' ? priceHeadCents : {},
           paymentKind,
           installments,
@@ -171,8 +328,8 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
   return (
     <form onSubmit={submit} className="stack">
       <div className="row" style={{ margin: '0 4px' }}>
-        <Icon name={mode === 'arroba' ? 'scale' : 'tag'} />
-        <div className="status-label">{mode === 'arroba' ? 'Venda por arroba' : 'Venda por cabeça'}</div>
+        <Icon name={mode === 'cabeca' ? 'tag' : 'scale'} />
+        <div className="status-label">{mode === 'arroba' ? 'Venda por arroba' : mode === 'kg' ? 'Venda por kg' : 'Venda por cabeça'}</div>
       </div>
 
       {/* Cliente e data */}
@@ -316,6 +473,19 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' }) {
               value={priceArroba}
               onChange={(e) => setPriceArroba(e.target.value)}
             />
+          </div>
+        </>
+      )}
+
+      {heads > 0 && mode === 'kg' && (
+        <>
+          <KgWeighings items={items} pastureName={pastureName} weighings={weighings} onChange={setWeighings} />
+          <div className="card">
+            <label className="label" htmlFor="v-price-kg">
+              Preço do kg (peso vivo)
+            </label>
+            <input id="v-price-kg" className="input" inputMode="decimal" placeholder="R$ 0,00" value={priceKg} onChange={(e) => setPriceKg(e.target.value)} />
+            {priceKgCents ? <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>Equivale a {formatMoney(priceKgCents * 30)} por arroba (30 kg).</p> : null}
           </div>
         </>
       )}

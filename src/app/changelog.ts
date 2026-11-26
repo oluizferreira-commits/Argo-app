@@ -13,6 +13,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.26.0',
+    date: '2026-11-26',
+    title: 'Venda por kg',
+    items: [
+      'Nova venda "Por kg": preço do quilo vivo e pesagens de 1, 2 ou 3 cabeças por vez na balança.',
+      'Lançamento rápido para lotes grandes: escolha quantas cabeças subiram, digite o peso e toque em Lançar (ou Enter).',
+      'Mostra o andamento (ex.: 87 de 100 cab.), o peso total e a média por cabeça; dá para apagar uma pesagem errada.',
+      'O comprovante sai com o total em kg, a média e o preço por kg; o app mostra quanto o preço do kg dá por arroba.',
+    ],
+  },
+  {
     version: '0.25.0',
     date: '2026-11-24',
     title: 'Venda para a fazenda ou para gastos pessoais; conta do diarista',

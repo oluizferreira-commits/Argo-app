@@ -661,6 +661,11 @@ export interface WeighedAnimal {
   category: CategoryId
   /** Peso vivo: kg × 10 (décimos de kg). Carcaça: arrobas × 100 (centésimos de @). */
   amount: number
+  /**
+   * Venda por kg: quantas cabeças subiram juntas na balança nesta pesagem (1 a 3); `amount` é o peso
+   * total da pesagem. Ausente = 1 (vendas por arroba: um animal por pesagem).
+   */
+  heads?: number
 }
 
 export interface Installment {
@@ -681,12 +686,15 @@ export interface Sale extends BaseRecord {
   number: number
   date: string
   clientId: string
-  mode: 'arroba' | 'cabeca'
+  /** arroba (peso de cada animal ÷ 30 × preço da @), cabeca (preço por cabeça) ou kg (pesagens × preço do kg) */
+  mode: 'arroba' | 'cabeca' | 'kg'
   items: SaleItem[]
   /** Venda por arroba: pesagem e preço da arroba. */
   weighing: 'vivo' | 'carcaca' | null
   animals: WeighedAnimal[]
   pricePerArrobaCents: number | null
+  /** Venda por kg: preço do quilo vivo (centavos). Sem índice: o banco não muda. */
+  pricePerKgCents?: number | null
   /** Venda por cabeça: preço por cabeça de cada categoria. */
   pricePerHeadCents: Partial<Record<CategoryId, number>>
   /** Total de arrobas × 100 (para exibição). */
