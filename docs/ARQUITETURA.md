@@ -223,6 +223,11 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
   Valor = Σ kg × preço do kg. As pesagens têm de bater com os animais escolhidos (pasto × categoria).
   `arrobasHundredths` (kg ÷ 30) fica só para informação.
 
+## Dois preços pelo corte de peso
+
+- `Sale.kgPriceCut` (`cutTenths`, `aboveCents`, `belowCents`; sem índice). Pesagem com média por cabeça
+  ≥ corte usa o preço de cima; abaixo, o de baixo (`kgCutTotals`). Cada pesagem entra inteira num grupo.
+
 ## Pesagem de lote (v15)
 
 - Tabela nova `weighingLots` (versão 15 do banco; nada existente muda): data, nome, pesagens (pasto,

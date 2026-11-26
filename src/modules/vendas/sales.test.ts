@@ -268,3 +268,31 @@ describe('venda por kg (pesagens de 1 a 4 cabeças)', () => {
     expect(await db.sales.count()).toBe(0)
   })
 })
+
+describe('venda por kg com dois preços (corte de peso)', () => {
+  it('pesagens acima/igual ao corte usam um preço e as abaixo outro', async () => {
+    const { farm, p, client } = await setup()
+    const weighings = [
+      { heads: 3, kgTenths: 11100 }, // 370 kg/cab → acima: 1.110 kg × R$ 13,00 = 14.430,00
+      { heads: 2, kgTenths: 7000 }, // 350 kg/cab → acima (igual): 700 kg × 13 = 9.100,00
+      { heads: 4, kgTenths: 12800 }, // 320 → abaixo: 1.280 kg × R$ 11,50 = 14.720,00
+    ]
+    const total = 1443000 + 910000 + 1472000
+    const s = await createSale(db, farm.id, {
+      ...base(client.id),
+      mode: 'kg',
+      items: [{ pastureId: p.id, category: 'boi', quantity: 9 }],
+      weighing: null,
+      animals: [],
+      weighings,
+      pricePerArrobaCents: null,
+      pricePerKgCents: null,
+      kgPriceCut: { cutTenths: 3500, aboveCents: 1300, belowCents: 1150 },
+      pricePerHeadCents: {},
+      installments: buildInstallments('avista', todayLocal(), total),
+    })
+    expect(s.totalCents).toBe(total)
+    expect(s.kgPriceCut).toEqual({ cutTenths: 3500, aboveCents: 1300, belowCents: 1150 })
+    expect(s.pricePerKgCents).toBeNull()
+  })
+})

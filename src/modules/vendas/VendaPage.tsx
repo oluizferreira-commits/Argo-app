@@ -11,7 +11,7 @@ import { useFarm } from '../fazendas/FarmContext'
 import { formatDay } from '../rebanho/herd'
 import { usePastureMap } from '../rebanho/useHerd'
 import { PAYMENT_LABEL, renderReceipt, salePixPayload } from './receipt'
-import { cancelSale, formatSaleNumber, kgWeighingsOf, PURPOSE_LABEL, SaleError, salePurpose, setSalePurpose } from './sales'
+import { cancelSale, formatSaleNumber, kgCutTotals, kgWeighingsOf, PURPOSE_LABEL, SaleError, salePurpose, setSalePurpose } from './sales'
 import { PaymentsSection } from '../receber/PaymentsSection'
 import { WeightSplit } from '../pesagens/WeightSplit'
 import { saleBalance } from '../receber/receivables'
@@ -142,7 +142,7 @@ export function VendaPage() {
       </div>
 
       {sale.mode === 'kg' && kgWeighingsOf(sale).length > 0 && <KgWeighingsView sale={sale} />}
-      {sale.mode === 'kg' && kgWeighingsOf(sale).length > 1 && <WeightSplit weighings={kgWeighingsOf(sale)} />}
+      {sale.mode === 'kg' && !sale.kgPriceCut && kgWeighingsOf(sale).length > 1 && <WeightSplit weighings={kgWeighingsOf(sale)} />}
 
       {sale.status === 'ativa' && <PaymentsSection sale={sale} payments={payments} />}
 
@@ -220,8 +220,33 @@ function KgWeighingsView({ sale }: { sale: Sale }) {
   return (
     <div className="card stack" data-testid="sale-weighings">
       <div className="label" style={{ margin: 0 }}>
-        Pesagens · {formatMoney(sale.pricePerKgCents ?? 0)} por kg
+        {sale.kgPriceCut
+          ? `Pesagens · dois preços: ${formatMoney(sale.kgPriceCut.aboveCents)}/kg (${t(sale.kgPriceCut.cutTenths)} ou mais) e ${formatMoney(sale.kgPriceCut.belowCents)}/kg (abaixo)`
+          : `Pesagens · ${formatMoney(sale.pricePerKgCents ?? 0)} por kg`}
       </div>
+      {sale.kgPriceCut && (() => {
+        const ct = kgCutTotals(ws, sale.kgPriceCut)
+        return (
+          <div className="split-grid" data-testid="sale-two-prices">
+            <div className="split-box up">
+              <span className="split-title">{t(sale.kgPriceCut.cutTenths)} ou mais</span>
+              <b>{ct.aboveHeads} cab.</b>
+              <span>
+                {t(ct.aboveKg)} × {formatMoney(sale.kgPriceCut.aboveCents)}
+              </span>
+              <small className="split-money">{formatMoney(ct.aboveCents)}</small>
+            </div>
+            <div className="split-box down">
+              <span className="split-title">abaixo de {t(sale.kgPriceCut.cutTenths)}</span>
+              <b>{ct.belowHeads} cab.</b>
+              <span>
+                {t(ct.belowKg)} × {formatMoney(sale.kgPriceCut.belowCents)}
+              </span>
+              <small className="split-money">{formatMoney(ct.belowCents)}</small>
+            </div>
+          </div>
+        )
+      })()}
       <div className="kg-total">
         <span>
           <b>{t(kg)}</b> {cab} cabeças

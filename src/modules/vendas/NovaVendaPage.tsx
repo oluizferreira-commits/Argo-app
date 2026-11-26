@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { formatDecimal, formatMoney, parseDecimal, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
-import type { PaymentKind, PaymentMethod, SaleItem, SalePurpose, WeighedAnimal, WeighingLot } from '../../db/types'
+import type { KgPriceCut, PaymentKind, PaymentMethod, SaleItem, SalePurpose, WeighedAnimal, WeighingLot } from '../../db/types'
 import { lotSummary, MAX_HEADS_PER_WEIGHING } from '../pesagens/lots'
 import { WeightSplit } from '../pesagens/WeightSplit'
 
@@ -18,7 +18,7 @@ import { ClientFields } from '../clientes/ClienteForm'
 import { useFarm } from '../fazendas/FarmContext'
 import { balanceOf, formatDay, todayLocal } from '../rebanho/herd'
 import { useBalances, usePastures } from '../rebanho/useHerd'
-import { buildInstallments, computeTotals, createClient, createSale, EMPTY_CLIENT, PURPOSE_LABEL, SaleError, type ClientInput } from './sales'
+import { buildInstallments, computeTotals, kgCutTotals, createClient, createSale, EMPTY_CLIENT, PURPOSE_LABEL, SaleError, type ClientInput } from './sales'
 import { useClients } from './useSales'
 
 const NEW_CLIENT = '__novo__'
@@ -236,6 +236,10 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
   const [weights, setWeights] = useState<Record<string, string>>({})
   const [priceArroba, setPriceArroba] = useState('')
   const [priceKg, setPriceKg] = useState('')
+  const [twoPrices, setTwoPrices] = useState(false)
+  const [cutText, setCutText] = useState<string | null>(null)
+  const [priceAbove, setPriceAbove] = useState('')
+  const [priceBelow, setPriceBelow] = useState('')
   const [weighings, setWeighings] = useState<Weighing[]>(() => (lot ? lot.weighings.map((w) => ({ id: w.id, heads: w.heads, kgTenths: w.kgTenths })) : []))
   const [priceHead, setPriceHead] = useState<Partial<Record<CategoryId, string>>>({})
   const [paymentKind, setPaymentKind] = useState<PaymentKind>('avista')
@@ -279,6 +283,14 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
   const soldCategories = [...new Set(items.map((i) => i.category))]
 
   const priceKgCents = parseMoney(priceKg)
+  // dois preços: corte por cabeça (acompanha a média até ser digitado), preço acima/igual e abaixo
+  const wHeads = weighings.reduce((a, w) => a + w.heads, 0)
+  const wKg = weighings.reduce((a, w) => a + w.kgTenths, 0)
+  const cutShown = cutText ?? (wHeads ? String(Math.round(wKg / wHeads / 100) * 10) : '')
+  const cutTenths = parseDecimal(cutShown, 1)
+  const priceCut: KgPriceCut | null =
+    mode === 'kg' && twoPrices && cutTenths ? { cutTenths, aboveCents: parseMoney(priceAbove) ?? 0, belowCents: parseMoney(priceBelow) ?? 0 } : null
+  const cutTotals = priceCut ? kgCutTotals(weighings, priceCut) : null
   const kgWeighings = weighings.map((w) => ({ heads: w.heads, kgTenths: w.kgTenths }))
 
   const totals = computeTotals({
@@ -287,6 +299,7 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
     animals: mode === 'kg' ? [] : filled,
     weighings: mode === 'kg' ? kgWeighings : undefined,
     pricePerKgCents: priceKgCents,
+    kgPriceCut: priceCut,
     pricePerArrobaCents: priceArrobaCents,
     pricePerHeadCents: priceHeadCents,
     items,
@@ -310,7 +323,10 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
     if (mode === 'kg') {
       const pesadas = weighings.reduce((a, w) => a + w.heads, 0)
       if (pesadas !== heads) return setError(`Faltam pesagens: ${pesadas} de ${heads} cabeças pesadas.`)
-      if (!priceKgCents) return setError('Informe o preço do kg.')
+      if (twoPrices) {
+        if (!priceCut) return setError('Informe o peso de corte.')
+        if (!priceCut.aboveCents || !priceCut.belowCents) return setError('Informe os dois preços do kg (acima e abaixo do corte).')
+      } else if (!priceKgCents) return setError('Informe o preço do kg.')
     }
     if (paymentKind === 'prazo' && !(Number(days) >= 1)) return setError('Informe em quantos dias vence.')
     setSaving(true)
@@ -328,7 +344,8 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
           animals: mode === 'kg' ? [] : filled,
           weighings: mode === 'kg' ? kgWeighings : undefined,
           pricePerArrobaCents: mode === 'arroba' ? priceArrobaCents : null,
-          pricePerKgCents: mode === 'kg' ? priceKgCents : null,
+          pricePerKgCents: mode === 'kg' && !twoPrices ? priceKgCents : null,
+          kgPriceCut: mode === 'kg' && twoPrices ? priceCut : null,
           pricePerHeadCents: mode === 'cabeca' ? priceHeadCents : {},
           paymentKind,
           installments,
@@ -525,13 +542,66 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
       {heads > 0 && mode === 'kg' && (
         <>
           {!lot && <KgWeighings totalHeads={heads} weighings={weighings} onChange={setWeighings} />}
-          {weighings.length > 1 && <WeightSplit weighings={weighings} />}
-          <div className="card">
-            <label className="label" htmlFor="v-price-kg">
-              Preço do kg (peso vivo)
-            </label>
-            <input id="v-price-kg" className="input" inputMode="decimal" placeholder="R$ 0,00" value={priceKg} onChange={(e) => setPriceKg(e.target.value)} />
-            {priceKgCents ? <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>Equivale a {formatMoney(priceKgCents * 30)} por arroba (30 kg).</p> : null}
+          {weighings.length > 1 && !twoPrices && <WeightSplit weighings={weighings} />}
+          <div className="card stack" data-testid="kg-price">
+            <div className="chips" role="radiogroup" aria-label="Preço do kg">
+              <button type="button" role="radio" aria-checked={!twoPrices} className={`chip${!twoPrices ? ' active' : ''}`} onClick={() => setTwoPrices(false)} data-testid="price-single">
+                Preço único
+              </button>
+              <button type="button" role="radio" aria-checked={twoPrices} className={`chip${twoPrices ? ' active' : ''}`} onClick={() => setTwoPrices(true)} data-testid="price-two">
+                Dois preços (corte de peso)
+              </button>
+            </div>
+            {!twoPrices ? (
+              <>
+                <label className="label" htmlFor="v-price-kg" style={{ margin: 0 }}>
+                  Preço do kg (peso vivo)
+                </label>
+                <input id="v-price-kg" className="input" inputMode="decimal" placeholder="R$ 0,00" value={priceKg} onChange={(e) => setPriceKg(e.target.value)} />
+                {priceKgCents ? <p className="muted" style={{ fontSize: 14 }}>Equivale a {formatMoney(priceKgCents * 30)} por arroba (30 kg).</p> : null}
+              </>
+            ) : (
+              <>
+                <div className="row" style={{ gap: 8 }}>
+                  <label className="muted" htmlFor="v-cut" style={{ flex: 'none' }}>
+                    Peso de corte
+                  </label>
+                  <input id="v-cut" className="input" inputMode="decimal" placeholder="ex.: 350" value={cutShown} onChange={(e) => setCutText(e.target.value.replace(/[^\d.,]/g, ''))} style={{ maxWidth: 130, textAlign: 'right' }} data-testid="price-cut" />
+                  <span className="muted" style={{ flex: 'none' }}>
+                    kg/cab.
+                  </span>
+                </div>
+                <div className="split-grid">
+                  <div className="split-box up" data-testid="price-above-box">
+                    <label className="split-title" htmlFor="v-price-above">
+                      {cutTenths ? `${kgText(cutTenths)} ou mais` : 'Acima do corte'}
+                    </label>
+                    <input id="v-price-above" className="input" inputMode="decimal" placeholder="R$/kg" value={priceAbove} onChange={(e) => setPriceAbove(e.target.value)} />
+                    {cutTotals && (
+                      <small>
+                        {cutTotals.aboveHeads} cab. · {kgText(cutTotals.aboveKg)}
+                        <br />
+                        <b className="split-money">{formatMoney(cutTotals.aboveCents)}</b>
+                      </small>
+                    )}
+                  </div>
+                  <div className="split-box down" data-testid="price-below-box">
+                    <label className="split-title" htmlFor="v-price-below">
+                      {cutTenths ? `abaixo de ${kgText(cutTenths)}` : 'Abaixo do corte'}
+                    </label>
+                    <input id="v-price-below" className="input" inputMode="decimal" placeholder="R$/kg" value={priceBelow} onChange={(e) => setPriceBelow(e.target.value)} />
+                    {cutTotals && (
+                      <small>
+                        {cutTotals.belowHeads} cab. · {kgText(cutTotals.belowKg)}
+                        <br />
+                        <b className="split-money">{formatMoney(cutTotals.belowCents)}</b>
+                      </small>
+                    )}
+                  </div>
+                </div>
+                <p className="muted" style={{ fontSize: 13 }}>Cada pesagem entra inteira no grupo pelo peso por cabeça dela (quem subiu junto fica junto).</p>
+              </>
+            )}
           </div>
         </>
       )}

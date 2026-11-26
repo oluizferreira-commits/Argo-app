@@ -6,7 +6,7 @@ import { saleBalance } from '../receber/receivables'
 import { category } from '../../domain/categories'
 import { buildPixPayload, maskPhone, maskPixKey, PIX_KEY_LABELS } from '../../domain/pix'
 import { formatDay } from '../rebanho/herd'
-import { formatSaleNumber, kgWeighingsOf } from './sales'
+import { formatSaleNumber, kgCutTotals, kgWeighingsOf } from './sales'
 
 /** Código Pix (copia e cola) de uma parcela da venda, ou null se a fazenda não tem chave. */
 /**
@@ -160,8 +160,19 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
     const kg = ws.reduce((a, x) => a + x.kgTenths, 0)
     const cab = ws.reduce((a, x) => a + x.heads, 0)
     text(`${cab} cab. · ${formatDecimal(kg, 1)} kg · média ${formatDecimal(Math.round(kg / Math.max(1, cab)), 1)} kg`, M, y, 26, 600, C.ink2)
-    text(`${formatMoney(sale.pricePerKgCents ?? 0)} por kg`, W - M, y, 26, 400, C.ink2, 'right')
+    if (!sale.kgPriceCut) text(`${formatMoney(sale.pricePerKgCents ?? 0)} por kg`, W - M, y, 26, 400, C.ink2, 'right')
     y += 56
+    if (sale.kgPriceCut) {
+      const c = sale.kgPriceCut
+      const t = kgCutTotals(ws, c)
+      const cut = `${formatDecimal(c.cutTenths, 1)} kg`
+      text(`${cut} ou mais: ${t.aboveHeads} cab. · ${formatDecimal(t.aboveKg, 1)} kg × ${formatMoney(c.aboveCents)}`, M, y, 24, 400, C.ink2)
+      text(formatMoney(t.aboveCents), W - M, y, 26, 700, C.ink, 'right')
+      y += 46
+      text(`Abaixo de ${cut}: ${t.belowHeads} cab. · ${formatDecimal(t.belowKg, 1)} kg × ${formatMoney(c.belowCents)}`, M, y, 24, 400, C.ink2)
+      text(formatMoney(t.belowCents), W - M, y, 26, 700, C.ink, 'right')
+      y += 56
+    }
   }
   if (sale.mode === 'arroba') {
     const totalAnimals = sale.animals.length

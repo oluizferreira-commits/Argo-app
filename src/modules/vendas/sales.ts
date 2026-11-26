@@ -2,7 +2,7 @@ import { newId, nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
 import { MAX_HEADS_PER_WEIGHING, sameWeighings } from '../pesagens/lots'
-import type { Client, Installment, KgWeighing, PaymentKind, PaymentMethod, Sale, SaleItem, SalePurpose, WeighedAnimal } from '../../db/types'
+import type { Client, Installment, KgPriceCut, KgWeighing, PaymentKind, PaymentMethod, Sale, SaleItem, SalePurpose, WeighedAnimal } from '../../db/types'
 import { category, type CategoryId } from '../../domain/categories'
 import { isValidCnpj, isValidCpf } from '../../domain/pix'
 import { entriesOut, HerdError, recordMovement, reverseMovement, todayLocal } from '../rebanho/herd'
@@ -40,11 +40,35 @@ export function kgWeighingsOf(s: Pick<Sale, 'animals'> & { weighings?: KgWeighin
   return s.weighings ?? s.animals.map((a) => ({ heads: a.heads ?? 1, kgTenths: a.amount }))
 }
 
-export function computeTotals(s: Pick<Sale, 'mode' | 'weighing' | 'animals' | 'pricePerArrobaCents' | 'pricePerHeadCents' | 'items'> & { pricePerKgCents?: number | null; weighings?: KgWeighing[] }): Totals {
+/** Dois preços pelo peso: valor de cada grupo (pesagens acima/igual e abaixo do corte por cabeça). */
+export function kgCutTotals(weighings: readonly KgWeighing[], cut: KgPriceCut) {
+  let aboveKg = 0
+  let belowKg = 0
+  let aboveHeads = 0
+  let belowHeads = 0
+  for (const w of weighings) {
+    if (w.kgTenths >= cut.cutTenths * w.heads) {
+      aboveKg += w.kgTenths
+      aboveHeads += w.heads
+    } else {
+      belowKg += w.kgTenths
+      belowHeads += w.heads
+    }
+  }
+  const aboveCents = roundDiv(aboveKg * cut.aboveCents, 10)
+  const belowCents = roundDiv(belowKg * cut.belowCents, 10)
+  return { aboveKg, belowKg, aboveHeads, belowHeads, aboveCents, belowCents, totalCents: aboveCents + belowCents }
+}
+
+export function computeTotals(
+  s: Pick<Sale, 'mode' | 'weighing' | 'animals' | 'pricePerArrobaCents' | 'pricePerHeadCents' | 'items'> & { pricePerKgCents?: number | null; weighings?: KgWeighing[]; kgPriceCut?: KgPriceCut | null },
+): Totals {
   if (s.mode === 'kg') {
-    // valor = Σ kg × 10 × preço do kg / 10; arrobas só para informação (kg ÷ 30)
-    const sum = kgWeighingsOf(s).reduce((a, x) => a + x.kgTenths, 0)
-    return { arrobasHundredths: roundDiv(sum, 3), totalCents: roundDiv(sum * (s.pricePerKgCents ?? 0), 10) }
+    // valor = Σ kg × 10 × preço do kg / 10 (ou dois preços pelo corte de peso); arrobas só para informação (kg ÷ 30)
+    const ws = kgWeighingsOf(s)
+    const sum = ws.reduce((a, x) => a + x.kgTenths, 0)
+    const totalCents = s.kgPriceCut ? kgCutTotals(ws, s.kgPriceCut).totalCents : roundDiv(sum * (s.pricePerKgCents ?? 0), 10)
+    return { arrobasHundredths: roundDiv(sum, 3), totalCents }
   }
   if (s.mode === 'arroba') {
     const sum = s.animals.reduce((a, x) => a + x.amount, 0)
@@ -156,6 +180,8 @@ export interface SaleInput {
   pricePerHeadCents: Partial<Record<CategoryId, number>>
   /** Venda por kg: preço do quilo vivo. */
   pricePerKgCents?: number | null
+  /** Venda por kg com dois preços pelo corte de peso (no lugar do preço único). */
+  kgPriceCut?: KgPriceCut | null
   paymentKind: PaymentKind
   installments: Installment[]
   notes: string
@@ -206,8 +232,15 @@ function validateSale(input: SaleInput): { items: SaleItem[]; totals: Totals } {
       // 20 a 1.500 kg por cabeça (média da pesagem)
       if (w.kgTenths < 200 * w.heads || w.kgTenths > 15000 * w.heads) throw new SaleError(`Pesagem fora do normal (${w.heads} cab. com ${(w.kgTenths / 10).toLocaleString('pt-BR')} kg). Confira.`)
     }
-    if (!input.pricePerKgCents || input.pricePerKgCents <= 0) throw new SaleError('Informe o preço do kg.')
-    if (input.pricePerKgCents > 50_000) throw new SaleError('Preço do kg muito alto. Confira.')
+    if (input.kgPriceCut) {
+      const c = input.kgPriceCut
+      if (!Number.isInteger(c.cutTenths) || c.cutTenths < 200 || c.cutTenths > 15000) throw new SaleError('Peso de corte fora do normal (entre 20 e 1.500 kg por cabeça).')
+      if (!c.aboveCents || c.aboveCents <= 0 || !c.belowCents || c.belowCents <= 0) throw new SaleError('Informe os dois preços do kg (acima e abaixo do corte).')
+      if (c.aboveCents > 50_000 || c.belowCents > 50_000) throw new SaleError('Preço do kg muito alto. Confira.')
+    } else {
+      if (!input.pricePerKgCents || input.pricePerKgCents <= 0) throw new SaleError('Informe o preço do kg.')
+      if (input.pricePerKgCents > 50_000) throw new SaleError('Preço do kg muito alto. Confira.')
+    }
     const weighed = ws.reduce((a, w) => a + w.heads, 0)
     const sold = items.reduce((a, i) => a + i.quantity, 0)
     if (weighed !== sold) throw new SaleError(`Pesadas ${weighed} cabeças, mas a venda tem ${sold}. Confira as quantidades ou as pesagens.`)
@@ -282,7 +315,8 @@ export async function createSale(db: ArgoDatabase, farmId: string, input: SaleIn
         animals: input.mode === 'arroba' ? input.animals : [],
         weighings: input.mode === 'kg' ? kgWeighingsOf(input).map((w) => ({ heads: w.heads, kgTenths: w.kgTenths })) : undefined,
         pricePerArrobaCents: input.mode === 'arroba' ? input.pricePerArrobaCents : null,
-        pricePerKgCents: input.mode === 'kg' ? (input.pricePerKgCents ?? null) : null,
+        pricePerKgCents: input.mode === 'kg' && !input.kgPriceCut ? (input.pricePerKgCents ?? null) : null,
+        kgPriceCut: input.mode === 'kg' && input.kgPriceCut ? { ...input.kgPriceCut } : null,
         pricePerHeadCents: input.mode === 'cabeca' ? input.pricePerHeadCents : {},
         arrobasHundredths: totals.arrobasHundredths,
         totalCents: totals.totalCents,

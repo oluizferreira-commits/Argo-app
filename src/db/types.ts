@@ -696,6 +696,11 @@ export interface Sale extends BaseRecord {
   /** Venda por kg: preço do quilo vivo (centavos). Sem índice: o banco não muda. */
   pricePerKgCents?: number | null
   /**
+   * Venda por kg com dois preços: pesagens com média por cabeça igual ou acima do corte usam `aboveCents`,
+   * as abaixo usam `belowCents` (preços do kg). Ausente = preço único (`pricePerKgCents`).
+   */
+  kgPriceCut?: KgPriceCut | null
+  /**
    * Venda por kg: pesagens (1 a 4 cabeças cada, podem ser misturadas). Vendas por kg da versão 0.26/0.27
    * guardavam as pesagens em `animals` (com pasto/categoria); veja `kgWeighingsOf`.
    */
@@ -774,6 +779,13 @@ export interface MapVersion extends BaseRecord {
   totalCentiHa: number
   /** alertas que existiam no momento da confirmação */
   warnings: string[]
+}
+
+export interface KgPriceCut {
+  /** peso de corte por cabeça, kg × 10 */
+  cutTenths: number
+  aboveCents: number
+  belowCents: number
 }
 
 /**

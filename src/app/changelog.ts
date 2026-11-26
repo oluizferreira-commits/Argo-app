@@ -13,6 +13,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.30.0',
+    date: '2026-11-26',
+    title: 'Dois preços pelo corte de peso',
+    items: [
+      'Na venda por kg, escolha "Dois preços (corte de peso)": um preço do kg para quem ficou no corte ou acima e outro para quem ficou abaixo.',
+      'O corte já vem com a média do lote (dá para trocar) e o app mostra cabeças, kg e valor de cada grupo antes de registrar.',
+      'A página da venda e o comprovante mostram os dois preços e o valor de cada grupo.',
+    ],
+  },
+  {
     version: '0.29.0',
     date: '2026-11-26',
     title: 'Média acima e abaixo de um peso',
