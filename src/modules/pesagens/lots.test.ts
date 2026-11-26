@@ -98,3 +98,19 @@ describe('pesagem de lote com animais misturados na balança', () => {
     expect(items).toEqual([{ pastureId: 'p1', category: 'garrote', quantity: 5 }])
   })
 })
+
+describe('média acima e abaixo de um peso', () => {
+  it('separa pelo peso por cabeça de cada pesagem (corte de 350 kg)', async () => {
+    const { splitByWeight } = await import('./lots')
+    const ws = [
+      { heads: 3, kgTenths: 11100 }, // 370 kg/cab → acima
+      { heads: 2, kgTenths: 7000 }, // 350 kg/cab → acima (igual conta como acima)
+      { heads: 4, kgTenths: 12800 }, // 320 kg/cab → abaixo
+      { heads: 1, kgTenths: 3400 }, // 340 → abaixo
+    ]
+    const r = splitByWeight(ws, 3500)
+    expect(r.above).toEqual({ weighings: 2, heads: 5, kgTenths: 18100, avgTenths: 3620 })
+    expect(r.below).toEqual({ weighings: 2, heads: 5, kgTenths: 16200, avgTenths: 3240 })
+    expect(splitByWeight([], 3500).above.avgTenths).toBe(0)
+  })
+})

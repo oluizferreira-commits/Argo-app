@@ -6,6 +6,7 @@ import { formatDecimal, formatMoney, parseDecimal, parseMoney } from '../../core
 import { db } from '../../db/database'
 import type { PaymentKind, PaymentMethod, SaleItem, SalePurpose, WeighedAnimal, WeighingLot } from '../../db/types'
 import { lotSummary, MAX_HEADS_PER_WEIGHING } from '../pesagens/lots'
+import { WeightSplit } from '../pesagens/WeightSplit'
 
 const HEAD_OPTIONS = Array.from({ length: MAX_HEADS_PER_WEIGHING }, (_, i) => i + 1)
 import { METHOD_LABELS } from '../receber/receivables'
@@ -524,6 +525,7 @@ function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: Weighi
       {heads > 0 && mode === 'kg' && (
         <>
           {!lot && <KgWeighings totalHeads={heads} weighings={weighings} onChange={setWeighings} />}
+          {weighings.length > 1 && <WeightSplit weighings={weighings} />}
           <div className="card">
             <label className="label" htmlFor="v-price-kg">
               Preço do kg (peso vivo)

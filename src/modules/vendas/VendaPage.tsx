@@ -13,6 +13,7 @@ import { usePastureMap } from '../rebanho/useHerd'
 import { PAYMENT_LABEL, renderReceipt, salePixPayload } from './receipt'
 import { cancelSale, formatSaleNumber, kgWeighingsOf, PURPOSE_LABEL, SaleError, salePurpose, setSalePurpose } from './sales'
 import { PaymentsSection } from '../receber/PaymentsSection'
+import { WeightSplit } from '../pesagens/WeightSplit'
 import { saleBalance } from '../receber/receivables'
 
 export function VendaPage() {
@@ -141,6 +142,7 @@ export function VendaPage() {
       </div>
 
       {sale.mode === 'kg' && kgWeighingsOf(sale).length > 0 && <KgWeighingsView sale={sale} />}
+      {sale.mode === 'kg' && kgWeighingsOf(sale).length > 1 && <WeightSplit weighings={kgWeighingsOf(sale)} />}
 
       {sale.status === 'ativa' && <PaymentsSection sale={sale} payments={payments} />}
 

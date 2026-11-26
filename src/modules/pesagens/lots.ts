@@ -123,3 +123,29 @@ export function sameWeighings(lot: Pick<WeighingLot, 'weighings'>, weighings: re
   const b = weighings.map((w) => `${w.heads}|${w.kgTenths}`).sort()
   return a.length === b.length && a.every((x, i) => x === b[i])
 }
+
+export interface WeightGroup {
+  weighings: number
+  heads: number
+  kgTenths: number
+  /** média por cabeça, kg × 10 (0 se vazio) */
+  avgTenths: number
+}
+
+/**
+ * Separa as pesagens pelo peso de corte (kg × 10 por cabeça): "acima" = média por cabeça da pesagem igual ou
+ * maior que o corte; "abaixo" = menor. Cada pesagem conta inteira no grupo (os animais subiram juntos).
+ */
+export function splitByWeight(weighings: readonly KgWeighing[], cutTenths: number): { above: WeightGroup; below: WeightGroup } {
+  const g = (): WeightGroup => ({ weighings: 0, heads: 0, kgTenths: 0, avgTenths: 0 })
+  const above = g()
+  const below = g()
+  for (const w of weighings) {
+    const grp = w.kgTenths >= cutTenths * w.heads ? above : below
+    grp.weighings++
+    grp.heads += w.heads
+    grp.kgTenths += w.kgTenths
+  }
+  for (const grp of [above, below]) grp.avgTenths = grp.heads ? Math.round(grp.kgTenths / grp.heads) : 0
+  return { above, below }
+}

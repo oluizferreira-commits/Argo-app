@@ -13,6 +13,7 @@ import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { balanceOf, formatDay } from '../rebanho/herd'
 import { useBalances, usePastures } from '../rebanho/useHerd'
+import { WeightSplit } from './WeightSplit'
 import { addWeighing, MAX_HEADS_PER_WEIGHING, cancelLot, compositionHeads, createLot, LotError, lotSummary, removeWeighing, renameLot, setComposition } from './lots'
 
 const kg = (tenths: number) => `${formatDecimal(tenths, 1)} kg`
@@ -117,10 +118,14 @@ export function PesagemPage() {
 
   async function add() {
     setErr(null)
+    // limpa o campo NA HORA (antes de salvar): quem digita rápido não perde a próxima pesagem
+    const typed = text
+    const value = t ?? 0
+    setText('')
     try {
-      await addWeighing(db, lot!.id, { heads, kgTenths: t ?? 0 })
-      setText('')
+      await addWeighing(db, lot!.id, { heads, kgTenths: value })
     } catch (e) {
+      setText((cur) => cur || typed)
       setErr(e instanceof LotError ? e.message : (e as Error).message)
     }
   }
@@ -234,6 +239,8 @@ export function PesagemPage() {
           </ol>
         </div>
       )}
+
+      {lot.weighings.length > 1 && <WeightSplit weighings={lot.weighings} />}
 
       <Composition lotId={lot.id} items={s.items} editable={isOpen} weighed={s.heads} pName={pName} pastures={pastures} available={(p, c) => balanceOf(balances, p, c)} />
 

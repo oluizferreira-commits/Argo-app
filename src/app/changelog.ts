@@ -13,6 +13,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.29.0',
+    date: '2026-11-26',
+    title: 'Média acima e abaixo de um peso',
+    items: [
+      'Depois de pesar, "Separar por peso": digite um peso de corte (ex.: 350 kg) e veja quantas cabeças ficaram acima e abaixo, com a média e o total de cada grupo.',
+      'O corte já vem com a média do lote (arredondada) e pode ser trocado à vontade.',
+      'Aparece na pesagem de lote, na venda por kg e na página da venda.',
+      'Corrigido: na pesagem de lote, digitando muito rápido o próximo peso, uma pesagem podia se perder. Agora o campo limpa na hora do toque.',
+    ],
+  },
+  {
     version: '0.28.1',
     date: '2026-11-26',
     title: 'Até 4 cabeças por pesagem',
