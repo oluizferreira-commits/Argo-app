@@ -146,7 +146,16 @@ export function VendaPage() {
 
       {sale.status === 'ativa' && <PaymentsSection sale={sale} payments={payments} />}
 
-      {!farm.pixKey && sale.status === 'ativa' && !balance?.settled && (
+      {sale.status === 'ativa' && salePurpose(sale) === 'fazenda' && (
+        <div className="notice notice-ok" data-testid="no-pix-note">
+          <Icon name="receipt" />
+          <div>
+            Venda <strong>para a fazenda</strong>: o comprovante sai só com os dados da venda (animais, kg e valor), <strong>sem Pix e sem QR Code</strong>.
+          </div>
+        </div>
+      )}
+
+      {!farm.pixKey && sale.status === 'ativa' && salePurpose(sale) === 'pessoal' && !balance?.settled && (
         <Link to="/fazenda" className="notice notice-warn" style={{ textDecoration: 'none' }}>
           <Icon name="alert" />
           <div>

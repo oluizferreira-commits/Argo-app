@@ -6,14 +6,15 @@ import { saleBalance } from '../receber/receivables'
 import { category } from '../../domain/categories'
 import { buildPixPayload, maskPhone, maskPixKey, PIX_KEY_LABELS } from '../../domain/pix'
 import { formatDay } from '../rebanho/herd'
-import { formatSaleNumber, kgCutTotals, kgWeighingsOf } from './sales'
+import { formatSaleNumber, kgCutTotals, kgWeighingsOf, salePurpose } from './sales'
 
-/** Código Pix (copia e cola) de uma parcela da venda, ou null se a fazenda não tem chave. */
 /**
- * Código Pix (copia e cola) do que FALTA pagar de uma parcela, ou null se a fazenda não tem chave
- * ou a parcela já está paga.
+ * Código Pix (copia e cola) do que FALTA pagar de uma parcela, ou null se: a venda é para a fazenda
+ * (quem recebe é outra pessoa — o comprovante sai sem Pix e sem QR Code), não há chave cadastrada
+ * ou a parcela já está paga. O Pix só sai nas vendas para gastos pessoais.
  */
 export function salePixPayload(sale: Sale, farm: Farm, installmentIndex: number, payments: readonly Payment[] = []): string | null {
+  if (salePurpose(sale) !== 'pessoal') return null
   if (!farm.pixKey || !farm.pixName || !farm.pixCity) return null
   const state = saleBalance(sale, payments).installments[installmentIndex] ?? saleBalance(sale, payments).installments[0]
   if (!state || state.openCents <= 0) return null

@@ -13,6 +13,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.30.2',
+    date: '2026-11-27',
+    title: 'Comprovante sem Pix na venda para a fazenda',
+    items: [
+      'Venda "para a fazenda": o comprovante sai só com os dados da venda (animais, kg, valor e pagamento), sem Pix e sem QR Code — quem recebe pode ser outra pessoa.',
+      'O seu Pix e o QR Code aparecem só nas vendas "para gastos pessoais".',
+      'Mudou o destino depois na página da venda? O comprovante acompanha na hora.',
+    ],
+  },
+  {
     version: '0.30.1',
     date: '2026-11-26',
     title: 'Venda cancelada devolve a pesagem',

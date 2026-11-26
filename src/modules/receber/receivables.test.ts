@@ -100,12 +100,20 @@ describe('contas a receber', () => {
   it('QR Pix cobra só o que falta da parcela; parcela paga não gera QR', async () => {
     const { farm, sell, payments } = await setup()
     const f = await updateFarmPix(db, farm.id, { type: 'cpf', key: '529.982.247-25', name: 'Teste', city: 'Cidade' })
-    const s = await sell(1, 100000, 'prazo')
+    const s = { ...(await sell(1, 100000, 'prazo')), purpose: 'pessoal' as const }
     await recordPayment(db, farm.id, { saleId: s.id, date: todayLocal(), amountCents: 30000, method: 'pix', notes: '' })
     const pix = salePixPayload(s, f, 0, (await payments(s.id)) as Payment[])!
     expect(pix).toContain('5406700.00')
     expect(pix).toBe(buildPixPayload({ key: '52998224725', name: 'Teste', city: 'Cidade', amountCents: 70000, txid: 'ARGO0001' }))
     await recordPayment(db, farm.id, { saleId: s.id, date: todayLocal(), amountCents: 70000, method: 'pix', notes: '' })
     expect(salePixPayload(s, f, 0, await payments(s.id))).toBeNull()
+  })
+
+  it('Pix só na venda para gastos pessoais; venda para a fazenda sai sem Pix (quem recebe é outra pessoa)', async () => {
+    const { farm, sell } = await setup()
+    const f = await updateFarmPix(db, farm.id, { type: 'cpf', key: '529.982.247-25', name: 'Teste', city: 'Cidade' })
+    const s = await sell(1, 100000, 'prazo')
+    expect(salePixPayload(s, f, 0, [])).toBeNull() // fazenda (padrão)
+    expect(salePixPayload({ ...s, purpose: 'pessoal' }, f, 0, [])).not.toBeNull()
   })
 })
