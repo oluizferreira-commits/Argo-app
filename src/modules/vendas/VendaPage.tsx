@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { formatMoney } from '../../core/money'
+import { formatDecimal, formatMoney } from '../../core/money'
+import { category } from '../../domain/categories'
+import type { Sale } from '../../db/types'
 import { db } from '../../db/database'
 import { Icon } from '../../components/Icon'
 import { saveFile } from '../../platform/files'
@@ -138,6 +140,8 @@ export function VendaPage() {
         )}
       </div>
 
+      {sale.mode === 'kg' && sale.animals.length > 0 && <KgWeighingsView sale={sale} />}
+
       {sale.status === 'ativa' && <PaymentsSection sale={sale} payments={payments} />}
 
       {!farm.pixKey && sale.status === 'ativa' && !balance?.settled && (
@@ -199,5 +203,49 @@ export function VendaPage() {
         </button>
       )}
     </>
+  )
+}
+
+/** Pesagens da venda por kg, com o peso por cabeça de cada pesagem. */
+function KgWeighingsView({ sale }: { sale: Sale }) {
+  const [all, setAll] = useState(false)
+  const kg = sale.animals.reduce((a, x) => a + x.amount, 0)
+  const cab = sale.animals.reduce((a, x) => a + (x.heads ?? 1), 0)
+  const rows = sale.animals.map((a, i) => ({ n: i + 1, ...a, h: a.heads ?? 1 }))
+  const shown = all ? rows : rows.slice(0, 10)
+  const t = (v: number) => `${formatDecimal(v, 1)} kg`
+  return (
+    <div className="card stack" data-testid="sale-weighings">
+      <div className="label" style={{ margin: 0 }}>
+        Pesagens · {formatMoney(sale.pricePerKgCents ?? 0)} por kg
+      </div>
+      <div className="kg-total">
+        <span>
+          <b>{t(kg)}</b> {cab} cabeças
+        </span>
+        <span>
+          <b data-testid="sale-kg-avg">{t(Math.round(kg / Math.max(1, cab)))}</b> média por cabeça
+        </span>
+      </div>
+      <ol className="kg-list">
+        {shown.map((r) => (
+          <li key={r.n} style={{ gridTemplateColumns: '34px minmax(0, 1fr) auto' }}>
+            <span className="kg-n">{r.n}</span>
+            <span className="kg-desc">
+              {r.h} {r.h === 1 ? category(r.category).label.toLowerCase() : category(r.category).plural.toLowerCase()}
+            </span>
+            <span className="kg-w">
+              <b>{t(r.amount)}</b>
+              <small>{t(Math.round(r.amount / r.h))}/cab.</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+      {rows.length > 10 && (
+        <button type="button" className="btn btn-outline btn-block" onClick={() => setAll(!all)}>
+          {all ? 'Mostrar menos' : `Ver todas as ${rows.length} pesagens`}
+        </button>
+      )}
+    </div>
   )
 }

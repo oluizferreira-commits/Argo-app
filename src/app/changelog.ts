@@ -13,6 +13,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.26.1',
+    date: '2026-11-26',
+    title: 'Kg por cabeça na venda por kg',
+    items: [
+      'Cada pesagem mostra o peso por cabeça (ex.: 3 garrotes, 1.066 kg → 355,3 kg/cab.).',
+      'A página da venda lista as pesagens com o kg por cabeça, o total e a média.',
+      'O comprovante mostra o total e a média em kg por cabeça de cada categoria.',
+    ],
+  },
+  {
     version: '0.26.0',
     date: '2026-11-26',
     title: 'Venda por kg',

@@ -180,7 +180,10 @@ function KgWeighings({ items, pastureName, weighings, onChange }: { items: SaleI
                   {w.heads} {w.heads === 1 ? category(w.category).label.toLowerCase() : category(w.category).plural.toLowerCase()}
                   {items.length > 1 ? ` · ${pastureName(w.pastureId)}` : ''}
                 </span>
-                <b>{kgText(w.kgTenths)}</b>
+                <span className="kg-w">
+                  <b>{kgText(w.kgTenths)}</b>
+                  <small data-testid="kg-per-head">{kgText(Math.round(w.kgTenths / w.heads))}/cab.</small>
+                </span>
                 <button type="button" className="btn btn-outline btn-icon" aria-label={`Apagar pesagem ${n}`} onClick={() => onChange(weighings.filter((x) => x.id !== w.id))}>
                   <Icon name="trash" size={18} />
                 </button>

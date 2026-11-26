@@ -144,7 +144,13 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
     } else {
       const animals = sale.animals.filter((a) => a.pastureId === it.pastureId && a.category === it.category)
       const sum = animals.reduce((a, x) => a + x.amount, 0)
-      const desc = sale.weighing === 'vivo' ? `${formatDecimal(sum, 1)} kg` : `${formatDecimal(sum, 2)} @`
+      const cab = animals.reduce((a, x) => a + (x.heads ?? 1), 0)
+      const desc =
+        sale.mode === 'kg'
+          ? `${formatDecimal(sum, 1)} kg · ${formatDecimal(Math.round(sum / Math.max(1, cab)), 1)} kg/cab.`
+          : sale.weighing === 'vivo'
+            ? `${formatDecimal(sum, 1)} kg`
+            : `${formatDecimal(sum, 2)} @`
       text(desc, W - M, y, 26, 600, C.ink2, 'right')
     }
     y += 50
