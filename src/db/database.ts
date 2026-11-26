@@ -115,6 +115,11 @@ export function createDatabase(name = DB_NAME): ArgoDatabase {
     mapVersions: 'id, farmId, version, createdAt, updatedAt',
   })
 
+  // v15 — Pesagem de lote antes da venda (pesar primeiro, vender depois). Só tabela nova.
+  db.version(15).stores({
+    weighingLots: 'id, farmId, status, date, createdAt, updatedAt',
+  })
+
   return db
 }
 

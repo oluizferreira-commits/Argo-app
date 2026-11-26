@@ -223,6 +223,13 @@ Resumo (pastos, hectares informados, ocupados, vazios), pesquisa pelo nome (sem 
   Valor = Σ kg × preço do kg. As pesagens têm de bater com os animais escolhidos (pasto × categoria).
   `arrobasHundredths` (kg ÷ 30) fica só para informação.
 
+## Pesagem de lote (v15)
+
+- Tabela nova `weighingLots` (versão 15 do banco; nada existente muda): data, nome, pesagens (pasto,
+  categoria, 1–3 cabeças, kg × 10), status aberta/vendida/cancelada e `saleId`. Cada lançamento grava na hora.
+- Não mexe no rebanho. A venda por kg com `weighingLotId` exige exatamente as mesmas pesagens
+  (`sameWeighings`) e, na MESMA transação, marca o lote como vendido.
+
 ## Destino da venda e valor das diárias
 
 - `Sale.purpose` (`fazenda` | `pessoal`, sem índice; ausente = fazenda). Recebimentos de venda pessoal ficam

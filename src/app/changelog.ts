@@ -13,6 +13,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.27.0',
+    date: '2026-11-26',
+    title: 'Pesar primeiro, vender depois',
+    items: [
+      'Nova "Pesagem de lote" (Vendas › Pesar primeiro, ou Mais › Pesagem): pese no curral sem comprador nem preço.',
+      'Ao digitar o peso, o ARGO já mostra o peso por cabeça antes de lançar (ex.: 3 cab. · 1.065 kg → 355 kg por cabeça).',
+      'Cada pesagem fica salva na hora, mesmo sem internet, com total, média e kg por cabeça de cada pesagem.',
+      'Quando fechar o negócio, toque em "Vender este lote": a venda por kg abre preenchida; é só escolher o comprador, o preço do kg e o pagamento.',
+      'Os animais só saem do rebanho na venda.',
+    ],
+  },
+  {
     version: '0.26.1',
     date: '2026-11-26',
     title: 'Kg por cabeça na venda por kg',

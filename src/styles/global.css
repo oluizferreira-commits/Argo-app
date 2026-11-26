@@ -4166,3 +4166,11 @@ i.flow-out,
   color: var(--gold-300);
   font-variant-numeric: tabular-nums;
 }
+.kg-preview {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.kg-preview b {
+  color: var(--gold-300);
+  font-variant-numeric: tabular-nums;
+}

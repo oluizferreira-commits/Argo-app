@@ -1,6 +1,7 @@
 import { newId, nowIso } from '../../core/ids'
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
+import { sameWeighings } from '../pesagens/lots'
 import type { Client, Installment, PaymentKind, PaymentMethod, Sale, SaleItem, SalePurpose, WeighedAnimal } from '../../db/types'
 import { category, type CategoryId } from '../../domain/categories'
 import { isValidCnpj, isValidCpf } from '../../domain/pix'
@@ -154,6 +155,8 @@ export interface SaleInput {
   receivedNow?: { method: PaymentMethod } | null
   /** Para a fazenda (padrão) ou para gastos pessoais. */
   purpose?: SalePurpose
+  /** Venda por kg de um lote pesado antes (Pesagem de lote): o lote fica marcado como vendido. */
+  weighingLotId?: string
 }
 
 export const PURPOSE_LABEL: Record<SalePurpose, string> = { fazenda: 'Para a fazenda', pessoal: 'Para gastos pessoais' }
@@ -227,10 +230,16 @@ function validateSale(input: SaleInput): { items: SaleItem[]; totals: Totals } {
 export async function createSale(db: ArgoDatabase, farmId: string, input: SaleInput, idempotencyKey?: string): Promise<Sale> {
   const sales = new Repository(db, 'sales')
   const id = idempotencyKey ?? newId()
-  return db.transaction('rw', [db.sales, db.clients, db.movements, db.pastures, db.payments, db.auditLog, db.outbox, db.meta], async () => {
+  return db.transaction('rw', [db.sales, db.clients, db.movements, db.pastures, db.payments, db.weighingLots, db.auditLog, db.outbox, db.meta], async () => {
     const existing = await db.sales.get(id)
     if (existing) return existing
     const { items, totals } = validateSale(input)
+    if (input.weighingLotId) {
+      const lot = await db.weighingLots.get(input.weighingLotId)
+      if (!lot || lot.farmId !== farmId || lot.deletedAt !== null) throw new SaleError('Pesagem do lote não encontrada.')
+      if (lot.status !== 'aberta') throw new SaleError('Este lote já foi vendido ou cancelado.')
+      if (input.mode !== 'kg' || !sameWeighings(lot, input.animals)) throw new SaleError('As pesagens da venda são diferentes das do lote. Abra o lote de novo.')
+    }
     const client = await db.clients.get(input.clientId)
     if (!client || client.farmId !== farmId || client.deletedAt !== null) throw new SaleError('Cliente não encontrado.')
     const pastures = await db.pastures.bulkGet([...new Set(items.map((i) => i.pastureId))])
@@ -281,6 +290,7 @@ export async function createSale(db: ArgoDatabase, farmId: string, input: SaleIn
       },
       id,
     )
+    if (input.weighingLotId) await new Repository(db, 'weighingLots').update(input.weighingLotId, { status: 'vendida', saleId: sale.id })
     if (input.receivedNow && input.paymentKind === 'avista') {
       try {
         await recordPayment(

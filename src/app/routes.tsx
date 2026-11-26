@@ -8,6 +8,7 @@ import { ReceberPage } from '../modules/receber/ReceberPage'
 import { ReservaPage } from '../modules/reserva/ReservaPage'
 import { RelatoriosPage } from '../modules/relatorios/RelatoriosPage'
 import { HubPage } from '../modules/hub/HubPage'
+import { PesagemPage, PesagensPage } from '../modules/pesagens/PesagensPages'
 import { NovidadesPage } from '../modules/novidades/NovidadesPage'
 import { MapEditorPage } from '../modules/maps/MapEditorPage'
 import { MapsPage } from '../modules/maps/MapsPage'
@@ -75,6 +76,8 @@ const implemented: RouteObject[] = [
   { path: '/pagamentos', element: <PagamentosPage />, handle: t('Recebimentos') },
   { path: '/reserva', element: <ReservaPage />, handle: t('Reserva financeira') },
   { path: '/relatorios', element: <RelatoriosPage />, handle: t('Relatórios') },
+  { path: '/pesagens', element: <PesagensPage />, handle: t('Pesagem de lote') },
+  { path: '/pesagens/:id', element: <PesagemPage />, handle: t('Pesagem') },
   { path: '/vendas/nova', element: <NovaVendaPage />, handle: t('Nova venda') },
   { path: '/vendas/nova/:modo', element: <NovaVendaPage />, handle: t('Nova venda') },
   { path: '/vendas/:id', element: <VendaPage />, handle: t('Venda') },

@@ -1,9 +1,11 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { newId } from '../../core/ids'
 import { formatDecimal, formatMoney, parseDecimal, parseMoney } from '../../core/money'
 import { db } from '../../db/database'
-import type { PaymentKind, PaymentMethod, SaleItem, SalePurpose, WeighedAnimal } from '../../db/types'
+import type { PaymentKind, PaymentMethod, SaleItem, SalePurpose, WeighedAnimal, WeighingLot } from '../../db/types'
+import { lotSummary } from '../pesagens/lots'
 import { METHOD_LABELS } from '../receber/receivables'
 import { category, type CategoryId } from '../../domain/categories'
 import { CategoryQuantities } from '../../components/CategoryQuantities'
@@ -52,7 +54,25 @@ export function NovaVendaPage() {
       </>
     )
   }
-  return <SaleForm key={modo} mode={modo} />
+  return <SaleFormRoute mode={modo} />
+}
+
+/** Venda por kg de um lote pesado antes (?pesagem=id): espera o lote carregar e abre a venda já preenchida. */
+function SaleFormRoute({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
+  const [params] = useSearchParams()
+  const lotId = mode === 'kg' ? params.get('pesagem') : null
+  const lot = useLiveQuery(async () => (lotId ? ((await db.weighingLots.get(lotId)) ?? null) : null), [lotId])
+  if (lotId && lot === undefined) return null
+  if (lotId && (!lot || lot.status !== 'aberta'))
+    return (
+      <div className="notice notice-warn">
+        <Icon name="alert" />
+        <div>
+          Este lote não está mais disponível para venda. <Link to="/pesagens">Ver pesagens</Link>
+        </div>
+      </div>
+    )
+  return <SaleForm key={`${mode}:${lotId ?? ''}`} mode={mode} lot={lot ?? null} />
 }
 
 /** Uma subida na balança: 1 a 3 cabeças do mesmo pasto e categoria, peso total. */
@@ -66,6 +86,7 @@ export interface Weighing {
 }
 
 const kgText = (t: number) => `${formatDecimal(t, 1)} kg`
+const kgFmt = kgText
 
 /**
  * Pesagens rápidas para lotes grandes (ex.: 100 cabeças): escolhe quantas subiram (1, 2 ou 3), digita o peso e
@@ -160,6 +181,15 @@ function KgWeighings({ items, pastureName, weighings, onChange }: { items: SaleI
               Lançar
             </button>
           </div>
+          <div className="kg-preview" data-testid="kg-preview" aria-live="polite">
+            {parseDecimal(kg, 1) ? (
+              <>
+                {h} cab. · {kgText(parseDecimal(kg, 1)!)} → <b>{kgText(Math.round(parseDecimal(kg, 1)! / Math.max(1, h)))} por cabeça</b>
+              </>
+            ) : (
+              'Digite o peso: o ARGO mostra o peso por cabeça antes de lançar.'
+            )}
+          </div>
           {err && <div style={{ color: 'var(--danger)' }}>{err}</div>}
         </div>
       ) : (
@@ -201,7 +231,7 @@ interface Block {
   qty: QtyText
 }
 
-function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
+function SaleForm({ mode, lot }: { mode: 'arroba' | 'cabeca' | 'kg'; lot: WeighingLot | null }) {
   const navigate = useNavigate()
   const { farm } = useFarm()
   const pastures = usePastures()
@@ -213,12 +243,17 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
   const [clientId, setClientId] = useState('')
   const [newClient, setNewClient] = useState<ClientInput>(EMPTY_CLIENT)
   const [date, setDate] = useState(todayLocal)
-  const [blocks, setBlocks] = useState<Block[]>([])
+  const [blocks, setBlocks] = useState<Block[]>(() => {
+    if (!lot) return []
+    const by = new Map<string, QtyText>()
+    for (const it of lotSummary(lot).items) by.set(it.pastureId, { ...(by.get(it.pastureId) ?? {}), [it.category]: String(it.quantity) })
+    return [...by.entries()].map(([pastureId, qty]) => ({ pastureId, qty }))
+  })
   const [weighing, setWeighing] = useState<'vivo' | 'carcaca'>('vivo')
   const [weights, setWeights] = useState<Record<string, string>>({})
   const [priceArroba, setPriceArroba] = useState('')
   const [priceKg, setPriceKg] = useState('')
-  const [weighings, setWeighings] = useState<Weighing[]>([])
+  const [weighings, setWeighings] = useState<Weighing[]>(() => (lot ? lot.weighings.map((w) => ({ id: w.id, pastureId: w.pastureId, category: w.category, heads: w.heads, kgTenths: w.kgTenths })) : []))
   const [priceHead, setPriceHead] = useState<Partial<Record<CategoryId, string>>>({})
   const [paymentKind, setPaymentKind] = useState<PaymentKind>('avista')
   const [receivedNow, setReceivedNow] = useState(true)
@@ -315,6 +350,7 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
           receivedNow: paymentKind === 'avista' && receivedNow ? { method: receivedMethod } : null,
           notes,
           purpose,
+          weighingLotId: lot?.id,
         },
         saleKey,
       )
@@ -362,7 +398,28 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
 
       {/* Animais */}
       <h2 className="section-title">Animais vendidos</h2>
-      {blocks.map((b, bi) => (
+      {lot && (
+        <div className="card stack" data-testid="sale-from-lot">
+          <div className="status-label">{lot.name || `Pesagem de ${formatDay(lot.date)}`}</div>
+          <div className="kg-total">
+            <span>
+              <b>{lotSummary(lot).heads} cab.</b> {kgFmt(lotSummary(lot).kgTenths)}
+            </span>
+            <span>
+              <b>{kgFmt(lotSummary(lot).avgTenths)}</b> média por cabeça
+            </span>
+          </div>
+          {lotSummary(lot).items.map((it) => (
+            <div key={`${it.pastureId}|${it.category}`} className="status-detail">
+              {it.quantity} {category(it.category).plural.toLowerCase()} · {pastureName(it.pastureId)}
+            </div>
+          ))}
+          <Link to={`/pesagens/${lot.id}`} className="inline-link" style={{ alignSelf: 'flex-start' }}>
+            Corrigir as pesagens
+          </Link>
+        </div>
+      )}
+      {!lot && blocks.map((b, bi) => (
         <div className="card stack" key={b.pastureId}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <div className="status-label">{pastureName(b.pastureId)}</div>
@@ -383,7 +440,7 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
           />
         </div>
       ))}
-      {unusedPastures.length > 0 && (
+      {!lot && unusedPastures.length > 0 && (
         <select
           className="input"
           value=""
@@ -482,7 +539,7 @@ function SaleForm({ mode }: { mode: 'arroba' | 'cabeca' | 'kg' }) {
 
       {heads > 0 && mode === 'kg' && (
         <>
-          <KgWeighings items={items} pastureName={pastureName} weighings={weighings} onChange={setWeighings} />
+          {!lot && <KgWeighings items={items} pastureName={pastureName} weighings={weighings} onChange={setWeighings} />}
           <div className="card">
             <label className="label" htmlFor="v-price-kg">
               Preço do kg (peso vivo)

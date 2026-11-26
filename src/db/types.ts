@@ -771,6 +771,33 @@ export interface MapVersion extends BaseRecord {
   warnings: string[]
 }
 
+/** Uma subida na balança dentro de uma pesagem de lote. */
+export interface LotWeighing {
+  id: string
+  pastureId: string
+  category: CategoryId
+  /** 1 a 3 cabeças juntas na balança */
+  heads: number
+  /** peso total da balança, kg × 10 */
+  kgTenths: number
+  /** quando foi lançada (ISO) */
+  at: string
+}
+
+/**
+ * Pesagem de lote feita ANTES da venda (sem comprador nem preço). Não tira animais do rebanho:
+ * isso só acontece quando o lote é vendido (a venda por kg usa estas pesagens).
+ */
+export interface WeighingLot extends BaseRecord {
+  farmId: string
+  date: string
+  name: string
+  notes: string
+  weighings: LotWeighing[]
+  status: 'aberta' | 'vendida' | 'cancelada'
+  saleId: string | null
+}
+
 /**
  * Mapa de entidades de negócio sincronizáveis.
  * Novos módulos (animais, pastos, vendas...) entram aqui.
@@ -806,11 +833,12 @@ export interface EntityMap {
   mapShapes: MapShape
   farmMaps: FarmMap
   mapVersions: MapVersion
+  weighingLots: WeighingLot
 }
 
 export type EntityName = keyof EntityMap
 
-export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments', 'maintenancePlans', 'maintenanceRecords', 'machineChecklists', 'workers', 'workDays', 'workerPayments', 'mapShapes', 'farmMaps', 'mapVersions']
+export const ENTITY_NAMES: readonly EntityName[] = ['diagnostics', 'farms', 'pastures', 'pastureTasks', 'movements', 'clients', 'sales', 'landmarks', 'payments', 'reserveEntries', 'reserveChecks', 'responsibles', 'supplies', 'supplyMovements', 'equipments', 'fuelMovements', 'vaccinations', 'vaccinationApplications', 'fieldOperations', 'machineSessions', 'meterAdjustments', 'maintenancePlans', 'maintenanceRecords', 'machineChecklists', 'workers', 'workDays', 'workerPayments', 'mapShapes', 'farmMaps', 'mapVersions', 'weighingLots']
 
 /** Campos que o usuário informa (o resto é preenchido pelo repositório). */
 export type EntityInput<E extends EntityName> = Omit<EntityMap[E], keyof BaseRecord>
