@@ -695,6 +695,11 @@ export interface Sale extends BaseRecord {
   pricePerArrobaCents: number | null
   /** Venda por kg: preço do quilo vivo (centavos). Sem índice: o banco não muda. */
   pricePerKgCents?: number | null
+  /**
+   * Venda por kg: pesagens (1 a 3 cabeças cada, podem ser misturadas). Vendas por kg da versão 0.26/0.27
+   * guardavam as pesagens em `animals` (com pasto/categoria); veja `kgWeighingsOf`.
+   */
+  weighings?: KgWeighing[]
   /** Venda por cabeça: preço por cabeça de cada categoria. */
   pricePerHeadCents: Partial<Record<CategoryId, number>>
   /** Total de arrobas × 100 (para exibição). */
@@ -771,11 +776,22 @@ export interface MapVersion extends BaseRecord {
   warnings: string[]
 }
 
+/**
+ * Uma subida na balança: 1 a 3 cabeças (podem ser de categorias diferentes, misturadas) e o peso total.
+ * Pasto/categoria só existiam na versão 0.27.0 (antes de a pesagem aceitar animais misturados).
+ */
+export interface KgWeighing {
+  heads: number
+  /** peso total da balança, kg × 10 */
+  kgTenths: number
+}
+
 /** Uma subida na balança dentro de uma pesagem de lote. */
 export interface LotWeighing {
   id: string
-  pastureId: string
-  category: CategoryId
+  /** só em lotes da versão 0.27.0 */
+  pastureId?: string
+  category?: CategoryId
   /** 1 a 3 cabeças juntas na balança */
   heads: number
   /** peso total da balança, kg × 10 */
@@ -794,6 +810,8 @@ export interface WeighingLot extends BaseRecord {
   name: string
   notes: string
   weighings: LotWeighing[]
+  /** o que tem no lote: cabeças por pasto e categoria (informado uma vez, não por pesagem) */
+  composition?: SaleItem[]
   status: 'aberta' | 'vendida' | 'cancelada'
   saleId: string | null
 }

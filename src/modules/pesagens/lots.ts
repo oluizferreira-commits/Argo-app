@@ -5,8 +5,7 @@
  */
 import type { ArgoDatabase } from '../../db/database'
 import { Repository } from '../../db/repository'
-import type { LotWeighing, SaleItem, WeighingLot } from '../../db/types'
-import type { CategoryId } from '../../domain/categories'
+import type { KgWeighing, LotWeighing, SaleItem, WeighingLot } from '../../db/types'
 import { newId, nowIso } from '../../core/ids'
 import { todayLocal } from '../rebanho/herd'
 
@@ -39,12 +38,26 @@ export function validateWeighing(heads: number, kgTenths: number) {
   if (kgTenths < 200 * heads || kgTenths > 15000 * heads) throw new LotError(`Peso fora do normal para ${heads} cabeça(s). Confira.`)
 }
 
-export async function addWeighing(db: ArgoDatabase, lotId: string, w: { pastureId: string; category: CategoryId; heads: number; kgTenths: number }): Promise<WeighingLot> {
+/** Lança uma subida na balança: só quantas cabeças (1 a 3, podem ser misturadas) e o peso. */
+export async function addWeighing(db: ArgoDatabase, lotId: string, w: KgWeighing): Promise<WeighingLot> {
   validateWeighing(w.heads, w.kgTenths)
   return db.transaction('rw', TABLES(db), async () => {
     const lot = await openLot(db, lotId)
-    const line: LotWeighing = { id: newId(), pastureId: w.pastureId, category: w.category, heads: w.heads, kgTenths: w.kgTenths, at: nowIso() }
+    const line: LotWeighing = { id: newId(), heads: w.heads, kgTenths: w.kgTenths, at: nowIso() }
     return new Repository(db, 'weighingLots').update(lotId, { weighings: [...lot.weighings, line] })
+  })
+}
+
+/**
+ * O que tem no lote (cabeças por pasto e categoria). Informado uma vez — antes, durante ou depois de pesar —,
+ * porque na balança os animais sobem misturados.
+ */
+export async function setComposition(db: ArgoDatabase, lotId: string, items: readonly SaleItem[]): Promise<WeighingLot> {
+  const clean = items.filter((i) => i.quantity > 0)
+  if (clean.some((i) => !Number.isInteger(i.quantity) || !i.pastureId)) throw new LotError('Quantidades inválidas.')
+  return db.transaction('rw', TABLES(db), async () => {
+    await openLot(db, lotId)
+    return new Repository(db, 'weighingLots').update(lotId, { composition: clean.map((i) => ({ pastureId: i.pastureId, category: i.category, quantity: i.quantity })) })
   })
 }
 
@@ -75,24 +88,35 @@ export interface LotSummary {
   items: SaleItem[]
 }
 
-export function lotSummary(lot: Pick<WeighingLot, 'weighings'>): LotSummary {
-  const map = new Map<string, SaleItem>()
+export function lotSummary(lot: Pick<WeighingLot, 'weighings' | 'composition'>): LotSummary {
   let heads = 0
   let kg = 0
   for (const w of lot.weighings) {
     heads += w.heads
     kg += w.kgTenths
+  }
+  return { heads, kgTenths: kg, avgTenths: heads ? Math.round(kg / heads) : 0, items: compositionOf(lot) }
+}
+
+/** Composição do lote; lotes da versão 0.27.0 (pesagem com pasto/categoria) são convertidos. */
+export function compositionOf(lot: Pick<WeighingLot, 'weighings' | 'composition'>): SaleItem[] {
+  if (lot.composition) return lot.composition
+  const map = new Map<string, SaleItem>()
+  for (const w of lot.weighings) {
+    if (!w.pastureId || !w.category) continue
     const k = `${w.pastureId}|${w.category}`
     const it = map.get(k) ?? { pastureId: w.pastureId, category: w.category, quantity: 0 }
     it.quantity += w.heads
     map.set(k, it)
   }
-  return { heads, kgTenths: kg, avgTenths: heads ? Math.round(kg / heads) : 0, items: [...map.values()] }
+  return [...map.values()]
 }
 
+export const compositionHeads = (items: readonly SaleItem[]) => items.reduce((a, i) => a + i.quantity, 0)
+
 /** Mesmas pesagens? (a venda tem de usar exatamente o que foi pesado no lote) */
-export function sameWeighings(lot: Pick<WeighingLot, 'weighings'>, animals: readonly { pastureId: string; category: CategoryId; amount: number; heads?: number }[]): boolean {
-  const a = lot.weighings.map((w) => `${w.pastureId}|${w.category}|${w.heads}|${w.kgTenths}`).sort()
-  const b = animals.map((w) => `${w.pastureId}|${w.category}|${w.heads ?? 1}|${w.amount}`).sort()
+export function sameWeighings(lot: Pick<WeighingLot, 'weighings'>, weighings: readonly KgWeighing[]): boolean {
+  const a = lot.weighings.map((w) => `${w.heads}|${w.kgTenths}`).sort()
+  const b = weighings.map((w) => `${w.heads}|${w.kgTenths}`).sort()
   return a.length === b.length && a.every((x, i) => x === b[i])
 }

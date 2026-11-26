@@ -5,12 +5,15 @@ import { newId } from '../../core/ids'
 import { formatDecimal, parseDecimal } from '../../core/money'
 import { db } from '../../db/database'
 import type { WeighingLot } from '../../db/types'
-import { CATEGORIES, category, type CategoryId } from '../../domain/categories'
+import { category, type CategoryId } from '../../domain/categories'
+import { CategoryQuantities } from '../../components/CategoryQuantities'
+import { toQuantities, type QtyText } from '../../components/quantities'
+import type { SaleItem } from '../../db/types'
 import { Icon } from '../../components/Icon'
 import { useFarm } from '../fazendas/FarmContext'
 import { balanceOf, formatDay } from '../rebanho/herd'
 import { useBalances, usePastures } from '../rebanho/useHerd'
-import { addWeighing, cancelLot, createLot, LotError, lotSummary, removeWeighing, renameLot } from './lots'
+import { addWeighing, cancelLot, compositionHeads, createLot, LotError, lotSummary, removeWeighing, renameLot, setComposition } from './lots'
 
 const kg = (tenths: number) => `${formatDecimal(tenths, 1)} kg`
 
@@ -87,15 +90,16 @@ function LotRow({ lot }: { lot: WeighingLot }) {
   )
 }
 
-/** Tela de pesar: escolhe pasto e categoria, quantas cabeças subiram (1 a 3) e o peso. Cada lançamento já fica salvo. */
+/**
+ * Tela de pesar: em cada pesagem só quantas cabeças subiram (1 a 3, podem ser misturadas) e o peso.
+ * O que tem no lote (quantos de cada categoria e de qual pasto) é informado uma vez, quando quiser.
+ */
 export function PesagemPage() {
   const { id = '' } = useParams()
   const lot = useLiveQuery(() => db.weighingLots.get(id), [id])
   const pastures = usePastures()
   const { balances, ready } = useBalances()
   const navigate = useNavigate()
-  const [pastureId, setPastureId] = useState('')
-  const [cat, setCat] = useState<CategoryId | ''>('')
   const [heads, setHeads] = useState(3)
   const [text, setText] = useState('')
   const [err, setErr] = useState<string | null>(null)
@@ -106,24 +110,15 @@ export function PesagemPage() {
   const s = lotSummary(lot)
   const isOpen = lot.status === 'aberta'
   const pName = (pid: string) => pastures.find((p) => p.id === pid)?.name ?? ''
-
-  // padrão: o último pasto/categoria lançados
-  const last = lot.weighings.at(-1)
-  const pid = pastureId || last?.pastureId || ''
-  const usedHere = (p: string, c: CategoryId) => lot.weighings.filter((w) => w.pastureId === p && w.category === c).reduce((a, w) => a + w.heads, 0)
-  const cats = pid ? CATEGORIES.filter((c) => balanceOf(balances, pid, c.id) > 0) : []
-  const c = (cat && cats.some((x) => x.id === cat) ? cat : last && last.pastureId === pid ? last.category : cats[0]?.id) as CategoryId | undefined
-  const left = pid && c ? balanceOf(balances, pid, c) - usedHere(pid, c) : 0
-  const h = Math.max(1, Math.min(heads, 3, left || 3))
   const t = parseDecimal(text, 1)
-  const preview = t && t > 0 ? Math.round(t / h) : null
+  const preview = t && t > 0 ? Math.round(t / heads) : null
+  const compHeads = compositionHeads(s.items)
+  const canSell = s.heads > 0 && compHeads === s.heads
 
   async function add() {
     setErr(null)
-    if (!pid || !c) return setErr('Escolha o pasto e a categoria.')
-    if (left < h) return setErr(`Só ${left} ${category(c).plural.toLowerCase()} no ${pName(pid)} (pelo Rebanho).`)
     try {
-      await addWeighing(db, lot!.id, { pastureId: pid, category: c, heads: h, kgTenths: t ?? 0 })
+      await addWeighing(db, lot!.id, { heads, kgTenths: t ?? 0 })
       setText('')
     } catch (e) {
       setErr(e instanceof LotError ? e.message : (e as Error).message)
@@ -135,7 +130,7 @@ export function PesagemPage() {
       <section className="hero" data-testid="lot-summary">
         <div className="gold-rule" />
         {editName && isOpen ? (
-          <input className="input" aria-label="Nome do lote" placeholder="Ex.: Garrotes do Pasto Novo" defaultValue={lot.name} autoFocus onBlur={(e) => (void renameLot(db, lot.id, e.target.value, lot.notes), setEditName(false))} />
+          <input className="input" aria-label="Nome do lote" placeholder="Ex.: Garrotes e novilhas" defaultValue={lot.name} autoFocus onBlur={(e) => (void renameLot(db, lot.id, e.target.value, lot.notes), setEditName(false))} />
         ) : (
           <button type="button" className="status-link" onClick={() => setEditName(true)} style={{ color: 'var(--cream)' }}>
             <span className="font-display" style={{ fontSize: 22 }}>
@@ -169,29 +164,12 @@ export function PesagemPage() {
 
       {isOpen && (
         <div className="card stack kg-entry" data-testid="lot-entry">
-          <div className="row" style={{ gap: 8 }}>
-            <select className="input" aria-label="Pasto" value={pid} onChange={(e) => (setPastureId(e.target.value), setCat(''))}>
-              <option value="">Pasto…</option>
-              {pastures.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <select className="input" aria-label="Categoria" value={c ?? ''} onChange={(e) => setCat(e.target.value as CategoryId)} disabled={!pid}>
-              {cats.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.plural} ({balanceOf(balances, pid, x.id) - usedHere(pid, x.id)})
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="label" style={{ margin: 0 }}>
-            Cabeças na balança
+            Cabeças na balança (podem estar misturadas)
           </div>
           <div className="chips" role="radiogroup" aria-label="Cabeças nesta pesagem">
             {[1, 2, 3].map((n) => (
-              <button key={n} type="button" role="radio" aria-checked={h === n} disabled={left > 0 && n > left} className={`chip kg-heads${h === n ? ' active' : ''}`} onClick={() => setHeads(n)} data-testid={`lot-heads-${n}`}>
+              <button key={n} type="button" role="radio" aria-checked={heads === n} className={`chip kg-heads${heads === n ? ' active' : ''}`} onClick={() => setHeads(n)} data-testid={`lot-heads-${n}`}>
                 {n}
               </button>
             ))}
@@ -220,7 +198,7 @@ export function PesagemPage() {
           <div className="kg-preview" data-testid="lot-preview" aria-live="polite">
             {preview ? (
               <>
-                {h} cab. · {kg(t!)} → <b>{kg(preview)} por cabeça</b>
+                {heads} cab. · {kg(t!)} → <b>{kg(preview)} por cabeça</b>
               </>
             ) : (
               'Digite o peso: o ARGO mostra o peso por cabeça antes de lançar.'
@@ -239,7 +217,7 @@ export function PesagemPage() {
                 <li key={w.id} style={isOpen ? undefined : { gridTemplateColumns: '34px minmax(0, 1fr) auto' }}>
                   <span className="kg-n">{n}</span>
                   <span className="kg-desc">
-                    {w.heads} {w.heads === 1 ? category(w.category).label.toLowerCase() : category(w.category).plural.toLowerCase()} · {pName(w.pastureId)}
+                    {w.heads} {w.heads === 1 ? 'cabeça' : 'cabeças'}
                   </span>
                   <span className="kg-w">
                     <b>{kg(w.kgTenths)}</b>
@@ -257,10 +235,30 @@ export function PesagemPage() {
         </div>
       )}
 
+      <Composition lotId={lot.id} items={s.items} editable={isOpen} weighed={s.heads} pName={pName} pastures={pastures} available={(p, c) => balanceOf(balances, p, c)} />
+
       {isOpen && s.heads > 0 && (
-        <Link to={`/vendas/nova/kg?pesagem=${lot.id}`} className="btn btn-gold btn-block" data-testid="sell-lot">
-          <Icon name="cash" /> Vender este lote · {s.heads} cab.
-        </Link>
+        <>
+          {!canSell && (
+            <div className="notice notice-warn" data-testid="lot-mismatch">
+              <Icon name="alert" />
+              <div>
+                {compHeads === 0
+                  ? 'Para vender, diga acima o que tem no lote (quantos de cada categoria e de qual pasto).'
+                  : `Pesadas ${s.heads} cabeças, mas o lote tem ${compHeads}. Acerte as quantidades ou as pesagens.`}
+              </div>
+            </div>
+          )}
+          {canSell ? (
+            <Link to={`/vendas/nova/kg?pesagem=${lot.id}`} className="btn btn-gold btn-block" data-testid="sell-lot">
+              <Icon name="cash" /> Vender este lote · {s.heads} cab.
+            </Link>
+          ) : (
+            <button type="button" className="btn btn-gold btn-block" disabled data-testid="sell-lot">
+              <Icon name="cash" /> Vender este lote
+            </button>
+          )}
+        </>
       )}
       {isOpen && (
         <button
@@ -274,8 +272,91 @@ export function PesagemPage() {
         </button>
       )}
       <p className="muted" style={{ fontSize: 13 }}>
-        Cada pesagem fica salva na hora, mesmo sem internet.
+        Cada pesagem fica salva na hora, mesmo sem internet. Os animais só saem do rebanho na venda.
       </p>
     </>
+  )
+}
+
+/** "O que tem neste lote": cabeças por pasto e categoria (uma vez só, não por pesagem). Salva a cada mudança. */
+function Composition({
+  lotId,
+  items,
+  editable,
+  weighed,
+  pName,
+  pastures,
+  available,
+}: {
+  lotId: string
+  items: SaleItem[]
+  editable: boolean
+  weighed: number
+  pName: (id: string) => string
+  pastures: { id: string; name: string }[]
+  available: (p: string, c: CategoryId) => number
+}) {
+  const [err, setErr] = useState<string | null>(null)
+  const byPasture = new Map<string, QtyText>()
+  for (const it of items) byPasture.set(it.pastureId, { ...(byPasture.get(it.pastureId) ?? {}), [it.category]: String(it.quantity) })
+  const blocks = [...byPasture.entries()].map(([pastureId, qty]) => ({ pastureId, qty }))
+  const total = compositionHeads(items)
+  const save = (next: { pastureId: string; qty: QtyText }[]) => {
+    setErr(null)
+    const list = next.flatMap((b) => (Object.entries(toQuantities(b.qty)) as [CategoryId, number][]).map(([category, quantity]) => ({ pastureId: b.pastureId, category, quantity })))
+    void setComposition(db, lotId, list).catch((e: Error) => setErr(e.message))
+  }
+  const unused = pastures.filter((p) => !byPasture.has(p.id))
+  const [added, setAdded] = useState<string[]>([])
+  const shownBlocks = [...blocks, ...added.filter((p) => !byPasture.has(p)).map((pastureId) => ({ pastureId, qty: {} as QtyText }))]
+
+  return (
+    <div className="card stack" data-testid="lot-composition">
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div className="label" style={{ margin: 0 }}>
+          O que tem neste lote
+        </div>
+        <span className={`badge ${total > 0 && total === weighed ? 'badge-ok' : 'badge-gold'}`} data-testid="lot-comp-count">
+          {total} cab. informadas · {weighed} pesadas
+        </span>
+      </div>
+      {editable && <p className="muted" style={{ fontSize: 14 }}>Na balança os animais sobem misturados. Aqui você diz só o total de cada categoria e de qual pasto saem — pode ser antes, durante ou depois de pesar.</p>}
+      {!editable &&
+        items.map((it) => (
+          <div key={`${it.pastureId}|${it.category}`} className="status-detail">
+            {it.quantity} {category(it.category).plural.toLowerCase()} · {pName(it.pastureId)}
+          </div>
+        ))}
+      {editable &&
+        shownBlocks.map((b) => (
+          <div key={b.pastureId} className="stack" style={{ gap: 6 }}>
+            <div className="status-label">{pName(b.pastureId)}</div>
+            <CategoryQuantities
+              value={b.qty}
+              onChange={(qty) => save(shownBlocks.map((x) => (x.pastureId === b.pastureId ? { ...x, qty } : x)))}
+              available={(c) => available(b.pastureId, c)}
+              hideEmpty
+            />
+          </div>
+        ))}
+      {editable && unused.filter((p) => !added.includes(p.id)).length > 0 && (
+        <select
+          className="input"
+          value=""
+          aria-label="Adicionar pasto ao lote"
+          onChange={(e) => e.target.value && setAdded([...added, e.target.value])}
+        >
+          <option value="">{shownBlocks.length ? '+ Animais de outro pasto' : 'Escolha o pasto de onde saem os animais…'}</option>
+          {unused
+            .filter((p) => !added.includes(p.id))
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+        </select>
+      )}
+      {err && <div style={{ color: 'var(--danger)' }}>{err}</div>}
+    </div>
   )
 }

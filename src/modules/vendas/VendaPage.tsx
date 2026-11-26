@@ -11,7 +11,7 @@ import { useFarm } from '../fazendas/FarmContext'
 import { formatDay } from '../rebanho/herd'
 import { usePastureMap } from '../rebanho/useHerd'
 import { PAYMENT_LABEL, renderReceipt, salePixPayload } from './receipt'
-import { cancelSale, formatSaleNumber, PURPOSE_LABEL, SaleError, salePurpose, setSalePurpose } from './sales'
+import { cancelSale, formatSaleNumber, kgWeighingsOf, PURPOSE_LABEL, SaleError, salePurpose, setSalePurpose } from './sales'
 import { PaymentsSection } from '../receber/PaymentsSection'
 import { saleBalance } from '../receber/receivables'
 
@@ -140,7 +140,7 @@ export function VendaPage() {
         )}
       </div>
 
-      {sale.mode === 'kg' && sale.animals.length > 0 && <KgWeighingsView sale={sale} />}
+      {sale.mode === 'kg' && kgWeighingsOf(sale).length > 0 && <KgWeighingsView sale={sale} />}
 
       {sale.status === 'ativa' && <PaymentsSection sale={sale} payments={payments} />}
 
@@ -209,9 +209,10 @@ export function VendaPage() {
 /** Pesagens da venda por kg, com o peso por cabeça de cada pesagem. */
 function KgWeighingsView({ sale }: { sale: Sale }) {
   const [all, setAll] = useState(false)
-  const kg = sale.animals.reduce((a, x) => a + x.amount, 0)
-  const cab = sale.animals.reduce((a, x) => a + (x.heads ?? 1), 0)
-  const rows = sale.animals.map((a, i) => ({ n: i + 1, ...a, h: a.heads ?? 1 }))
+  const ws = kgWeighingsOf(sale)
+  const kg = ws.reduce((a, x) => a + x.kgTenths, 0)
+  const cab = ws.reduce((a, x) => a + x.heads, 0)
+  const rows = ws.map((w, i) => ({ n: i + 1, ...w }))
   const shown = all ? rows : rows.slice(0, 10)
   const t = (v: number) => `${formatDecimal(v, 1)} kg`
   return (
@@ -227,16 +228,19 @@ function KgWeighingsView({ sale }: { sale: Sale }) {
           <b data-testid="sale-kg-avg">{t(Math.round(kg / Math.max(1, cab)))}</b> média por cabeça
         </span>
       </div>
+      <div className="status-detail">
+        {sale.items.map((it) => `${it.quantity} ${category(it.category).plural.toLowerCase()}`).join(' · ')}
+      </div>
       <ol className="kg-list">
         {shown.map((r) => (
           <li key={r.n} style={{ gridTemplateColumns: '34px minmax(0, 1fr) auto' }}>
             <span className="kg-n">{r.n}</span>
             <span className="kg-desc">
-              {r.h} {r.h === 1 ? category(r.category).label.toLowerCase() : category(r.category).plural.toLowerCase()}
+              {r.heads} {r.heads === 1 ? 'cabeça' : 'cabeças'}
             </span>
             <span className="kg-w">
-              <b>{t(r.amount)}</b>
-              <small>{t(Math.round(r.amount / r.h))}/cab.</small>
+              <b>{t(r.kgTenths)}</b>
+              <small>{t(Math.round(r.kgTenths / r.heads))}/cab.</small>
             </span>
           </li>
         ))}

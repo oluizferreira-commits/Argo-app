@@ -242,7 +242,7 @@ describe('venda por kg (pesagens de 1 a 3 cabeças)', () => {
     expect(s.pricePerKgCents).toBe(1200)
     expect(s.weighing).toBe('vivo')
     expect(s.items.find((i) => i.category === 'boi')!.quantity).toBe(7)
-    expect(s.animals.map((a) => a.heads)).toEqual([3, 3, 1, 2])
+    expect(s.weighings!.map((w) => w.heads)).toEqual([3, 3, 1, 2]) // pesagens (vendas antigas com pasto/categoria por pesagem continuam aceitas)
     const b = await bal()
     expect(balanceOf(b, p.id, 'boi')).toBe(30 - 7)
     expect(balanceOf(b, p.id, 'vaca')).toBe(10 - 2)
@@ -262,7 +262,7 @@ describe('venda por kg (pesagens de 1 a 3 cabeças)', () => {
       installments: buildInstallments('avista', todayLocal(), 100000),
     })
     await expect(createSale(db, farm.id, input([{ amount: 14000, heads: 4 }], 1200))).rejects.toThrow('de 1 a 3 cabeças')
-    await expect(createSale(db, farm.id, input([{ amount: 10500, heads: 3 }], 1200))).rejects.toThrow('3 de 4 cabeças pesadas')
+    await expect(createSale(db, farm.id, input([{ amount: 10500, heads: 3 }], 1200))).rejects.toThrow('Pesadas 3 cabeças, mas a venda tem 4')
     await expect(createSale(db, farm.id, input([{ amount: 10500, heads: 3 }, { amount: 3500, heads: 1 }], null))).rejects.toThrow('preço do kg')
     await expect(createSale(db, farm.id, input([{ amount: 100, heads: 3 }, { amount: 3500, heads: 1 }], 1200))).rejects.toThrow('fora do normal')
     expect(await db.sales.count()).toBe(0)

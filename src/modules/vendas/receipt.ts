@@ -6,7 +6,7 @@ import { saleBalance } from '../receber/receivables'
 import { category } from '../../domain/categories'
 import { buildPixPayload, maskPhone, maskPixKey, PIX_KEY_LABELS } from '../../domain/pix'
 import { formatDay } from '../rebanho/herd'
-import { formatSaleNumber } from './sales'
+import { formatSaleNumber, kgWeighingsOf } from './sales'
 
 /** Código Pix (copia e cola) de uma parcela da venda, ou null se a fazenda não tem chave. */
 /**
@@ -141,16 +141,13 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
       const price = sale.pricePerHeadCents[it.category] ?? 0
       text(`${formatMoney(price)}/cab.`, W - M - 250, y, 24, 400, C.ink2, 'right')
       text(formatMoney(price * it.quantity), W - M, y, 28, 700, C.ink, 'right')
+    } else if (sale.mode === 'kg') {
+      // na balança os animais sobem misturados: o peso é do lote (resumo abaixo), não de cada categoria
+      text(`${it.quantity} cab.`, W - M, y, 26, 600, C.ink2, 'right')
     } else {
       const animals = sale.animals.filter((a) => a.pastureId === it.pastureId && a.category === it.category)
       const sum = animals.reduce((a, x) => a + x.amount, 0)
-      const cab = animals.reduce((a, x) => a + (x.heads ?? 1), 0)
-      const desc =
-        sale.mode === 'kg'
-          ? `${formatDecimal(sum, 1)} kg · ${formatDecimal(Math.round(sum / Math.max(1, cab)), 1)} kg/cab.`
-          : sale.weighing === 'vivo'
-            ? `${formatDecimal(sum, 1)} kg`
-            : `${formatDecimal(sum, 2)} @`
+      const desc = sale.weighing === 'vivo' ? `${formatDecimal(sum, 1)} kg` : `${formatDecimal(sum, 2)} @`
       text(desc, W - M, y, 26, 600, C.ink2, 'right')
     }
     y += 50
@@ -159,8 +156,9 @@ export async function renderReceipt(d: ReceiptData): Promise<Blob> {
   rule(y)
   y += 50
   if (sale.mode === 'kg') {
-    const kg = sale.animals.reduce((a, x) => a + x.amount, 0)
-    const cab = sale.animals.reduce((a, x) => a + (x.heads ?? 1), 0)
+    const ws = kgWeighingsOf(sale)
+    const kg = ws.reduce((a, x) => a + x.kgTenths, 0)
+    const cab = ws.reduce((a, x) => a + x.heads, 0)
     text(`${cab} cab. · ${formatDecimal(kg, 1)} kg · média ${formatDecimal(Math.round(kg / Math.max(1, cab)), 1)} kg`, M, y, 26, 600, C.ink2)
     text(`${formatMoney(sale.pricePerKgCents ?? 0)} por kg`, W - M, y, 26, 400, C.ink2, 'right')
     y += 56

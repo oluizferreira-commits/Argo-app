@@ -13,6 +13,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.28.0',
+    date: '2026-11-26',
+    title: 'Pesagem com animais misturados',
+    items: [
+      'Na balança os animais sobem misturados: agora cada pesagem pede só quantas cabeças (1, 2 ou 3) e o peso — sem pasto nem categoria.',
+      'O que tem no lote (ex.: 60 garrotes e 40 novilhas do Pasto Novo) é informado uma vez só, antes, durante ou depois de pesar.',
+      'O app avisa se o número de cabeças pesadas for diferente do informado, antes de vender.',
+      'Vale também para a venda por kg direta. Pesagens e vendas feitas antes continuam valendo.',
+    ],
+  },
+  {
     version: '0.27.0',
     date: '2026-11-26',
     title: 'Pesar primeiro, vender depois',
