@@ -31,6 +31,7 @@ const NOTES_PLACEHOLDER: Record<FormType, string> = {
   transferencia: 'Opcional',
   'mudanca-categoria': 'Opcional',
   morte: 'Ex.: causa da morte',
+  'perna-quebrada': 'Ex.: como quebrou, se foi abatido para consumo',
   venda: 'Ex.: comprador (detalhes financeiros na etapa de vendas)',
   contagem: 'Opcional',
   especificacao: 'Ex.: contado no curral em …',
@@ -55,7 +56,7 @@ export function MovementForm({ type }: { type: FormType }) {
 
   const avail = (c: CategoryId) => (from ? balanceOf(balances, from, c) : 0)
   const needsTo = type === 'transferencia' || type === 'mudanca-categoria'
-  const usesAvailable = type === 'morte' || type === 'venda' || type === 'transferencia' || type === 'mudanca-categoria'
+  const usesAvailable = type === 'morte' || type === 'perna-quebrada' || type === 'venda' || type === 'transferencia' || type === 'mudanca-categoria'
 
   const pastureEmptyHistory = useMemo(
     () => CATEGORIES.every((c) => balanceOf(balances, from, c.id) === 0),
@@ -100,6 +101,7 @@ export function MovementForm({ type }: { type: FormType }) {
       case 'compra':
         return entriesIn(from, q)
       case 'morte':
+      case 'perna-quebrada':
       case 'venda':
         return entriesOut(from, q)
       case 'transferencia':

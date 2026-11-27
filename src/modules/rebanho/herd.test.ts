@@ -89,6 +89,17 @@ describe('rebanho por contagem', () => {
     expect(balanceOf(await balances(), a.id, 'reprodutor')).toBe(1)
   })
 
+  it('perna quebrada tira machos e fêmeas do pasto; não aceita somar nem passar do saldo', async () => {
+    const { a, today, balances } = await setup()
+    await recordMovement(db, { type: 'compra', date: today, notes: '', entries: entriesIn(a.id, { boi: 5, vaca: 4 }) })
+    await recordMovement(db, { type: 'perna-quebrada', date: today, notes: 'Abatido para consumo', entries: entriesOut(a.id, { boi: 1, vaca: 2 }) })
+    const bal = await balances()
+    expect(balanceOf(bal, a.id, 'boi')).toBe(4)
+    expect(balanceOf(bal, a.id, 'vaca')).toBe(2)
+    await expect(recordMovement(db, { type: 'perna-quebrada', date: today, notes: '', entries: entriesIn(a.id, { boi: 1 }) })).rejects.toThrow(HerdError)
+    await expect(recordMovement(db, { type: 'perna-quebrada', date: today, notes: '', entries: entriesOut(a.id, { vaca: 3 }) })).rejects.toThrow(/Saldo insuficiente/)
+  })
+
   it('recusa tirar mais animais do que o pasto tem', async () => {
     const { a, b, today } = await setup()
     await recordMovement(db, { type: 'compra', date: today, notes: '', entries: entriesIn(a.id, { vaca: 30 }) })

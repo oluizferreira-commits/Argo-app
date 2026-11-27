@@ -13,6 +13,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    version: '0.32.0',
+    date: '2026-11-27',
+    title: 'Perna quebrada no rebanho',
+    items: [
+      'Novo lançamento "Perna quebrada" em Rebanho → Nova movimentação: escolha o pasto e quantos machos ou fêmeas (qualquer categoria) quebraram a perna.',
+      'Os animais saem do saldo do pasto, como na morte. Use a observação para anotar o que foi feito (ex.: abatido para consumo).',
+      'O relatório "Nascimentos, mortes e perna quebrada" mostra o total e o lançamento por pasto. Errou? Estorne o lançamento no histórico.',
+    ],
+  },
+  {
     version: '0.31.1',
     date: '2026-11-27',
     title: 'Reserva só das vendas pessoais e venda na perna',

@@ -76,7 +76,7 @@ export const REPORTS = [
   { id: 'recebimentos', title: 'Recebimentos' },
   { id: 'inadimplencia', title: 'Inadimplência' },
   { id: 'reserva', title: 'Reserva financeira' },
-  { id: 'nascimentos-mortes', title: 'Nascimentos e mortes' },
+  { id: 'nascimentos-mortes', title: 'Nascimentos, mortes e perna quebrada' },
   { id: 'rebanho', title: 'Rebanho por pasto e categoria' },
   { id: 'diesel', title: 'Diesel' },
   { id: 'manejo', title: 'Manejo de pastagens' },
@@ -373,13 +373,13 @@ function reserva(d: ReportData, p: Period): Report {
 
 function nascimentosMortes(d: ReportData, p: Period): Report {
   const pastures = new Map(d.pastures.map((x) => [x.id, x.name]))
-  type Row = { date: string; kind: 'Nascimento' | 'Morte'; pasture: string; cat: string; qty: number; origin: string; notes: string }
+  type Row = { date: string; kind: 'Nascimento' | 'Morte' | 'Perna quebrada'; pasture: string; cat: string; qty: number; origin: string; notes: string }
   const rows: Row[] = []
   for (const m of d.movements) {
     if (m.deletedAt !== null || !inPeriod(m.date, p) || m.reversedBy || m.type === 'estorno') continue
-    if (m.type === 'nascimento' || m.type === 'morte') {
+    if (m.type === 'nascimento' || m.type === 'morte' || m.type === 'perna-quebrada') {
       for (const e of m.entries)
-        rows.push({ date: m.date, kind: m.type === 'nascimento' ? 'Nascimento' : 'Morte', pasture: pastures.get(e.pastureId) ?? '-', cat: category(e.category).label, qty: Math.abs(e.delta), origin: 'Lançamento', notes: m.notes })
+        rows.push({ date: m.date, kind: m.type === 'nascimento' ? 'Nascimento' : m.type === 'morte' ? 'Morte' : 'Perna quebrada', pasture: pastures.get(e.pastureId) ?? '-', cat: category(e.category).label, qty: Math.abs(e.delta), origin: 'Lançamento', notes: m.notes })
     } else if (m.type === 'contagem') {
       for (const e of m.entries) {
         if (e.reason === 'nascimento-nao-registrado' || e.reason === 'morte-nao-registrada')
@@ -392,25 +392,28 @@ function nascimentosMortes(d: ReportData, p: Period): Report {
   rows.sort((a, b) => a.date.localeCompare(b.date))
   const births = rows.filter((r) => r.kind === 'Nascimento').reduce((a, r) => a + r.qty, 0)
   const deaths = rows.filter((r) => r.kind === 'Morte').reduce((a, r) => a + r.qty, 0)
-  const byPasture = new Map<string, { b: number; d: number }>()
+  const broken = rows.filter((r) => r.kind === 'Perna quebrada').reduce((a, r) => a + r.qty, 0)
+  const byPasture = new Map<string, { b: number; d: number; q: number }>()
   for (const r of rows) {
-    const x = byPasture.get(r.pasture) ?? { b: 0, d: 0 }
+    const x = byPasture.get(r.pasture) ?? { b: 0, d: 0, q: 0 }
     if (r.kind === 'Nascimento') x.b += r.qty
-    else x.d += r.qty
+    else if (r.kind === 'Morte') x.d += r.qty
+    else x.q += r.qty
     byPasture.set(r.pasture, x)
   }
   return {
     id: 'nascimentos-mortes',
-    title: 'Nascimentos e mortes',
+    title: 'Nascimentos, mortes e perna quebrada',
     summary: [
       { label: 'Nascimentos', value: n(births) },
       { label: 'Mortes', value: n(deaths) },
+      { label: 'Perna quebrada', value: n(broken) },
     ],
     tables: [
       {
         title: 'Por pasto',
-        columns: [{ label: 'Pasto' }, { label: 'Nascimentos', align: R }, { label: 'Mortes', align: R }],
-        rows: [...byPasture.entries()].sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([k, x]) => [k, n(x.b), n(x.d)]),
+        columns: [{ label: 'Pasto' }, { label: 'Nascimentos', align: R }, { label: 'Mortes', align: R }, { label: 'Perna quebrada', align: R }],
+        rows: [...byPasture.entries()].sort((a, b) => a[0].localeCompare(b[0], 'pt-BR')).map(([k, x]) => [k, n(x.b), n(x.d), n(x.q)]),
       },
       {
         columns: [{ label: 'Data' }, { label: 'Tipo' }, { label: 'Pasto' }, { label: 'Categoria' }, { label: 'Qtde', align: R }, { label: 'Origem' }, { label: 'Obs.' }],
@@ -419,7 +422,7 @@ function nascimentosMortes(d: ReportData, p: Period): Report {
       },
     ],
     notes: ['Lançamentos estornados não entram. "Encontrado na contagem" = diferença registrada como nascimento/morte não registrado.'],
-    empty: rows.length ? undefined : 'Nenhum nascimento ou morte no período.',
+    empty: rows.length ? undefined : 'Nenhum nascimento, morte ou perna quebrada no período.',
   }
 }
 

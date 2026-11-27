@@ -14,7 +14,7 @@ interface Option {
 const QUICK_OPTIONS: Option[] = [
   { label: 'Iniciar serviço de máquina', detail: 'Horímetro digital: início, pausa e fim pelo relógio', icon: 'clock', to: '/maquinas/servico/novo' },
   { label: 'Marcar diária', detail: 'Calendário dos diaristas', icon: 'people', to: '/diaristas' },
-  { label: 'Registrar animal', detail: 'Nascimento, compra, morte, transferência ou contagem', icon: 'herd', to: '/rebanho/movimentar' },
+  { label: 'Registrar animal', detail: 'Nascimento, compra, morte, perna quebrada, transferência ou contagem', icon: 'herd', to: '/rebanho/movimentar' },
   { label: 'Registrar despesa', detail: 'Em breve. Compras de diesel e de insumos já contam como despesa', icon: 'wallet', to: null },
   { label: 'Registrar receita', detail: 'Venda de gado (por arroba ou por cabeça)', icon: 'cash', to: '/vendas/nova' },
   { label: 'Entrada ou saída de estoque', detail: 'Sal, mistura e outros insumos', icon: 'sack', to: '/insumos' },

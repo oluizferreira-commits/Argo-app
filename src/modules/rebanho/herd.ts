@@ -182,6 +182,7 @@ function validateShape(input: MovementInput): void {
       if (entries.some((e) => e.delta < 0)) throw new HerdError('Compra só pode somar animais.')
       break
     case 'morte':
+    case 'perna-quebrada':
     case 'venda':
       if (entries.some((e) => e.delta > 0)) throw new HerdError('Esta movimentação só pode tirar animais.')
       break
